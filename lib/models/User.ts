@@ -1,16 +1,26 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface IEmergencyContact {
+  name: string;
+  phone: string;
+  relationship: string;
+}
+
 export interface IUser extends Document {
   email: string;
   password: string;
-  firstName?: string;
-  lastName?: string;
+  firstName: string;
+  lastName: string;
   name: string;
-  phone?: string;
+  phone: string;
   role: 'user' | 'admin' | 'superadmin';
   branchId?: mongoose.Types.ObjectId;
-  membership: boolean;
+  hasMembership: boolean;
+  membershipExpiry?: Date;
   prepaidUntil?: Date;
+  passportUrl?: string;
+  signatureUrl?: string;
+  emergencyContact: IEmergencyContact;
   profileImage?: string;
   isActive: boolean;
   isEmailVerified?: boolean;
@@ -37,18 +47,21 @@ const UserSchema = new Schema<IUser>(
     },
     firstName: {
       type: String,
+      required: [true, 'First name is required'],
       trim: true,
     },
     lastName: {
       type: String,
+      required: [true, 'Last name is required'],
       trim: true,
     },
     name: {
       type: String,
-      required: [true, 'Please provide a name'],
+      required: [true, 'Full name is required'],
     },
     phone: {
       type: String,
+      required: [true, 'Phone number is required'],
       trim: true,
     },
     role: {
@@ -59,13 +72,38 @@ const UserSchema = new Schema<IUser>(
     branchId: {
       type: Schema.Types.ObjectId,
       ref: 'Branch',
+      required: [true, 'Branch is required'],
     },
-    membership: {
+    hasMembership: {
       type: Boolean,
       default: false,
     },
+    membershipExpiry: {
+      type: Date,
+    },
     prepaidUntil: {
       type: Date,
+    },
+    passportUrl: {
+      type: String,
+    },
+    signatureUrl: {
+      type: String,
+    },
+    emergencyContact: {
+      name: {
+        type: String,
+        required: [true, 'Emergency contact name is required'],
+      },
+      phone: {
+        type: String,
+        required: [true, 'Emergency contact phone is required'],
+      },
+      relationship: {
+        type: String,
+        required: [true, 'Relationship is required'],
+        enum: ['Spouse', 'Parent', 'Child', 'Sibling', 'Friend', 'Other'],
+      },
     },
     profileImage: {
       type: String,

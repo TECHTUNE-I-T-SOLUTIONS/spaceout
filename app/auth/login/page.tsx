@@ -65,7 +65,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo Section */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-transparent rounded-full mb-4 relative">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-transparent rounded-full mb-4 relative">
             {mounted && theme === 'dark' ? (
               <Image
                 src="/logo-dark.png"
@@ -151,7 +151,7 @@ export default function LoginPage() {
             <div className="text-right">
               <Link
                 href="/auth/forgot-password"
-                className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
               >
                 Forgot Password?
               </Link>
@@ -161,7 +161,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5"
+              className="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2.5"
             >
               {isLoading ? (
                 <>
@@ -179,7 +179,7 @@ export default function LoginPage() {
                 Don't have an account?{' '}
                 <Link
                   href="/auth/register"
-                  className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                  className="font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                 >
                   Sign Up
                 </Link>

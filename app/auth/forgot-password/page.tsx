@@ -44,7 +44,7 @@ export default function ForgotPasswordPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <Card className="p-8 shadow-lg text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4 mx-auto">
@@ -59,7 +59,7 @@ export default function ForgotPasswordPage() {
               Check your spam folder if you don't see the email.
             </p>
             <Link href="/auth/login">
-              <Button className="w-full bg-blue-600 hover:bg-blue-700">
+              <Button className="w-full bg-gray-600 hover:bg-gray-700">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Login
               </Button>
@@ -71,11 +71,11 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo Section */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-600 rounded-full mb-4">
             <span className="text-3xl font-bold text-white">S</span>
           </div>
           <h1 className="text-3xl font-bold text-gray-900">SpaceOut</h1>
@@ -119,7 +119,7 @@ export default function ForgotPasswordPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5"
+              className="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2.5"
             >
               {loading ? (
                 <>
@@ -135,7 +135,7 @@ export default function ForgotPasswordPage() {
             <div className="text-center pt-4 border-t">
               <Link
                 href="/auth/login"
-                className="text-sm font-medium text-blue-600 hover:text-blue-700 inline-flex items-center"
+                className="text-sm font-medium text-gray-600 hover:text-gray-700 inline-flex items-center"
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Login

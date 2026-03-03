@@ -67,7 +67,7 @@ export default function ForgotPasswordPage() {
               Check your spam folder if you don't see the email.
             </p>
             <Link href="/admin/auth/login">
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+              <Button className="w-full bg-gray-600 hover:bg-gray-700 text-white">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Login
               </Button>
@@ -83,7 +83,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-md">
         {/* Logo Section */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-transparent rounded-full mb-4 relative">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-transparent rounded-full mb-4 relative">
             {mounted && theme === 'dark' ? (
               <Image
                 src="/logo-dark.png"
@@ -142,7 +142,7 @@ export default function ForgotPasswordPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5"
+              className="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2.5"
             >
               {loading ? (
                 <>
@@ -158,7 +158,7 @@ export default function ForgotPasswordPage() {
             <div className="text-center pt-4 border-t border-gray-200 dark:border-gray-700">
               <Link
                 href="/admin/auth/login"
-                className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 inline-flex items-center"
+                className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 inline-flex items-center"
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Login

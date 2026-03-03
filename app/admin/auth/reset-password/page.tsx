@@ -122,7 +122,7 @@ function ResetPasswordContent() {
     return (
       <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center p-4">
         <Card className="p-8 shadow-lg text-center">
-          <Loader2 className="h-8 w-8 text-blue-600 animate-spin mx-auto mb-4" />
+          <Loader2 className="h-8 w-8 text-gray-600 animate-spin mx-auto mb-4" />
           <p className="text-gray-600 dark:text-gray-400">Validating your reset link...</p>
         </Card>
       </div>
@@ -140,7 +140,7 @@ function ResetPasswordContent() {
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Password Reset</h2>
             <p className="text-gray-600 dark:text-gray-400 mb-8">Your password has been successfully reset. Redirecting to login...</p>
             <Link href="/admin/auth/login">
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">Back to Login</Button>
+              <Button className="w-full bg-gray-600 hover:bg-gray-700 text-white">Back to Login</Button>
             </Link>
           </Card>
         </div>
@@ -159,7 +159,7 @@ function ResetPasswordContent() {
             </div>
             <p className="text-gray-600 dark:text-gray-400 mb-6">{error || "The reset link is invalid or has expired."}</p>
             <Link href="/admin/auth/forgot-password">
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">Request New Link</Button>
+              <Button className="w-full bg-gray-600 hover:bg-gray-700 text-white">Request New Link</Button>
             </Link>
           </Card>
         </div>
@@ -172,7 +172,7 @@ function ResetPasswordContent() {
       <div className="w-full max-w-md">
         {/* Logo Section */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-transparent rounded-full mb-4 relative">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-transparent rounded-full mb-4 relative">
             {mounted && theme === 'dark' ? (
               <Image
                 src="/logo-dark.png"
@@ -272,7 +272,7 @@ function ResetPasswordContent() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5"
+              className="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2.5"
             >
               {loading ? (
                 <>
@@ -288,7 +288,7 @@ function ResetPasswordContent() {
             <div className="text-center pt-4 border-t border-gray-200 dark:border-gray-700">
               <Link
                 href="/admin/auth/login"
-                className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
               >
                 Back to Login
               </Link>
@@ -311,7 +311,7 @@ export default function AdminResetPasswordPage() {
       fallback={
         <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center p-4">
           <Card className="p-8 shadow-lg text-center">
-            <Loader2 className="h-8 w-8 text-blue-600 animate-spin mx-auto mb-4" />
+            <Loader2 className="h-8 w-8 text-gray-600 animate-spin mx-auto mb-4" />
             <p className="text-gray-600 dark:text-gray-400">Loading...</p>
           </Card>
         </div>
