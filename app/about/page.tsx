@@ -8,6 +8,8 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Target, Users, Zap, Award } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 export default function About() {
   const values = [
     {

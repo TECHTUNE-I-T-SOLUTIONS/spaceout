@@ -6,21 +6,126 @@ import ErrorLog from '@/lib/models/ErrorLog';
 import PushSubscription from '@/lib/models/PushSubscription';
 import { sendPaymentPushNotification } from '@/lib/push-notification';
 
-export async function POST(request: NextRequest) {
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+
+// GET endpoint for Paystack verification
+export async function GET(request: NextRequest) {
   try {
-    await dbConnect();
+    const { searchParams } = new URL(request.url);
+    const reference = searchParams.get('reference');
 
-    const { reference, status } = await request.json();
-
-    if (!reference || !status) {
+    if (!reference) {
       return NextResponse.json(
-        { message: 'reference and status are required' },
+        { error: 'Payment reference is required' },
         { status: 400 }
       );
     }
 
-    // Find payment by reference
-    const payment = await Payment.findOne({ paymentReference: reference });
+    await dbConnect();
+
+    // Find payment by Paystack reference
+    const payment = await Payment.findOne({
+      paystackReference: reference,
+    });
+
+    if (!payment) {
+      return NextResponse.json(
+        { error: 'Payment not found' },
+        { status: 404 }
+      );
+    }
+
+    // Verify with Paystack
+    const response = await fetch(
+      `https://api.paystack.co/transaction/verify/${reference}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${PAYSTACK_SECRET_KEY}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to verify payment with Paystack');
+    }
+
+    const paystackData = await response.json();
+
+    if (!paystackData.status) {
+      return NextResponse.json(
+        { error: 'Payment verification failed', payment: payment.toObject() },
+        { status: 400 }
+      );
+    }
+
+    // Check if payment was successful
+    if (paystackData.data.status !== 'success') {
+      payment.status = paystackData.data.status;
+      await payment.save();
+      return NextResponse.json(
+        {
+          error: `Payment ${paystackData.data.status}`,
+          payment: payment.toObject(),
+        },
+        { status: 400 }
+      );
+    }
+
+    // Update payment status
+    payment.status = 'completed';
+    payment.paidAt = new Date();
+    payment.verifiedAt = new Date();
+    await payment.save();
+
+    // Update user membership if this is a membership payment
+    if (payment.membershipDays) {
+      const membershipExpiry = new Date();
+      membershipExpiry.setDate(membershipExpiry.getDate() + payment.membershipDays);
+
+      await User.findByIdAndUpdate(payment.userId, {
+        hasMembership: true,
+        membershipExpiry,
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Payment verified successfully',
+      payment: {
+        _id: payment._id,
+        status: payment.status,
+        amount: payment.amount,
+        membershipDays: payment.membershipDays,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error verifying payment:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to verify payment' },
+      { status: 500 }
+    );
+  }
+}
+
+// POST endpoint for webhook and legacy verification
+export async function POST(request: NextRequest) {
+  try {
+    await dbConnect();
+
+    const { reference, status, paystackReference } = await request.json();
+
+    // Support both legacy paymentReference and new paystackReference
+    let payment = null;
+    if (paystackReference) {
+      payment = await Payment.findOne({ paystackReference });
+    } else if (reference) {
+      payment = await Payment.findOne({
+        $or: [
+          { paymentReference: reference },
+          { paystackReference: reference },
+        ],
+      });
+    }
 
     if (!payment) {
       return NextResponse.json(
@@ -31,6 +136,10 @@ export async function POST(request: NextRequest) {
 
     // Update payment status
     payment.status = status === 'success' ? 'completed' : 'failed';
+    if (status === 'success') {
+      payment.paidAt = new Date();
+      payment.verifiedAt = new Date();
+    }
     await payment.save();
 
     // If successful, update user's prepaid coverage
@@ -42,17 +151,26 @@ export async function POST(request: NextRequest) {
     }
 
     // If membership payment, update membership status
-    if (status === 'success' && payment.type === 'membership') {
-      const membershipExpiry = new Date();
-      membershipExpiry.setFullYear(membershipExpiry.getFullYear() + 1); // 1 year validity
+    if (status === 'success') {
+      if (payment.membershipDays) {
+        // New membership system
+        const membershipExpiry = new Date();
+        membershipExpiry.setDate(membershipExpiry.getDate() + payment.membershipDays);
 
-      await User.findByIdAndUpdate(
-        payment.userId,
-        {
+        await User.findByIdAndUpdate(payment.userId, {
+          hasMembership: true,
+          membershipExpiry,
+        });
+      } else if (payment.type === 'membership') {
+        // Legacy membership system
+        const membershipExpiry = new Date();
+        membershipExpiry.setFullYear(membershipExpiry.getFullYear() + 1);
+
+        await User.findByIdAndUpdate(payment.userId, {
           membership: true,
           membershipExpiry,
-        }
-      );
+        });
+      }
     }
 
     // Send payment notification if payment was successful

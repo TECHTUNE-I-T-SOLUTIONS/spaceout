@@ -4,12 +4,20 @@ export interface IPayment extends Document {
   userId: mongoose.Types.ObjectId;
   branchId: mongoose.Types.ObjectId;
   serviceId?: mongoose.Types.ObjectId;
-  type: string;
+  type: 'membership' | 'service' | 'prepaid';
   amount: number;
+  currency: string;
   planType?: string;
+  membershipDays?: number;
   coverageEndDate?: Date;
   paymentReference: string;
-  status: 'pending' | 'completed' | 'failed';
+  paystackReference?: string;
+  paystackAccessCode?: string;
+  status: 'pending' | 'completed' | 'failed' | 'cancelled';
+  paymentMethod: 'paystack' | 'card' | 'bank_transfer';
+  paidAt?: Date;
+  verifiedAt?: Date;
+  metadata?: Record<string, any>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,22 +48,41 @@ const PaymentSchema = new Schema<IPayment>(
       required: [true, 'Please provide an amount'],
       min: 0,
     },
+    currency: {
+      type: String,
+      default: 'NGN',
+    },
     planType: String,
+    membershipDays: Number,
     coverageEndDate: Date,
     paymentReference: {
       type: String,
       required: [true, 'Please provide a payment reference'],
       unique: true,
     },
+    paystackReference: String,
+    paystackAccessCode: String,
     status: {
       type: String,
-      enum: ['pending', 'completed', 'failed'],
+      enum: ['pending', 'completed', 'failed', 'cancelled'],
       default: 'pending',
     },
+    paymentMethod: {
+      type: String,
+      enum: ['paystack', 'card', 'bank_transfer'],
+      default: 'paystack',
+    },
+    paidAt: Date,
+    verifiedAt: Date,
+    metadata: mongoose.Schema.Types.Mixed,
   },
   {
     timestamps: true,
   }
 );
+
+// Index for quick lookup
+PaymentSchema.index({ userId: 1, status: 1 });
+PaymentSchema.index({ paystackReference: 1 });
 
 export default mongoose.models.Payment || mongoose.model<IPayment>('Payment', PaymentSchema);

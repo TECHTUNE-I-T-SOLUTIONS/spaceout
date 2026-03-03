@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Alert } from '@/components/ui/alert';
-import { Loader2, User, Mail, Lock, Phone, Building2, Eye, EyeOff } from 'lucide-react';
+// import { Loader2, User, Mail, Lock, Phone, Building2, Eye, EyeOff } from 'lucide-react';
 import {
   Select,
   SelectContent,

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTheme } from 'next-themes';
+import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +15,13 @@ function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
 
   const [formData, setFormData] = useState({
     password: '',
@@ -113,9 +122,9 @@ function ResetPasswordContent() {
 
   if (validating) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-100 flex items-center justify-center p-4">
         <Card className="p-8 shadow-lg text-center">
-          <Loader2 className="h-8 w-8 text-blue-600 animate-spin mx-auto mb-4" />
+          <Loader2 className="h-8 w-8 text-gray-600 animate-spin mx-auto mb-4" />
           <p className="text-gray-600">Validating your reset link...</p>
         </Card>
       </div>
@@ -124,7 +133,7 @@ function ResetPasswordContent() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <Card className="p-8 shadow-lg text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4 mx-auto">
@@ -133,7 +142,7 @@ function ResetPasswordContent() {
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Password Reset</h2>
             <p className="text-gray-600 mb-8">Your password has been successfully reset. Redirecting to login...</p>
             <Link href="/auth/login">
-              <Button className="w-full bg-blue-600 hover:bg-blue-700">Back to Login</Button>
+              <Button className="w-full bg-gray-600 hover:bg-gray-700">Back to Login</Button>
             </Link>
           </Card>
         </div>
@@ -143,7 +152,7 @@ function ResetPasswordContent() {
 
   if (!tokenValid || error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <Card className="p-8 shadow-lg">
             <div className="flex items-center mb-4 text-red-600">
@@ -152,7 +161,7 @@ function ResetPasswordContent() {
             </div>
             <p className="text-gray-600 mb-6">{error || 'The reset link is invalid or has expired.'}</p>
             <Link href="/auth/forgot-password">
-              <Button className="w-full bg-blue-600 hover:bg-blue-700">Request New Link</Button>
+              <Button className="w-full bg-gray-600 hover:bg-gray-700">Request New Link</Button>
             </Link>
           </Card>
         </div>
@@ -161,14 +170,30 @@ function ResetPasswordContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo Section */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
-            <span className="text-3xl font-bold text-white">S</span>
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-transparent rounded-full mb-4 relative">
+            {mounted && theme === 'dark' ? (
+              <Image
+                src="/logo-dark.png"
+                alt="SpaceOut"
+                width={84}
+                height={84}
+                className="object-contain"
+              />
+            ) : (
+              <Image
+                src="/logo-light.png"
+                alt="SpaceOut"
+                width={84}
+                height={84}
+                className="object-contain"
+              />
+            )}
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">SpaceOut</h1>
+          {/* <h1 className="text-3xl font-bold text-gray-900">SpaceOut</h1> */}
           <p className="text-gray-600 mt-2">Create New Password</p>
         </div>
 
@@ -250,7 +275,7 @@ function ResetPasswordContent() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5"
+              className="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2.5"
             >
               {loading ? (
                 <>
@@ -266,7 +291,7 @@ function ResetPasswordContent() {
             <div className="text-center pt-4 border-t">
               <Link
                 href="/auth/login"
-                className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                className="text-sm font-medium text-gray-600 hover:text-gray-700"
               >
                 Back to Login
               </Link>
@@ -276,7 +301,7 @@ function ResetPasswordContent() {
 
         {/* Footer */}
         <p className="text-center text-gray-600 text-sm mt-8">
-          © 2024 SpaceOut. All rights reserved.
+          © 2026 SpaceOut. All rights reserved.
         </p>
       </div>
     </div>
@@ -287,9 +312,9 @@ export default function ResetPasswordPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-100 flex items-center justify-center p-4">
           <Card className="p-8 shadow-lg text-center">
-            <Loader2 className="h-8 w-8 text-blue-600 animate-spin mx-auto mb-4" />
+            <Loader2 className="h-8 w-8 text-gray-600 animate-spin mx-auto mb-4" />
             <p className="text-gray-600">Loading...</p>
           </Card>
         </div>

@@ -10,6 +10,8 @@ import Link from 'next/link';
 import { Zap, Lightbulb, Shield, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+export const dynamic = 'force-dynamic';
+
 export default function Home() {
   const containerVariants = {
     hidden: { opacity: 0 },

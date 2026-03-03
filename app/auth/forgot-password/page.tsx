@@ -1,18 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Alert } from '@/components/ui/alert';
 import { Loader2, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
+import Image from 'next/image';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
+  const [mounted, setMounted] = useState(false);
+  const { theme } = useTheme();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,10 +84,26 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-md">
         {/* Logo Section */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-600 rounded-full mb-4">
-            <span className="text-3xl font-bold text-white">S</span>
+          <div className="inline-flex items-center justify-center w-46 h-10 bg-gray-transparent rounded-full mb-4 relative">
+            {mounted && theme === 'dark' ? (
+              <Image
+                src="/logo-dark.png"
+                alt="SpaceOut"
+                width={84}
+                height={84}
+                className="object-contain"
+              />
+            ) : (
+              <Image
+                src="/logo-light.png"
+                alt="SpaceOut"
+                width={84}
+                height={84}
+                className="object-contain"
+              />
+            )}
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">SpaceOut</h1>
+          {/* <h1 className="text-3xl font-bold text-gray-900">SpaceOut</h1> */}
           <p className="text-gray-600 mt-2">Reset Password</p>
         </div>
 
@@ -146,7 +171,7 @@ export default function ForgotPasswordPage() {
 
         {/* Footer */}
         <p className="text-center text-gray-600 text-sm mt-8">
-          © 2024 SpaceOut. All rights reserved.
+          © 2026 SpaceOut. All rights reserved.
         </p>
       </div>
     </div>

@@ -4,6 +4,8 @@ import { Analytics } from '@vercel/analytics/next'
 import { Providers } from '@/components/providers'
 import { CookieConsentBanner } from '@/components/cookie-consent-banner'
 import { PushNotificationPrompt } from '@/components/push-notification-prompt'
+import ChatWidget from '@/components/chat-widget'
+import { ClientOnlyWrapper } from '@/components/client-only-wrapper'
 import './globals.css'
 
 const geist = Geist({ subsets: ["latin"], variable: '--font-geist-sans' });
@@ -47,8 +49,11 @@ export default function RootLayout({
       <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
         <Providers>
           {children}
-          <CookieConsentBanner />
-          <PushNotificationPrompt />
+          <ClientOnlyWrapper>
+            <CookieConsentBanner />
+            <PushNotificationPrompt />
+            <ChatWidget />
+          </ClientOnlyWrapper>
           <Analytics />
         </Providers>
       </body>

@@ -1,77 +1,122 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/auth';
 import dbConnect from '@/lib/db';
 import Payment from '@/lib/models/Payment';
 import User from '@/lib/models/User';
-import CheckIn from '@/lib/models/CheckIn';
 import ErrorLog from '@/lib/models/ErrorLog';
-import Service from '@/lib/models/Service';
+
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
 
     if (!session?.user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
     const userId = (session.user as any)?.id;
-    const branchId = (session.user as any)?.branchId;
 
     await dbConnect();
 
     const {
+      amount,
+      membershipDays,
+      paymentType = 'membership', // 'membership' or 'service'
       serviceId,
       type,
-      amount,
       durationDays,
       planType,
     } = await request.json();
 
     // Validation
-    if (!serviceId || !type || !amount) {
+    if (!amount) {
       return NextResponse.json(
-        { message: 'serviceId, type, and amount are required' },
+        { message: 'Amount is required' },
         { status: 400 }
       );
     }
 
-    // Verify user and service exist
+    // Verify user exists
     const user = await User.findById(userId);
-    const service = await Service.findById(serviceId);
-
-    if (!user || !service) {
+    if (!user) {
       return NextResponse.json(
-        { message: 'User or service not found' },
+        { message: 'User not found' },
         { status: 404 }
       );
     }
 
-    // Calculate coverage end date
-    let coverageEndDate = null;
-    if (durationDays && ['prepaid', 'membership'].includes(type)) {
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + durationDays);
-      coverageEndDate = endDate;
+    // Handle membership payments (new Paystack integration)
+    if (paymentType === 'membership' && membershipDays) {
+      try {
+        const response = await fetch('https://api.paystack.co/transaction/initialize', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${PAYSTACK_SECRET_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: user.email || session.user?.email,
+            amount: amount * 100, // Paystack uses kobo (1/100 of Naira)
+            metadata: {
+              userId,
+              membershipDays,
+              type: 'membership',
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to initialize Paystack payment');
+        }
+
+        const paystackData = await response.json();
+
+        if (!paystackData.status) {
+          throw new Error(paystackData.message || 'Paystack initialization failed');
+        }
+
+        // Create payment record
+        const payment = await Payment.create({
+          userId,
+          amount,
+          currency: 'NGN',
+          membershipDays,
+          paymentMethod: 'paystack',
+          status: 'pending',
+          paystackReference: paystackData.data.reference,
+          paystackAccessCode: paystackData.data.access_code,
+        });
+
+        return NextResponse.json({
+          success: true,
+          authorization_url: paystackData.data.authorization_url,
+          access_code: paystackData.data.access_code,
+          reference: paystackData.data.reference,
+          paymentId: payment._id,
+        });
+      } catch (paystackError: any) {
+        console.error('Paystack error:', paystackError);
+        throw paystackError;
+      }
     }
 
-    // Create payment record with REFERENCE (payment will be confirmed via webhook)
-    const paymentReference = `PAY_${Date.now()}_${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    // Handle service payments (legacy)
+    if (serviceId && type) {
+      const paymentReference = `PAY_${Date.now()}_${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-    const payment = await Payment.create({
-      userId,
-      branchId,
-      serviceId,
-      type,
-      amount,
-      planType,
-      paymentReference,
-      coverageEndDate,
-      status: 'pending',
-    });
+      const payment = await Payment.create({
+        userId,
+        serviceId,
+        type,
+        amount,
+        planType,
+        paymentReference,
+        status: 'pending',
+      });
 
-    return NextResponse.json(
-      {
+      return NextResponse.json({
         message: 'Payment initialized. Please complete payment on Paystack',
         payment: {
           id: payment._id,
@@ -79,13 +124,17 @@ export async function POST(request: NextRequest) {
           amount,
         },
         paystackInitUrl: `/api/payments/paystack?ref=${paymentReference}&amount=${amount}`,
-      },
-      { status: 200 }
+      });
+    }
+
+    return NextResponse.json(
+      { message: 'Invalid payment type' },
+      { status: 400 }
     );
   } catch (error: any) {
     console.error('Payment initialization error:', error);
 
-    const session = await auth();
+    const session = await getServerSession(authOptions);
     const userId = (session?.user as any)?.id;
 
     await ErrorLog.create({

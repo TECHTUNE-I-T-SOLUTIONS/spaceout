@@ -8,9 +8,9 @@ import { motion } from 'framer-motion';
 import { MapPin, Clock, Phone, Navigation2, Search, Building2, Zap, Wifi } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useRef } from 'react';
-import dynamic from 'next/dynamic';
+import dynamicFn from 'next/dynamic';
 
-const MapComponent = dynamic(() => import('@/components/map-component'), {
+const MapComponent = dynamicFn(() => import('@/components/map-component'), {
   ssr: false,
   loading: () => (
     <div className="w-full h-96 bg-muted flex items-center justify-center rounded-lg">

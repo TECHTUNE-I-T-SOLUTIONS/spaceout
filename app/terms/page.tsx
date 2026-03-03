@@ -4,6 +4,8 @@ import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { motion } from 'framer-motion';
 
+export const dynamic = 'force-dynamic';
+
 export default function Terms() {
   return (
     <main className="min-h-screen bg-background">

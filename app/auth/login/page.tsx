@@ -65,7 +65,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo Section */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-transparent rounded-full mb-4 relative">
+          <div className="inline-flex items-center justify-center w-46 h-10 bg-gray-transparent rounded-full mb-4 relative">
             {mounted && theme === 'dark' ? (
               <Image
                 src="/logo-dark.png"
