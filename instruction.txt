@@ -1,0 +1,228 @@
+We are building a production-ready, multi-branch coworking workspace management platform.
+
+This is NOT a simple landing page or demo project.
+This is a scalable SaaS-ready system with structured architecture.
+
+The system must support:
+
+1. Multi-Branch Infrastructure
+
+Multiple physical branches
+
+Users must select a branch during registration
+
+All core records must be tied to a branch
+
+SuperAdmins can create/manage branches
+
+2. Role-Based Access Control
+
+There are three roles:
+
+User
+
+Register
+
+Check-in
+
+Check-out
+
+Buy membership
+
+Leave reviews
+
+Submit feedback
+
+Book services
+
+Admin
+
+Limited to assigned branch
+
+View payments
+
+Manage users
+
+Approve reviews
+
+Manage bookings
+
+View branch analytics
+
+SuperAdmin
+
+Full system control
+
+Create branches
+
+Create services
+
+Manage pricing
+
+Manage admins
+
+View all analytics
+
+View system error logs
+
+All route protection must be handled via middleware.
+
+3. Flexible Pricing Engine
+
+The pricing structure must support:
+
+Day Plans
+
+Night Plans
+
+24hr Plans
+
+Hourly
+
+Half Day
+
+Daily
+
+Weekly
+
+Monthly
+
+Yearly
+
+Per-head pricing (content services)
+
+Membership-based discounts
+
+Access card fee (nullable)
+
+Nullable plan fields
+
+Pricing must be calculated server-side only.
+
+4. Membership System
+
+₦2,500 yearly membership
+
+Valid for 365 days
+
+If active → use member pricing
+
+If expired → use non-member pricing
+
+5. Prepaid Coverage System
+
+Users can pay in advance (daily/weekly/monthly/yearly).
+
+When paid:
+
+Calculate coverageEndDate
+
+Store in user.prepaidUntil
+
+On check-in:
+
+If today <= prepaidUntil → allow access without payment
+
+Else → require payment
+
+This must be backend enforced.
+
+6. Payment System
+
+Use Paystack
+
+Server-side verification only
+
+Store payment reference
+
+Log every successful payment
+
+No access without verified payment
+
+7. Analytics Dashboard
+
+Admin Analytics must include:
+
+Revenue totals (daily/monthly/yearly)
+
+Revenue per service
+
+Membership sales
+
+Active users
+
+Prepaid users
+
+Booking statistics
+
+Review averages
+
+Must use MongoDB aggregation pipelines.
+
+8. Reviews & Feedback System
+
+Reviews:
+
+1–5 rating
+
+Must be approved by admin
+
+Display publicly
+
+Feedback:
+
+Internal support messages
+
+Visible to admins
+
+Track status (open/resolved)
+
+9. Error Logging System
+
+All API errors must:
+
+Be caught
+
+Be logged to ErrorLog collection
+
+Admin must have:
+
+/admin/error-logs page
+
+10. UI Requirements
+
+Mobile-first
+
+Collapsible desktop sidebar
+
+Slide-in mobile sidebar
+
+Clean architectural design
+
+No AI-style badges or gimmicky UI
+
+Asimovian (headings)
+
+Geist (body)
+
+Pacifico (logo only)
+
+Subtle animations only
+
+11. Production Expectations
+
+Clean folder structure
+
+Modular components
+
+Reusable logic utilities
+
+Secure API routes
+
+Environment variables separated
+
+No hardcoded secrets
+
+Ready for Vercel deployment
+
+This must be structured like a real SaaS product.

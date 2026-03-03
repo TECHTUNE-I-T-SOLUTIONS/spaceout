@@ -1,0 +1,180 @@
+'use client';
+
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { toast } from 'sonner';
+
+interface Booking {
+  id: string;
+  userId: string;
+  serviceId: string;
+  status: 'completed' | 'pending' | 'cancelled';
+  date: string;
+  amount: number;
+}
+
+export default function BookingsPage() {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/bookings');
+      if (response.ok) {
+        const data = await response.json();
+        setBookings(data);
+        toast.success('Bookings Loaded', {
+          description: `Found ${data.length} bookings.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      toast.error('Failed to Load Bookings', {
+        description: 'Unable to fetch bookings.',
+      });
+      // Mock data for demo
+      setBookings([
+        { id: '1', userId: 'user1', serviceId: 'service1', status: 'completed', date: '2024-03-01', amount: 50000 },
+        { id: '2', userId: 'user2', serviceId: 'service2', status: 'pending', date: '2024-03-02', amount: 75000 },
+        { id: '3', userId: 'user3', serviceId: 'service3', status: 'cancelled', date: '2024-02-28', amount: 30000 },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateBookingStatus = async (bookingId: string, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (response.ok) {
+        setBookings(bookings.map(b => 
+          b.id === bookingId ? { ...b, status: newStatus as any } : b
+        ));
+        toast.success('Booking Updated', {
+          description: `Booking status changed to ${newStatus}.`,
+        });
+      } else {
+        toast.error('Failed to Update Booking', {
+          description: 'Unable to update booking status.',
+        });
+      }
+    } catch (error) {
+      console.error('Error updating booking:', error);
+      toast.error('Error', {
+        description: 'Failed to update booking.',
+      });
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircle className="w-5 h-5 text-green-500" />;
+      case 'pending':
+        return <Clock className="w-5 h-5 text-yellow-500" />;
+      case 'cancelled':
+        return <XCircle className="w-5 h-5 text-red-500" />;
+      default:
+        return null;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100';
+      case 'pending':
+        return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100';
+      case 'cancelled':
+        return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100';
+      default:
+        return '';
+    }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      <h1 className="text-3xl font-bold mb-8">Bookings</h1>
+
+      {loading ? (
+        <Card className="p-8 text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading bookings...</p>
+        </Card>
+      ) : bookings.length === 0 ? (
+        <Card className="p-8 text-center">
+          <h2 className="text-2xl font-bold mb-4">No Bookings</h2>
+          <p className="text-muted-foreground">Bookings will appear here once users make reservations.</p>
+        </Card>
+      ) : (
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted border-b">
+                <tr>
+                  <th className="p-4 text-left">Booking ID</th>
+                  <th className="p-4 text-left">User</th>
+                  <th className="p-4 text-left">Amount</th>
+                  <th className="p-4 text-left">Date</th>
+                  <th className="p-4 text-left">Status</th>
+                  <th className="p-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {bookings.map((booking) => (
+                  <tr key={booking.id} className="hover:bg-muted/50">
+                    <td className="p-4 font-mono text-xs">#{booking.id}</td>
+                    <td className="p-4">{booking.userId}</td>
+                    <td className="p-4 font-bold">₦{booking.amount.toLocaleString()}</td>
+                    <td className="p-4">{new Date(booking.date).toLocaleDateString()}</td>
+                    <td className="p-4">
+                      <span className={`inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium ${getStatusColor(booking.status)}`}>
+                        {getStatusIcon(booking.status)}
+                        {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right">
+                      {booking.status === 'pending' && (
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs"
+                            onClick={() => updateBookingStatus(booking.id, 'completed')}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs text-red-600"
+                            onClick={() => updateBookingStatus(booking.id, 'cancelled')}
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+    </motion.div>
+  );
+}
