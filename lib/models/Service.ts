@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import './Branch'; // Ensure Branch model is registered
 
 export interface IPricingPlan extends Document {
   planName: string;
@@ -10,6 +11,9 @@ export interface IPricingPlan extends Document {
   memberPrice: number;
   nonMemberPrice: number;
   flatPrice?: number;
+  nonWifiPrice?: number;
+  nonWifiPriceMember?: number;
+  nonWifiPriceNonMember?: number;
   requiresMembershipCard: boolean;
   accessCardFee?: number;
 }
@@ -20,26 +24,51 @@ export interface IService extends Document {
   category: string;
   description: string;
   pricingPlans: IPricingPlan[];
+  membershipPlans: IMembershipPlan[];
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
+export interface IMembershipPlan extends Document {
+  name: string;
+  duration: number; // in days
+  price: number;
+  description?: string;
+  features?: string[];
+  isActive: boolean;
+}
+
 const PricingPlanSchema = new Schema<IPricingPlan>(
   {
-    planName: String,
-    planType: String,
-    durationLabel: String,
-    durationInDays: Number,
-    durationInHours: Number,
-    isPerHead: Boolean,
-    memberPrice: Number,
-    nonMemberPrice: Number,
-    flatPrice: Number,
-    requiresMembershipCard: Boolean,
-    accessCardFee: Number,
+    planName: { type: String, required: true },
+    planType: { type: String, required: true },
+    durationLabel: { type: String, required: true },
+    durationInDays: { type: Number },
+    durationInHours: { type: Number },
+    isPerHead: { type: Boolean, default: false },
+    memberPrice: { type: Number },
+    nonMemberPrice: { type: Number },
+    flatPrice: { type: Number },
+    nonWifiPrice: { type: Number },
+    nonWifiPriceMember: { type: Number },
+    nonWifiPriceNonMember: { type: Number },
+    requiresMembershipCard: { type: Boolean, default: false },
+    accessCardFee: { type: Number },
   },
-  { _id: true }
+  { _id: true, strict: false, minimize: false }
+);
+
+const MembershipPlanSchema = new Schema<IMembershipPlan>(
+  {
+    name: { type: String, required: true },
+    duration: { type: Number, required: true }, // in days
+    price: { type: Number, required: true },
+    description: { type: String },
+    features: [{ type: String }],
+    isActive: { type: Boolean, default: true },
+  },
+  { _id: true, strict: false, minimize: false }
 );
 
 const ServiceSchema = new Schema<IService>(
@@ -62,6 +91,7 @@ const ServiceSchema = new Schema<IService>(
       required: [true, 'Please provide a description'],
     },
     pricingPlans: [PricingPlanSchema],
+    membershipPlans: [MembershipPlanSchema],
     isActive: {
       type: Boolean,
       default: true,
@@ -69,6 +99,8 @@ const ServiceSchema = new Schema<IService>(
   },
   {
     timestamps: true,
+    minimize: false,  // Don't remove empty fields
+    strict: false,    // Allow additional fields
   }
 );
 

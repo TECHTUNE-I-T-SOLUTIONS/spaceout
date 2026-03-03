@@ -1,26 +1,73 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
 import dbConnect from '@/lib/db';
 import Service from '@/lib/models/Service';
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await auth();
+    await dbConnect();
+    const { id } = await params;
 
-    if (!session?.user) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
+    const service = await Service.findById(id).populate('branchId');
 
-    const userRole = (session.user as any)?.role;
-    if (!['admin', 'superadmin'].includes(userRole)) {
+    if (!service) {
       return NextResponse.json(
-        { message: 'Forbidden: Admin access required' },
-        { status: 403 }
+        { message: 'Service not found' },
+        { status: 404 }
       );
     }
 
+    return NextResponse.json(service, { status: 200 });
+  } catch (error: any) {
+    console.error('Error fetching service:', error);
+    return NextResponse.json(
+      { message: error.message || 'Failed to fetch service' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
     await dbConnect();
-    const { id } = params;
+    const { id } = await params;
+
+    const body = await request.json();
+    const { name, category, description } = body;
+
+    if (!name || !category || !description) {
+      return NextResponse.json(
+        { message: 'name, category, and description are required' },
+        { status: 400 }
+      );
+    }
+
+    const service = await Service.findByIdAndUpdate(
+      id,
+      { name, category, description },
+      { new: true }
+    ).populate('branchId');
+
+    if (!service) {
+      return NextResponse.json(
+        { message: 'Service not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(service, { status: 200 });
+  } catch (error: any) {
+    console.error('Error updating service:', error);
+    return NextResponse.json(
+      { message: error.message || 'Failed to update service' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    await dbConnect();
+    const { id } = await params;
 
     const service = await Service.findByIdAndDelete(id);
 

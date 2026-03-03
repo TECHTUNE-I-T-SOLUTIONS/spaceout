@@ -3,6 +3,7 @@ import dbConnect from '@/lib/db';
 import ChatConversation from '@/lib/models/ChatConversation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/auth';
+import { broadcastNewConversation } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,16 +27,29 @@ export async function POST(request: NextRequest) {
       // Create new conversation
       conversation = new ChatConversation({
         userId,
+        subject: 'General Support',
+        department: 'general_support',
         messages: [],
         status: 'open',
         isResumable: true,
-        metadata: {
-          startedAt: new Date(),
-          userAgent: request.headers.get('user-agent'),
-        },
       });
 
       await conversation.save();
+
+      // Broadcast new conversation via Supabase
+      try {
+        await broadcastNewConversation({
+          conversationId: conversation._id,
+          userId,
+          userEmail: session.user?.email,
+          subject: conversation.subject,
+          lastMessage: 'New conversation started',
+          lastMessageTime: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.error('[Chat] Failed to broadcast conversation:', error);
+        // Don't fail the response if Supabase broadcast fails
+      }
     }
 
     return NextResponse.json({

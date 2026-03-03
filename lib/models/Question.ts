@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import './Questionnaire'; // Ensure Questionnaire model is registered
 
 export interface IQuestionOption {
   _id?: mongoose.Types.ObjectId;

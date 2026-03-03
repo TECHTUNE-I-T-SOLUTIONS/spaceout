@@ -4,6 +4,7 @@ import ChatConversation from '@/lib/models/ChatConversation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/auth';
 import { Types } from 'mongoose';
+import { broadcastMessage } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,6 +52,20 @@ export async function POST(request: NextRequest) {
     conversation.messages.push(message);
     conversation.updatedAt = new Date();
     await conversation.save();
+
+    // Broadcast message via Supabase
+    try {
+      await broadcastMessage(conversationId, {
+        conversationId,
+        sender: 'user',
+        senderName: session.user?.name || 'User',
+        content: content.trim(),
+        createdAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('[Chat] Failed to broadcast message:', error);
+      // Don't fail the response if Supabase broadcast fails
+    }
 
     return NextResponse.json({
       messageId: message._id,

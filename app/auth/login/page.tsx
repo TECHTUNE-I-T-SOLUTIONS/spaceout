@@ -34,15 +34,25 @@ export default function LoginPage() {
 
     try {
       const result = await signIn('credentials', {
-        email,
+        email: email.toLowerCase().trim(),
         password,
         redirect: false,
       });
 
       if (result?.error) {
-        setError(result.error);
+        // Better error messages based on the error
+        let errorMessage = result.error;
+        if (result.error === 'Authentication failed') {
+          errorMessage = 'Invalid email or password. Please try again.';
+        } else if (result.error === 'No user found with this email') {
+          errorMessage = 'No account found with this email address.';
+        } else if (result.error === 'Your account has been deactivated') {
+          errorMessage = 'Your account has been deactivated. Please contact support.';
+        }
+        
+        setError(errorMessage);
         toast.error('Login Failed', {
-          description: result.error || 'Please check your credentials and try again.',
+          description: errorMessage,
         });
       } else if (result?.ok) {
         toast.success('Login Successful', {
@@ -51,9 +61,10 @@ export default function LoginPage() {
         router.push('/user/dashboard');
       }
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      const errorMsg = 'An error occurred. Please try again.';
+      setError(errorMsg);
       toast.error('An Error Occurred', {
-        description: 'Please try again later.',
+        description: errorMsg,
       });
     } finally {
       setIsLoading(false);

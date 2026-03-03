@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { usePathname } from 'next/navigation';
 import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +9,13 @@ import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { useSession } from 'next-auth/react';
-import io, { Socket } from 'socket.io-client';
+import { 
+  subscribeToConversation, 
+  broadcastMessage, 
+  subscribeToConversations,
+  broadcastNewConversation
+} from '@/lib/supabase';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface Message {
   id: string;
@@ -19,75 +26,75 @@ interface Message {
 }
 
 export default function ChatWidget() {
-  const { data: session } = useSession();
+  const pathname = usePathname();
+  const { data: session, status } = useSession();
+  
+  // Use useMemo to ensure consistent hook count
+  const shouldShow = useMemo(() => pathname?.startsWith('/user/') ?? false, [pathname]);
+  
+  // Define all hooks unconditionally
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageInput, setMessageInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const socketRef = useRef<Socket | null>(null);
+  const conversationChannelRef = useRef<RealtimeChannel | null>(null);
+  const conversationsChannelRef = useRef<RealtimeChannel | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Initialize Socket.IO connection
+  // Initialize Supabase Real-time subscriptions
   useEffect(() => {
-    if (!session?.user) return;
+    if (status !== 'authenticated' || !session?.user || !shouldShow) return;
 
-    socketRef.current = io();
-
-    socketRef.current.on('connect', () => {
-      console.log('Connected to chat server');
-      socketRef.current?.emit('join_room', session.user?.email);
-    });
-
-    socketRef.current.on('receive_message', (data) => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Math.random().toString(36).substring(7),
-          senderType: 'user',
-          content: data.content,
-          createdAt: new Date(data.createdAt),
-          isRead: true,
-        },
-      ]);
-      setIsTyping(false);
-    });
-
-    socketRef.current.on('admin_message', (data) => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Math.random().toString(36).substring(7),
-          senderType: 'admin',
-          content: data.content,
-          createdAt: new Date(data.createdAt),
-          isRead: true,
-        },
-      ]);
-      setIsTyping(false);
-    });
-
-    socketRef.current.on('user_typing', () => {
-      setIsTyping(true);
-    });
-
-    socketRef.current.on('user_stopped_typing', () => {
-      setIsTyping(false);
-    });
-
-    socketRef.current.on('conversation_closed', () => {
-      toast.info('Conversation closed by admin');
-      setConversationId(null);
-      setMessages([]);
+    // Subscribe to new conversations
+    conversationsChannelRef.current = subscribeToConversations((data) => {
+      console.log('[Chat] New conversation:', data);
     });
 
     return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
+      if (conversationsChannelRef.current) {
+        conversationsChannelRef.current.unsubscribe();
       }
     };
-  }, [session?.user]);
+  }, [session?.user, status, shouldShow]);
+
+  // Subscribe to conversation messages
+  useEffect(() => {
+    if (!conversationId) {
+      return;
+    }
+
+    conversationChannelRef.current = subscribeToConversation(
+      conversationId,
+      (data) => {
+        console.log('[Chat] New message:', data);
+        if (data.sender === 'admin') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Math.random().toString(36).substring(7),
+              senderType: 'admin',
+              content: data.content,
+              createdAt: new Date(data.createdAt),
+              isRead: true,
+            },
+          ]);
+          setIsTyping(false);
+        } else if (data.event === 'closed') {
+          toast.info('Conversation closed by admin');
+          setConversationId(null);
+          setMessages([]);
+        }
+      }
+    );
+
+    return () => {
+      if (conversationChannelRef.current) {
+        conversationChannelRef.current.unsubscribe();
+      }
+    };
+  }, [conversationId]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -130,10 +137,11 @@ export default function ChatWidget() {
       return;
     }
 
+    const content = messageInput;
     const userMessage: Message = {
       id: Math.random().toString(36).substring(7),
       senderType: 'user',
-      content: messageInput,
+      content,
       createdAt: new Date(),
       isRead: false,
     };
@@ -148,27 +156,28 @@ export default function ChatWidget() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversationId,
-          content: messageInput,
+          content,
         }),
       });
 
       if (!res.ok) throw new Error('Failed to send message');
 
-      // Also emit via socket for real-time delivery
-      if (socketRef.current) {
-        socketRef.current.emit('send_message', {
-          conversationId,
-          userId: session?.user?.email,
-          content: messageInput,
-        });
-      }
+      // Broadcast via Supabase for real-time delivery
+      await broadcastMessage(conversationId, {
+        conversationId,
+        sender: 'user',
+        content,
+        createdAt: new Date().toISOString(),
+      });
     } catch (error: any) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message');
+      setMessageInput(content);
     }
   };
 
-  if (!session?.user) return null;
+  // Only render if user is authenticated, session exists, and should show on user routes
+  if (!session?.user || !shouldShow) return null;
 
   return (
     <>

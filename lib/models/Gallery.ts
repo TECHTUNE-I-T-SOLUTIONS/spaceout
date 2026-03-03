@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import './Branch'; // Ensure Branch model is registered
 
 export interface IGalleryItem extends Document {
   title: string;

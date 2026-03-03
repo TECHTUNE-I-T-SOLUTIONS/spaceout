@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Users, DollarSign, Calendar, Star, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import Link from 'next/link';
 
 interface AdminSession {
   id: string;
@@ -179,10 +180,18 @@ export default function AdminDashboard() {
         <Card className="p-6">
           <h3 className="text-lg font-bold mb-4">Quick Actions</h3>
           <div className="grid md:grid-cols-4 gap-3">
-            <Button variant="outline">View All Users</Button>
-            <Button variant="outline">Manage Bookings</Button>
-            <Button variant="outline">Review Payments</Button>
-            <Button variant="outline">View Reports</Button>
+            <Link href="/admin/dashboard/users">
+              <Button variant="outline" className="w-full">View All Users</Button>
+            </Link>
+            <Link href="/admin/dashboard/bookings">
+              <Button variant="outline" className="w-full">Manage Bookings</Button>
+            </Link>
+            <Link href="/admin/dashboard/payments">
+              <Button variant="outline" className="w-full">Review Payments</Button>
+            </Link>
+            <Link href="/admin/dashboard/analytics">
+              <Button variant="outline" className="w-full">View Reports</Button>
+            </Link>
           </div>
         </Card>
       </motion.div>

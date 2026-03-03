@@ -4,20 +4,31 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FileUpload } from '@/components/file-upload';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { FileUpload } from '@/components/file-upload';
-import { Loader2, AlertCircle } from 'lucide-react';
+
+import { Loader2, AlertCircle, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface UserProfile {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   phone?: string;
-  address?: string;
   profileImage?: string;
-  joinDate?: string;
+  passportUrl?: string;
+  signatureUrl?: string;
+  emergencyContact?: {
+    name: string;
+    phone: string;
+    relationship: string;
+  };
+  hasMembership?: boolean;
+  membershipExpiry?: string;
+  prepaidUntil?: string;
+  isEmailVerified?: boolean;
 }
 
 export default function ProfilePage() {
@@ -25,60 +36,181 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [isUploadingPassport, setIsUploadingPassport] = useState(false);
+  const [isUploadingSignature, setIsUploadingSignature] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
-    address: '',
-    joinDate: new Date().toLocaleDateString(),
+    profileImage: '',
+    passportUrl: '',
+    signatureUrl: '',
+    emergencyContact: {
+      name: '',
+      phone: '',
+      relationship: '',
+    },
+    hasMembership: false,
+    membershipExpiry: '',
+    prepaidUntil: '',
+    isEmailVerified: false,
   });
 
   useEffect(() => {
     setIsMounted(true);
-    if (session?.user) {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const response = await fetch('/api/user/profile');
+      if (response.ok) {
+        const data = await response.json();
+        setProfile(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile:', error);
+      toast.error('Failed to Load Profile', {
+        description: 'Unable to fetch your profile information.',
+      });
+    }
+  };
+
+  const handleInputChange = (field: keyof UserProfile, value: any) => {
+    setProfile((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleProfileImageUpload = async (uploadedFile: any) => {
+    try {
+      // uploadedFile is already uploaded and has a url
       setProfile((prev) => ({
         ...prev,
-        name: session.user.name || '',
-        email: session.user.email || '',
+        profileImage: uploadedFile.url,
       }));
-    }
-  }, [session]);
 
-  const handleInputChange = (field: keyof UserProfile, value: string) => {
-    setProfile((prev) => ({ ...prev, [field]: value }));
+      toast.success('Profile Image Updated', {
+        description: 'Your profile picture has been updated successfully.',
+      });
+    } catch (error) {
+      console.error('Profile image upload error:', error);
+      toast.error('Upload Failed', {
+        description: 'Failed to update profile image.',
+      });
+    }
+  };
+
+  const handlePassportUpload = async (file: File) => {
+    try {
+      setIsUploadingPassport(true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Upload failed');
+      }
+
+      const uploadedFile = await response.json();
+
+      setProfile((prev) => ({
+        ...prev,
+        passportUrl: uploadedFile.url,
+        profileImage: uploadedFile.url,
+      }));
+
+      toast.success('Passport Uploaded', {
+        description: 'Your passport has been uploaded successfully.',
+      });
+    } catch (error: any) {
+      console.error('Passport upload error:', error);
+      toast.error('Upload Failed', {
+        description: error.message || 'Failed to upload passport.',
+      });
+    } finally {
+      setIsUploadingPassport(false);
+    }
+  };
+
+  const handleSignatureUpload = async (file: File) => {
+    try {
+      setIsUploadingSignature(true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Upload failed');
+      }
+
+      const uploadedFile = await response.json();
+
+      setProfile((prev) => ({
+        ...prev,
+        signatureUrl: uploadedFile.url,
+      }));
+
+      toast.success('Signature Uploaded', {
+        description: 'Your signature has been uploaded successfully.',
+      });
+    } catch (error: any) {
+      console.error('Signature upload error:', error);
+      toast.error('Upload Failed', {
+        description: error.message || 'Failed to upload signature.',
+      });
+    } finally {
+      setIsUploadingSignature(false);
+    }
   };
 
   const handleSaveProfile = async () => {
     try {
       setIsSaving(true);
+
       const response = await fetch('/api/user/profile', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profile),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          phone: profile.phone,
+          passportUrl: profile.passportUrl,
+          signatureUrl: profile.signatureUrl,
+          emergencyContact: profile.emergencyContact,
+        }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to update profile');
+      if (response.ok) {
+        toast.success('Profile Updated', {
+          description: 'Your profile has been saved successfully.',
+        });
+        setIsEditing(false);
+      } else {
+        const errorData = await response.json();
+        toast.error('Failed to Save Profile', {
+          description: errorData.message || 'Unable to save profile changes.',
+        });
       }
-
-      toast.success('Profile Updated', {
-        description: 'Your profile has been updated successfully.',
-      });
-      setIsEditing(false);
     } catch (error: any) {
-      toast.error('Update Failed', {
-        description: error.message || 'Failed to update profile.',
+      console.error('Profile save error:', error);
+      toast.error('Failed to Save Profile', {
+        description: error.message || 'An error occurred while saving your profile.',
       });
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleProfileImageUpload = (file: any) => {
-    setProfile((prev) => ({ ...prev, profileImage: file.url }));
-    toast.success('Profile Picture Updated', {
-      description: 'Your profile picture has been updated.',
-    });
   };
 
   if (!isMounted) {
@@ -150,14 +282,27 @@ export default function ProfilePage() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <Label htmlFor="name">Full Name</Label>
+              <Label htmlFor="firstName">First Name</Label>
               <Input
-                id="name"
+                id="firstName"
                 type="text"
-                value={profile.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
+                value={profile.firstName}
+                onChange={(e) => handleInputChange('firstName', e.target.value)}
                 disabled={!isEditing}
-                placeholder="Your full name"
+                placeholder="Your first name"
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="lastName">Last Name</Label>
+              <Input
+                id="lastName"
+                type="text"
+                value={profile.lastName}
+                onChange={(e) => handleInputChange('lastName', e.target.value)}
+                disabled={!isEditing}
+                placeholder="Your last name"
                 className="mt-1"
               />
             </div>
@@ -186,29 +331,213 @@ export default function ProfilePage() {
                 className="mt-1"
               />
             </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Emergency Contact */}
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold mb-6">Emergency Contact</h2>
+
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <Label htmlFor="emergencyName">Contact Name</Label>
+              <Input
+                id="emergencyName"
+                type="text"
+                value={profile.emergencyContact?.name || ''}
+                onChange={(e) => handleInputChange('emergencyContact', { ...profile.emergencyContact || {}, name: e.target.value, phone: profile.emergencyContact?.phone || '', relationship: profile.emergencyContact?.relationship || '' })}
+                disabled={!isEditing}
+                placeholder="Emergency contact name"
+                className="mt-1"
+              />
+            </div>
 
             <div>
-              <Label htmlFor="address">Address</Label>
+              <Label htmlFor="emergencyPhone">Contact Phone</Label>
               <Input
-                id="address"
-                type="text"
-                value={profile.address || ''}
-                onChange={(e) => handleInputChange('address', e.target.value)}
+                id="emergencyPhone"
+                type="tel"
+                value={profile.emergencyContact?.phone || ''}
+                onChange={(e) => handleInputChange('emergencyContact', { ...profile.emergencyContact || {}, name: profile.emergencyContact?.name || '', phone: e.target.value, relationship: profile.emergencyContact?.relationship || '' })}
                 disabled={!isEditing}
-                placeholder="Your address"
+                placeholder="Emergency contact phone"
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="emergencyRelationship">Relationship</Label>
+              <Input
+                id="emergencyRelationship"
+                type="text"
+                value={profile.emergencyContact?.relationship || ''}
+                onChange={(e) => handleInputChange('emergencyContact', { ...profile.emergencyContact || {}, name: profile.emergencyContact?.name || '', phone: profile.emergencyContact?.phone || '', relationship: e.target.value })}
+                disabled={!isEditing}
+                placeholder="e.g., Parent, Spouse"
                 className="mt-1"
               />
             </div>
           </div>
+        </div>
+      </Card>
 
+      {/* Membership & Prepaid */}
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold mb-6">Membership & Access</h2>
+
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <Label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={profile.hasMembership || false}
+                  disabled
+                  className="rounded"
+                />
+                Active Membership
+              </Label>
+              {profile.hasMembership && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Expires: {profile.membershipExpiry ? new Date(profile.membershipExpiry).toLocaleDateString() : 'N/A'}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Label>Prepaid Access Until</Label>
+              <Input
+                type="text"
+                value={profile.prepaidUntil ? new Date(profile.prepaidUntil).toLocaleDateString() : 'Not active'}
+                disabled
+                className="mt-1 bg-muted"
+              />
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Verification Files */}
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold mb-6">Verification Documents</h2>
+
+        <div className="space-y-6">
+          {/* Passport Upload */}
           <div>
-            <Label>Member Since</Label>
-            <Input
-              type="text"
-              value={profile.joinDate || ''}
-              disabled
-              className="mt-1 bg-muted"
-            />
+            <Label htmlFor="passportUpload" className="mb-3 block">Passport/ID Document</Label>
+            <div className="flex flex-col gap-4">
+              {profile.passportUrl && (
+                <div className="p-3 bg-green-50 dark:bg-green-950 border border-green-200 rounded-lg">
+                  <p className="text-xs text-green-700 dark:text-green-300 mb-2 font-medium">✓ Document Uploaded</p>
+                  <a 
+                    href={profile.passportUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-primary text-sm hover:underline"
+                  >
+                    View Passport
+                  </a>
+                </div>
+              )}
+              {isEditing && (
+                <div className="relative">
+                  <input
+                    id="passportUpload"
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handlePassportUpload(file);
+                    }}
+                    disabled={isUploadingPassport}
+                    className="hidden"
+                  />
+                  <label htmlFor="passportUpload">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full cursor-pointer"
+                      disabled={isUploadingPassport}
+                      asChild
+                    >
+                      <span>
+                        {isUploadingPassport ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-4 h-4 mr-2" />
+                            {profile.passportUrl ? 'Update Passport' : 'Upload Passport'}
+                          </>
+                        )}
+                      </span>
+                    </Button>
+                  </label>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Signature Upload */}
+          <div>
+            <Label htmlFor="signatureUpload" className="mb-3 block">Signature Document</Label>
+            <div className="flex flex-col gap-4">
+              {profile.signatureUrl && (
+                <div className="p-3 bg-green-50 dark:bg-green-950 border border-green-200 rounded-lg">
+                  <p className="text-xs text-green-700 dark:text-green-300 mb-2 font-medium">✓ Document Uploaded</p>
+                  <a 
+                    href={profile.signatureUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-primary text-sm hover:underline"
+                  >
+                    View Signature
+                  </a>
+                </div>
+              )}
+              {isEditing && (
+                <div className="relative">
+                  <input
+                    id="signatureUpload"
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleSignatureUpload(file);
+                    }}
+                    disabled={isUploadingSignature}
+                    className="hidden"
+                  />
+                  <label htmlFor="signatureUpload">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full cursor-pointer"
+                      disabled={isUploadingSignature}
+                      asChild
+                    >
+                      <span>
+                        {isUploadingSignature ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-4 h-4 mr-2" />
+                            {profile.signatureUrl ? 'Update Signature' : 'Upload Signature'}
+                          </>
+                        )}
+                      </span>
+                    </Button>
+                  </label>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </Card>
@@ -220,11 +549,15 @@ export default function ProfilePage() {
             <Button
               variant="outline"
               onClick={() => setIsEditing(false)}
-              disabled={isSaving}
+              disabled={isSaving || isUploadingPassport || isUploadingSignature}
             >
               Cancel
             </Button>
-            <Button onClick={handleSaveProfile} disabled={isSaving} className="gap-2">
+            <Button 
+              onClick={handleSaveProfile} 
+              disabled={isSaving || isUploadingPassport || isUploadingSignature} 
+              className="gap-2"
+            >
               {isSaving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />

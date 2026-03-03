@@ -1,20 +1,25 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import './User'; // Ensure User model is registered
+import './Service'; // Ensure Service model is registered
 
 export interface IPayment extends Document {
-  userId: mongoose.Types.ObjectId;
-  branchId: mongoose.Types.ObjectId;
-  serviceId?: mongoose.Types.ObjectId;
-  type: 'membership' | 'service' | 'prepaid';
+  userId: mongoose.Types.ObjectId | string;
+  serviceId?: mongoose.Types.ObjectId | string;
+  checkInId?: mongoose.Types.ObjectId | string;
+  type?: 'membership' | 'service' | 'prepaid' | 'checkin';
+  email: string;
+  serviceName: string;
+  planName?: string;
   amount: number;
-  currency: string;
+  currency?: string;
   planType?: string;
   membershipDays?: number;
   coverageEndDate?: Date;
-  paymentReference: string;
+  reference: string;
   paystackReference?: string;
   paystackAccessCode?: string;
   status: 'pending' | 'completed' | 'failed' | 'cancelled';
-  paymentMethod: 'paystack' | 'card' | 'bank_transfer';
+  paymentMethod?: 'paystack' | 'card' | 'bank_transfer';
   paidAt?: Date;
   verifiedAt?: Date;
   metadata?: Record<string, any>;
@@ -29,20 +34,28 @@ const PaymentSchema = new Schema<IPayment>(
       ref: 'User',
       required: [true, 'Please provide a user ID'],
     },
-    branchId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Branch',
-      required: [true, 'Please provide a branch ID'],
-    },
     serviceId: {
       type: Schema.Types.ObjectId,
       ref: 'Service',
     },
+    checkInId: {
+      type: Schema.Types.ObjectId,
+      ref: 'CheckIn',
+    },
     type: {
       type: String,
-      enum: ['membership', 'service', 'prepaid'],
-      required: true,
+      enum: ['membership', 'service', 'prepaid', 'checkin'],
+      default: 'checkin',
     },
+    email: {
+      type: String,
+      required: [true, 'Please provide email'],
+    },
+    serviceName: {
+      type: String,
+      required: [true, 'Please provide service name'],
+    },
+    planName: String,
     amount: {
       type: Number,
       required: [true, 'Please provide an amount'],
@@ -55,10 +68,9 @@ const PaymentSchema = new Schema<IPayment>(
     planType: String,
     membershipDays: Number,
     coverageEndDate: Date,
-    paymentReference: {
+    reference: {
       type: String,
       required: [true, 'Please provide a payment reference'],
-      unique: true,
     },
     paystackReference: String,
     paystackAccessCode: String,

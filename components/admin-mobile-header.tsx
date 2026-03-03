@@ -62,16 +62,17 @@ export function AdminMobileHeader({ userRole }: AdminMobileHeaderProps) {
       className="md:hidden fixed top-0 left-0 right-0 bg-background border-b border-border z-50"
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
+      suppressHydrationWarning
     >
       <div className="flex items-center justify-between p-4">
         <h1 className="text-lg font-bold">Admin Panel</h1>
         <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
-          <SheetTrigger asChild>
-            <Button size="icon" variant="ghost">
+          <SheetTrigger asChild suppressHydrationWarning>
+            <Button size="icon" variant="ghost" suppressHydrationWarning>
               <Menu className="w-6 h-6" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-64 p-0">
+          <SheetContent side="left" className="w-64 p-0" suppressHydrationWarning>
             <div className="flex flex-col h-full">
               <div className="p-4 border-b border-border">
                 <h2 className="text-lg font-bold">Menu</h2>

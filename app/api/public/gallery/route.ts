@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import GalleryItem from '@/lib/models/Gallery';
+import Branch from '@/lib/models/Branch';
 
 export async function GET(req: NextRequest) {
   try {

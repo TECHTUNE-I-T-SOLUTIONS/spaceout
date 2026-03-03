@@ -44,7 +44,7 @@ const emailHeader = `
 const emailFooter = `
   <div style="border-top: 1px solid #e5e7eb; margin-top: 30px; padding-top: 20px; text-align: center;">
     <p style="color: #6b7280; font-size: 12px; margin: 5px 0;">
-      © {new Date().getFullYear()} SpaceOut. All rights reserved.
+      © ${new Date().getFullYear()} SpaceOut. All rights reserved.
     </p>
     <p style="color: #9ca3af; font-size: 11px; margin: 5px 0;">
       <a href="${process.env.NEXT_PUBLIC_APP_URL}/privacy" style="color: #3b82f6; text-decoration: none;">Privacy Policy</a> | 

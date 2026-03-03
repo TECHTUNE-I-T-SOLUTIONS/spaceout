@@ -9,10 +9,11 @@ import { toast } from 'sonner';
 
 interface Review {
   id: string;
-  userId: string;
+  userId: any;
+  spaceName?: string;
   rating: number;
   comment: string;
-  status: 'pending' | 'approved' | 'rejected';
+  approved: boolean;
   date: string;
 }
 
@@ -30,9 +31,21 @@ export default function ReviewsPage() {
       const response = await fetch('/api/reviews');
       if (response.ok) {
         const data = await response.json();
-        setReviews(data);
+        
+        // Transform API response to match Review interface
+        const transformedReviews = data.map((item: any) => ({
+          id: item._id?.toString() || item.id || '',
+          userId: item.userId?.name || item.userId || 'Unknown',
+          spaceName: item.spaceName || 'Unknown Space',
+          rating: item.rating || 0,
+          comment: item.comment || '',
+          approved: item.approved || false,
+          date: new Date(item.createdAt).toLocaleDateString(),
+        }));
+        
+        setReviews(transformedReviews);
         toast.success('Reviews Loaded', {
-          description: `Found ${data.length} reviews.`,
+          description: `Found ${transformedReviews.length} reviews.`,
         });
       }
     } catch (error) {
@@ -42,8 +55,8 @@ export default function ReviewsPage() {
       });
       // Mock data for demo
       setReviews([
-        { id: '1', userId: 'user1', rating: 5, comment: 'Excellent workspace!', status: 'pending', date: '2024-03-01' },
-        { id: '2', userId: 'user2', rating: 4, comment: 'Great service', status: 'approved', date: '2024-02-28' },
+        { id: '1', userId: 'user1', spaceName: 'Main Office', rating: 5, comment: 'Excellent workspace!', approved: false, date: '2026-03-01' },
+        { id: '2', userId: 'user2', spaceName: 'Meeting Room', rating: 4, comment: 'Great service', approved: true, date: '2026-02-28' },
       ]);
     } finally {
       setLoading(false);
@@ -52,15 +65,15 @@ export default function ReviewsPage() {
 
   const approveReview = async (reviewId: string) => {
     try {
-      const response = await fetch(`/api/reviews/${reviewId}`, {
+      const response = await fetch('/api/reviews', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'approved' }),
+        body: JSON.stringify({ reviewId, approved: true }),
       });
 
       if (response.ok) {
         setReviews(reviews.map(r => 
-          r.id === reviewId ? { ...r, status: 'approved' } : r
+          r.id === reviewId ? { ...r, approved: true } : r
         ));
         toast.success('Review Approved', {
           description: 'Review has been published.',
@@ -76,15 +89,15 @@ export default function ReviewsPage() {
 
   const rejectReview = async (reviewId: string) => {
     try {
-      const response = await fetch(`/api/reviews/${reviewId}`, {
+      const response = await fetch('/api/reviews', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'rejected' }),
+        body: JSON.stringify({ reviewId, approved: false }),
       });
 
       if (response.ok) {
         setReviews(reviews.map(r => 
-          r.id === reviewId ? { ...r, status: 'rejected' } : r
+          r.id === reviewId ? { ...r, approved: false } : r
         ));
         toast.success('Review Rejected', {
           description: 'Review has been rejected.',
@@ -100,8 +113,10 @@ export default function ReviewsPage() {
 
   const deleteReview = async (reviewId: string) => {
     try {
-      const response = await fetch(`/api/reviews/${reviewId}`, {
+      const response = await fetch('/api/reviews', {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewId }),
       });
 
       if (response.ok) {
@@ -115,19 +130,6 @@ export default function ReviewsPage() {
       toast.error('Failed to Delete Review', {
         description: 'Unable to delete review.',
       });
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100';
-      case 'pending':
-        return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100';
-      case 'rejected':
-        return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100';
-      default:
-        return '';
     }
   };
 
@@ -154,16 +156,17 @@ export default function ReviewsPage() {
                   <div className="flex items-center gap-2 mb-2">
                     <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                     <span className="font-bold">{review.rating}/5</span>
-                    <span className={`text-xs px-2 py-1 rounded ${getStatusBadge(review.status)}`}>
-                      {review.status.charAt(0).toUpperCase() + review.status.slice(1)}
+                    <span className="font-semibold">{review.spaceName}</span>
+                    <span className={`text-xs px-2 py-1 rounded ${review.approved ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100' : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100'}`}>
+                      {review.approved ? 'Approved' : 'Pending'}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-3">By {review.userId} • {new Date(review.date).toLocaleDateString()}</p>
+                  <p className="text-sm text-muted-foreground mb-3">By {review.userId} • {review.date}</p>
                   <p className="text-sm">{review.comment}</p>
                 </div>
               </div>
 
-              {review.status === 'pending' && (
+              {!review.approved && (
                 <div className="flex gap-2 mt-4 pt-4 border-t">
                   <Button 
                     size="sm" 

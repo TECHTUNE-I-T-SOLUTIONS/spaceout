@@ -49,10 +49,10 @@ export default function RootLayout({
       <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
         <Providers>
           {children}
+          <ChatWidget />
           <ClientOnlyWrapper>
             <CookieConsentBanner />
             <PushNotificationPrompt />
-            <ChatWidget />
           </ClientOnlyWrapper>
           <Analytics />
         </Providers>

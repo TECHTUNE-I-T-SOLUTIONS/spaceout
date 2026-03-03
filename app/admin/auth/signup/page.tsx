@@ -331,7 +331,7 @@ export default function AdminSignupPage() {
 
         {/* Footer */}
         <p className="text-center text-gray-600 text-sm mt-8">
-          © 2024 SpaceOut. All rights reserved.
+          © 2026 SpaceOut. All rights reserved.
         </p>
       </div>
     </div>

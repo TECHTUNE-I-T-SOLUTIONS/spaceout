@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import './User'; // Ensure User model is registered
 
 export interface IErrorLog extends Document {
   route: string;

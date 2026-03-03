@@ -21,7 +21,7 @@ export default function Privacy() {
             transition={{ duration: 0.8 }}
           >
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">Privacy Policy</h1>
-            <p className="text-muted-foreground">Last updated: January 2024</p>
+            <p className="text-muted-foreground">Last updated: January 2026</p>
           </motion.div>
         </div>
       </section>

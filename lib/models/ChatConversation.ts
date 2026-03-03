@@ -1,4 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import './User'; // Ensure User model is registered
+import './Admin'; // Ensure Admin model is registered
 
 export interface IChatMessage {
   _id?: mongoose.Types.ObjectId;

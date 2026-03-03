@@ -1,4 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import './Admin'; // Ensure Admin model is registered
+import './Question'; // Ensure Question model is registered
 
 export interface IQuestionnaire extends Document {
   title: string;

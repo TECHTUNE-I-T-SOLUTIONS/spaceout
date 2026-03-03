@@ -1,19 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import PushSubscription from '@/lib/models/PushSubscription';
-import { getServerSession } from 'next-auth/next';
-import User from '@/lib/models/User';
+import webpush from 'web-push';
+import crypto from 'crypto';
+
+// Configure web-push with VAPID keys
+const vapidSubject = process.env.VAPID_SUBJECT || '';
+const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || '';
+
+console.log('[Push] VAPID Configuration:', {
+  subject: vapidSubject ? '✓ set' : '✗ missing',
+  publicKey: vapidPublicKey ? `✓ set (${vapidPublicKey.length} chars)` : '✗ missing',
+  privateKey: vapidPrivateKey ? `✓ set (${vapidPrivateKey.length} chars)` : '✗ missing',
+});
+
+webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession();
-    
-    if (!session?.user) {
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    // Generate unique ID from IP + User-Agent (works for all visitors)
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const userAgent = req.headers.get('user-agent') || 'unknown';
+    const anonymousId = crypto.createHash('sha256').update(`${ip}:${userAgent}`).digest('hex').slice(0, 24);
+    const userId = `anon_${anonymousId}`;
+    const userRole = 'visitor';
+
+    console.log('[Push] Subscription for visitor:', userId);
 
     await dbConnect();
 
@@ -26,15 +39,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get user role
-    const user = await User.findById((session.user as any).id);
-    const userRole = user?.role || 'user';
-
     // Check if subscription already exists
     const existingSubscription = await PushSubscription.findOne({
-      userId: (session.user as any).id,
+      userId: userId,
       'subscription.endpoint': subscription.endpoint,
-    });
+    }).lean();
 
     if (existingSubscription) {
       return NextResponse.json(
@@ -45,13 +54,46 @@ export async function POST(req: NextRequest) {
 
     // Create new subscription
     const newSubscription = new PushSubscription({
-      userId: (session.user as any).id,
+      userId: userId,
       subscription,
       userRole,
       userAgent: req.headers.get('user-agent'),
     });
 
     await newSubscription.save();
+
+    console.log('[Push] Subscription saved, sending welcome message');
+    console.log('[Push] Subscription object:', JSON.stringify(subscription).slice(0, 100));
+
+    // Send welcome notification directly
+    try {
+      const notificationPayload = {
+        title: 'Welcome to SpaceOut! 🎉',
+        body: 'You will now receive notifications about bookings, messages, and updates.',
+        icon: '/logo-dark.png',
+        badge: '/favicon.png',
+        tag: 'welcome-notification',
+        data: {
+          url: '/',
+        },
+      };
+
+      console.log('[Push] Sending welcome notification with payload:', notificationPayload.title);
+
+      const result = await webpush.sendNotification(
+        subscription,
+        JSON.stringify(notificationPayload)
+      );
+
+      console.log('[Push] Welcome notification sent successfully, result:', result);
+    } catch (welcomeError: any) {
+      console.error('[Push] Error sending welcome notification:', {
+        message: welcomeError.message,
+        statusCode: welcomeError.statusCode,
+        endpoint: (subscription as any).endpoint ? (subscription as any).endpoint.slice(0, 50) : 'unknown',
+      });
+      // Don't fail the subscription if welcome message fails
+    }
 
     return NextResponse.json(
       { message: 'Subscription saved successfully' },
@@ -68,14 +110,11 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const session = await getServerSession();
-    
-    if (!session?.user) {
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    // Generate unique ID from IP + User-Agent (same as POST)
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const userAgent = req.headers.get('user-agent') || 'unknown';
+    const anonymousId = crypto.createHash('sha256').update(`${ip}:${userAgent}`).digest('hex').slice(0, 24);
+    const userId = `anon_${anonymousId}`;
 
     await dbConnect();
 
@@ -89,7 +128,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     await PushSubscription.deleteOne({
-      userId: (session.user as any).id,
+      userId: userId,
       'subscription.endpoint': subscription.endpoint,
     });
 

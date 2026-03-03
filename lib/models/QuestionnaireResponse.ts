@@ -1,4 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import './Question'; // Ensure Question model is registered
+import './Questionnaire'; // Ensure Questionnaire model is registered
+import './User'; // Ensure User model is registered
 
 export interface IResponseAnswer {
   questionId: mongoose.Types.ObjectId;

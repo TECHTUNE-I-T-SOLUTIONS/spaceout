@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/auth';
 import dbConnect from '@/lib/db';
 import Review from '@/lib/models/Review';
+import Branch from '@/lib/models/Branch';
 import ErrorLog from '@/lib/models/ErrorLog';
 
 export async function GET(request: NextRequest) {
@@ -46,13 +48,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions) as any;
 
     if (!session?.user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = (session.user as any)?.id;
+    const reviewUserId = (session.user as any)?.id;
     const branchId = (session.user as any)?.branchId;
 
     await dbConnect();
@@ -75,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
     const review = await Review.create({
-      userId,
+      userId: reviewUserId,
       branchId,
       rating,
       comment,
@@ -89,14 +91,14 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error creating review:', error);
 
-    const session = await auth();
-    const userId = (session?.user as any)?.id;
+    const errorSession = await getServerSession(authOptions) as any;
+    const errorUserId = (errorSession?.user as any)?.id;
 
     await ErrorLog.create({
       route: '/api/reviews',
       error: error.message || 'Failed to create review',
       statusCode: 500,
-      userId,
+      userId: errorUserId,
     }).catch((err) => console.error('Error logging error:', err));
 
     return NextResponse.json(
@@ -108,15 +110,23 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await auth();
+    // Check for admin session from cookies (admin login uses custom cookies)
+    const adminRole = request.cookies.get('admin_role')?.value;
+    const adminId = request.cookies.get('admin_id')?.value;
 
-    if (!session?.user) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    // Also check NextAuth session as fallback
+    let userRole = adminRole;
+    if (!userRole) {
+      const patchSession = await getServerSession(authOptions) as any;
+      
+      if (!patchSession?.user) {
+        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      }
+      
+      userRole = (patchSession.user as any)?.role;
     }
 
-    const userRole = (session.user as any)?.role;
-
-    if (!['admin', 'superadmin'].includes(userRole)) {
+    if (!userRole || !['admin', 'superadmin'].includes(userRole)) {
       return NextResponse.json(
         { message: 'Forbidden: Admin access required' },
         { status: 403 }
@@ -157,18 +167,87 @@ export async function PATCH(request: NextRequest) {
   } catch (error: any) {
     console.error('Error updating review:', error);
 
-    const session = await auth();
-    const userId = (session?.user as any)?.id;
+    const errorSession = await getServerSession(authOptions) as any;
+    const errorUserId = (errorSession?.user as any)?.id;
 
     await ErrorLog.create({
       route: '/api/reviews',
       error: error.message || 'Failed to update review',
       statusCode: 500,
-      userId,
+      userId: errorUserId,
     }).catch((err) => console.error('Error logging error:', err));
 
     return NextResponse.json(
       { message: 'Failed to update review' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    // Check for admin session from cookies (admin login uses custom cookies)
+    const adminRole = request.cookies.get('admin_role')?.value;
+    const adminId = request.cookies.get('admin_id')?.value;
+
+    // Also check NextAuth session as fallback
+    let userRole = adminRole;
+    if (!userRole) {
+      const deleteSession = await getServerSession(authOptions) as any;
+      
+      if (!deleteSession?.user) {
+        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      }
+      
+      userRole = (deleteSession.user as any)?.role;
+    }
+
+    if (!userRole || !['admin', 'superadmin'].includes(userRole)) {
+      return NextResponse.json(
+        { message: 'Forbidden: Admin access required' },
+        { status: 403 }
+      );
+    }
+
+    await dbConnect();
+
+    const { reviewId } = await request.json();
+
+    if (!reviewId) {
+      return NextResponse.json(
+        { message: 'Invalid reviewId' },
+        { status: 400 }
+      );
+    }
+
+    const review = await Review.findByIdAndDelete(reviewId);
+
+    if (!review) {
+      return NextResponse.json(
+        { message: 'Review not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(
+      { message: 'Review deleted successfully' },
+      { status: 200 }
+    );
+  } catch (error: any) {
+    console.error('Error deleting review:', error);
+
+    const errorSession = await getServerSession(authOptions) as any;
+    const errorUserId = (errorSession?.user as any)?.id;
+
+    await ErrorLog.create({
+      route: '/api/reviews',
+      error: error.message || 'Failed to delete review',
+      statusCode: 500,
+      userId: errorUserId,
+    }).catch((err) => console.error('Error logging error:', err));
+
+    return NextResponse.json(
+      { message: 'Failed to delete review' },
       { status: 500 }
     );
   }

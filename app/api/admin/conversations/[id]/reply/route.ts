@@ -8,7 +8,7 @@ import { Types } from 'mongoose';
 // POST reply to conversation
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -31,8 +31,9 @@ export async function POST(
     }
 
     await dbConnect();
+    const { id } = await params;
 
-    const conversation = await ChatConversation.findById(params.id);
+    const conversation = await ChatConversation.findById(id);
     if (!conversation) {
       return NextResponse.json(
         { error: 'Conversation not found' },

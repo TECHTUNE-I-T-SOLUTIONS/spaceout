@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Service from '@/lib/models/Service';
+import Branch from '@/lib/models/Branch';
 
 export async function GET(req: NextRequest) {
   try {

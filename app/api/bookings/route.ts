@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/auth';
 import dbConnect from '@/lib/db';
 import Booking from '@/lib/models/Booking';
+import Branch from '@/lib/models/Branch';
 import Service from '@/lib/models/Service';
 import ErrorLog from '@/lib/models/ErrorLog';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions) as any;
 
     if (!session?.user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
@@ -52,7 +54,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions) as any;
 
     if (!session?.user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
@@ -99,7 +101,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error creating booking:', error);
 
-    const session = await auth();
+    const session = await getServerSession(authOptions) as any;
     const userId = (session?.user as any)?.id;
 
     await ErrorLog.create({
@@ -118,7 +120,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions) as any;
 
     if (!session?.user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
@@ -164,7 +166,7 @@ export async function PATCH(request: NextRequest) {
   } catch (error: any) {
     console.error('Error updating booking:', error);
 
-    const session = await auth();
+    const session = await getServerSession(authOptions) as any;
     const userId = (session?.user as any)?.id;
 
     await ErrorLog.create({

@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import QuestionnaireResponse from '@/lib/models/QuestionnaireResponse';
 import Question from '@/lib/models/Question';
+import User from '@/lib/models/User';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/auth';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -22,10 +23,11 @@ export async function GET(
     }
 
     await dbConnect();
+    const { id } = await params;
 
     // Get all responses for questionnaire
     const responses = await QuestionnaireResponse.find({
-      questionnaireId: params.id,
+      questionnaireId: id,
       status: 'completed',
     })
       .populate('userId', 'name email')
@@ -34,7 +36,7 @@ export async function GET(
 
     // Get all questions
     const questions = await Question.find({
-      questionnaireId: params.id,
+      questionnaireId: id,
     }).sort({ order: 1 });
 
     // Calculate analytics

@@ -52,8 +52,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: notificationData.body || 'You have a new notification',
-    icon: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/logo-dark.png`,
-    badge: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/favicon.png`,
+    icon: notificationData.icon || '/icon-192x192.png',
+    badge: notificationData.badge || '/badge-72x72.png',
     tag: notificationData.tag || 'spaceout-notification',
     data: notificationData.data || {},
   };

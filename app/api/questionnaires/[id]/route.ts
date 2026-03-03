@@ -6,12 +6,13 @@ import { authOptions } from '@/auth';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
+    const { id } = await params;
 
-    const questionnaire = await Questionnaire.findById(params.id)
+    const questionnaire = await Questionnaire.findById(id)
       .populate('questions');
 
     if (!questionnaire) {
@@ -33,7 +34,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -48,11 +49,12 @@ export async function PATCH(
     }
 
     await dbConnect();
+    const { id } = await params;
 
     const body = await request.json();
 
     const questionnaire = await Questionnaire.findByIdAndUpdate(
-      params.id,
+      id,
       { ...body, updatedAt: new Date() },
       { new: true }
     );
@@ -76,7 +78,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -91,8 +93,9 @@ export async function DELETE(
     }
 
     await dbConnect();
+    const { id } = await params;
 
-    const questionnaire = await Questionnaire.findByIdAndDelete(params.id);
+    const questionnaire = await Questionnaire.findByIdAndDelete(id);
 
     if (!questionnaire) {
       return NextResponse.json(

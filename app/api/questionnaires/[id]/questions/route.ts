@@ -7,13 +7,14 @@ import { authOptions } from '@/auth';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
+    const { id } = await params;
 
     const questions = await Question.find({
-      questionnaireId: params.id,
+      questionnaireId: id,
     }).sort({ order: 1 });
 
     return NextResponse.json(questions);
@@ -28,7 +29,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -44,9 +45,10 @@ export async function POST(
     }
 
     await dbConnect();
+    const { id } = await params;
 
     // Verify questionnaire exists and belongs to admin
-    const questionnaire = await Questionnaire.findById(params.id);
+    const questionnaire = await Questionnaire.findById(id);
     if (!questionnaire) {
       return NextResponse.json(
         { error: 'Questionnaire not found' },
@@ -57,7 +59,7 @@ export async function POST(
     const { title, type, options, required, order, description } = body;
 
     const question = await Question.create({
-      questionnaireId: params.id,
+      questionnaireId: id,
       title,
       description,
       type,
@@ -68,7 +70,7 @@ export async function POST(
 
     // Add question to questionnaire
     await Questionnaire.findByIdAndUpdate(
-      params.id,
+      id,
       { $push: { questions: question._id } },
       { new: true }
     );

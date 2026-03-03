@@ -5,27 +5,58 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { CreatePricingModal } from '@/components/modals/create-pricing-modal';
-import { Edit2, Trash2, Star } from 'lucide-react';
+import { DeleteConfirmModal } from '@/components/modals/delete-confirm-modal';
+import { Edit2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface Pricing {
+interface PricingPlan {
+  planName: string;
+  planType: string;
+  durationLabel: string;
+  durationInHours?: number;
+  durationInDays?: number;
+  flatPrice?: number;
+  memberPrice?: number;
+  nonMemberPrice?: number;
+  isPerHead: boolean;
+  requiresMembershipCard: boolean;
+  accessCardFee?: number;
+}
+
+interface Service {
   _id: string;
   name: string;
-  description: string;
-  price: number;
-  billingPeriod: string;
-  features: string[];
+  category: string;
   branchId: { _id: string; name: string };
-  isFeatured: boolean;
-  isActive: boolean;
-  createdAt: string;
+  pricingPlans: PricingPlan[];
 }
+
+interface PricingPlanWithService extends PricingPlan {
+  serviceId: string;
+  serviceName: string;
+  planIndex: number;
+  branchName: string;
+}
+
+type AllPricingPlans = PricingPlanWithService;
 
 export default function PricingPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [pricingPlans, setPricingPlans] = useState<Pricing[]>([]);
+  const [pricingPlans, setPricingPlans] = useState<AllPricingPlans[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
+  const [editingPlan, setEditingPlan] = useState<{
+    serviceId: string;
+    planIndex: number;
+    plan: PricingPlan;
+  } | null>(null);
+  
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [planToDelete, setPlanToDelete] = useState<{ 
+    serviceId: string; 
+    planIndex: number; 
+    planName: string;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   useEffect(() => {
     fetchPricingPlans();
   }, []);
@@ -33,11 +64,36 @@ export default function PricingPage() {
   const fetchPricingPlans = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/pricing');
-      if (response.ok) {
-        const data = await response.json();
-        setPricingPlans(Array.isArray(data) ? data : data.data || []);
+      
+      // Fetch pricing plans from services (all pricing is now stored in services)
+      const servicesResponse = await fetch('/api/services?includeInactive=true');
+      const allPlans: AllPricingPlans[] = [];
+      
+      if (servicesResponse.ok) {
+        const services: Service[] = await servicesResponse.json();
+        
+        // Add pricing plans from services
+        services.forEach(service => {
+          service.pricingPlans.forEach((plan, index) => {
+            allPlans.push({
+              ...plan,
+              serviceId: service._id,
+              serviceName: service.name,
+              planIndex: index,
+              branchName: service.branchId?.name || 'Unknown Branch',
+            });
+          });
+        });
       }
+
+      // Sort by creation date (newest first)
+      allPlans.sort((a, b) => {
+        const dateA = new Date((a as any).createdAt || 0).getTime();
+        const dateB = new Date((b as any).createdAt || 0).getTime();
+        return dateB - dateA;
+      });
+
+      setPricingPlans(allPlans);
     } catch (error) {
       console.error('Error fetching pricing plans:', error);
       toast.error('Failed to load pricing plans');
@@ -46,33 +102,67 @@ export default function PricingPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this pricing plan?')) return;
-
-    try {
-      const response = await fetch(`/api/pricing/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        toast.success('Pricing plan deleted successfully');
-        fetchPricingPlans();
-      } else {
-        toast.error('Failed to delete pricing plan');
-      }
-    } catch (error) {
-      toast.error('Error deleting pricing plan');
-    }
+  const handleEdit = (plan: AllPricingPlans) => {
+    const newPlan = plan as PricingPlanWithService;
+    setEditingPlan({
+      serviceId: newPlan.serviceId,
+      planIndex: newPlan.planIndex,
+      plan: {
+        planName: newPlan.planName,
+        planType: newPlan.planType,
+        durationLabel: newPlan.durationLabel,
+        durationInHours: newPlan.durationInHours,
+        durationInDays: newPlan.durationInDays,
+        flatPrice: newPlan.flatPrice,
+        memberPrice: newPlan.memberPrice,
+        nonMemberPrice: newPlan.nonMemberPrice,
+        isPerHead: newPlan.isPerHead,
+        requiresMembershipCard: newPlan.requiresMembershipCard,
+        accessCardFee: newPlan.accessCardFee,
+      },
+    });
+    setIsModalOpen(true);
   };
 
-  const formatBillingPeriod = (period: string) => {
-    const map: { [key: string]: string } = {
-      hourly: 'per hour',
-      daily: 'per day',
-      monthly: 'per month',
-      yearly: 'per year',
-    };
-    return map[period] || period;
+  const handleDeleteClick = (plan: AllPricingPlans) => {
+    const newPlan = plan as PricingPlanWithService;
+    setPlanToDelete({
+      serviceId: newPlan.serviceId,
+      planIndex: newPlan.planIndex,
+      planName: newPlan.planName,
+    });
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!planToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      // Delete pricing plan from service
+      const response = await fetch(
+        `/api/services/${planToDelete.serviceId}/pricing/${planToDelete.planIndex}`,
+        {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Failed to delete pricing plan');
+      } else {
+        toast.success('Pricing plan deleted successfully');
+        fetchPricingPlans();
+      }
+    } catch (error) {
+      console.error('Error deleting pricing plan:', error);
+      toast.error('Error deleting pricing plan');
+    } finally {
+      setIsDeleting(false);
+      setDeleteConfirmOpen(false);
+      setPlanToDelete(null);
+    }
   };
 
   return (
@@ -99,90 +189,108 @@ export default function PricingPage() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {pricingPlans.map((plan) => (
-            <motion.div
-              key={plan._id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Card className={`p-6 transition-all ${plan.isFeatured ? 'ring-2 ring-primary shadow-lg' : 'hover:shadow-lg'}`}>
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between">
+          {pricingPlans.map((plan) => {
+            const newPlan = plan as PricingPlanWithService;
+
+            return (
+              <motion.div
+                key={`${newPlan.serviceId}-${newPlan.planIndex}`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Card className="p-6 hover:shadow-lg transition-shadow">
+                  <div className="space-y-4">
                     <div>
-                      <h3 className="text-lg font-bold">{plan.name}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">{plan.description}</p>
+                      <h3 className="text-lg font-bold">{newPlan.planName}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {newPlan.serviceName} • {newPlan.durationLabel}
+                      </p>
                     </div>
-                    {plan.isFeatured && (
-                      <div className="flex items-center gap-1 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-300 px-2 py-1 rounded text-xs font-semibold">
-                        <Star className="w-3 h-3" />
-                        Featured
+
+                    <div className="bg-muted p-2 rounded text-sm space-y-1">
+                      <p className="font-semibold text-xs">Branch: {newPlan.branchName}</p>
+                      <p className="text-xs text-muted-foreground">Type: {newPlan.planType}</p>
+                    </div>
+
+                    <div className="border-t pt-2">
+                      <p className="font-semibold text-xs mb-2">Pricing:</p>
+                      <div className="space-y-1 text-sm">
+                        {newPlan.flatPrice && (
+                          <p className="text-muted-foreground">
+                            Flat: <span className="font-semibold">₦{newPlan.flatPrice.toLocaleString()}</span>
+                          </p>
+                        )}
+                        {newPlan.memberPrice && (
+                          <p className="text-muted-foreground">
+                            Member: <span className="font-semibold">₦{newPlan.memberPrice.toLocaleString()}</span>
+                          </p>
+                        )}
+                        {newPlan.nonMemberPrice && (
+                          <p className="text-muted-foreground">
+                            Non-Member: <span className="font-semibold">₦{newPlan.nonMemberPrice.toLocaleString()}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {newPlan.requiresMembershipCard && (
+                      <div className="bg-amber-100 dark:bg-amber-900 p-2 rounded text-xs text-amber-800 dark:text-amber-200">
+                        ✓ Requires Membership Card
+                        {newPlan.accessCardFee && (
+                          <>
+                            <br />
+                            Card Fee: ₦{newPlan.accessCardFee.toLocaleString()}
+                          </>
+                        )}
                       </div>
                     )}
-                  </div>
 
-                  <div>
-                    <div className="text-3xl font-bold">
-                      ₦{plan.price.toLocaleString()}
-                      <span className="text-lg font-normal text-muted-foreground">
-                        {' '}/{formatBillingPeriod(plan.billingPeriod)}
-                      </span>
+                    <div className="flex gap-2 pt-4 border-t border-border">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleEdit(plan)}
+                      >
+                        <Edit2 className="w-4 h-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleDeleteClick(plan)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Delete
+                      </Button>
                     </div>
                   </div>
-
-                  <div className="bg-muted p-2 rounded text-sm">
-                    <p className="font-semibold text-xs mb-2">Branch:</p>
-                    <p className="text-muted-foreground">{plan.branchId?.name}</p>
-                  </div>
-
-                  {plan.features.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="font-semibold text-xs">Features:</p>
-                      <ul className="text-xs space-y-1">
-                        {plan.features.slice(0, 4).map((feature, idx) => (
-                          <li key={idx} className="text-muted-foreground">
-                            ✓ {feature}
-                          </li>
-                        ))}
-                        {plan.features.length > 4 && (
-                          <li className="text-muted-foreground">
-                            +{plan.features.length - 4} more features
-                          </li>
-                        )}
-                      </ul>
-                    </div>
-                  )}
-
-                  <div className="flex gap-2 pt-4 border-t border-border">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      disabled
-                    >
-                      <Edit2 className="w-4 h-4 mr-1" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => handleDelete(plan._id)}
-                    >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
+                </Card>
+              </motion.div>
+            );
+          })}
         </div>
       )}
 
       <CreatePricingModal
         open={isModalOpen}
-        onOpenChange={setIsModalOpen}
+        onOpenChange={(open) => {
+          setIsModalOpen(open);
+          if (!open) setEditingPlan(null);
+        }}
         onSuccess={fetchPricingPlans}
+        editingPlan={editingPlan}
+      />
+
+      <DeleteConfirmModal
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title="Delete Pricing Plan"
+        description="Are you sure you want to delete this pricing plan? This action cannot be undone."
+        itemName={planToDelete?.planName}
+        isLoading={isDeleting}
+        onConfirm={handleDeleteConfirm}
       />
     </motion.div>
   );

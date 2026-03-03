@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/auth';
 import dbConnect from '@/lib/db';
 import Feedback from '@/lib/models/Feedback';
+import Branch from '@/lib/models/Branch';
 import ErrorLog from '@/lib/models/ErrorLog';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions) as any;
 
     if (!session?.user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
@@ -50,20 +52,20 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions) as any;
 
     if (!session?.user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = (session.user as any)?.id;
+    const feedbackUserId = (session.user as any)?.id;
     const branchId = (session.user as any)?.branchId;
 
     await dbConnect();
 
-    const { message } = await request.json();
+    const { message: feedbackMessage } = await request.json();
 
-    if (!message || message.trim().length === 0) {
+    if (!feedbackMessage || feedbackMessage.trim().length === 0) {
       return NextResponse.json(
         { message: 'Feedback message is required' },
         { status: 400 }
@@ -71,9 +73,9 @@ export async function POST(request: NextRequest) {
     }
 
     const feedback = await Feedback.create({
-      userId,
+      userId: feedbackUserId,
       branchId,
-      message,
+      message: feedbackMessage,
       status: 'open',
     });
 
@@ -84,15 +86,15 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error creating feedback:', error);
 
-    const session = await auth();
-    const userId = (session?.user as any)?.id;
+    const errorSession = await getServerSession(authOptions) as any;
+    const errorUserId = (errorSession?.user as any)?.id;
 
     await ErrorLog.create({
       route: '/api/feedback',
       error: error.message || 'Failed to create feedback',
       statusCode: 500,
-      userId,
-    }).catch((err) => console.error('Error logging error:', err));
+      userId: errorUserId,
+    });
 
     return NextResponse.json(
       { message: 'Failed to submit feedback' },
@@ -103,15 +105,23 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await auth();
+    // Check for admin session from cookies (admin login uses custom cookies)
+    const adminRole = request.cookies.get('admin_role')?.value;
+    const adminId = request.cookies.get('admin_id')?.value;
 
-    if (!session?.user) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    // Also check NextAuth session as fallback
+    let userRole = adminRole;
+    if (!userRole) {
+      const patchSession = await getServerSession(authOptions) as any;
+      
+      if (!patchSession?.user) {
+        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      }
+      
+      userRole = (patchSession.user as any)?.role;
     }
 
-    const userRole = (session.user as any)?.role;
-
-    if (!['admin', 'superadmin'].includes(userRole)) {
+    if (!userRole || !['admin', 'superadmin'].includes(userRole)) {
       return NextResponse.json(
         { message: 'Forbidden: Admin access required' },
         { status: 403 }
@@ -120,18 +130,36 @@ export async function PATCH(request: NextRequest) {
 
     await dbConnect();
 
-    const { feedbackId, status } = await request.json();
+    const { feedbackId, status, adminReply } = await request.json();
 
-    if (!feedbackId || !['open', 'resolved'].includes(status)) {
+    if (!feedbackId) {
       return NextResponse.json(
-        { message: 'Invalid feedbackId or status' },
+        { message: 'Invalid feedbackId' },
+        { status: 400 }
+      );
+    }
+
+    const updateData: any = {};
+    
+    if (status && ['open', 'resolved'].includes(status)) {
+      updateData.status = status;
+    }
+    
+    if (adminReply !== undefined) {
+      updateData.adminReply = adminReply;
+      updateData.adminReplyDate = adminReply ? new Date() : null;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(
+        { message: 'No updates provided' },
         { status: 400 }
       );
     }
 
     const feedback = await Feedback.findByIdAndUpdate(
       feedbackId,
-      { status },
+      updateData,
       { new: true }
     );
 
@@ -143,24 +171,93 @@ export async function PATCH(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { message: 'Feedback status updated successfully', feedback },
+      { message: 'Feedback updated successfully', feedback },
       { status: 200 }
     );
   } catch (error: any) {
     console.error('Error updating feedback:', error);
 
-    const session = await auth();
-    const userId = (session?.user as any)?.id;
+    const errorSession = await getServerSession(authOptions) as any;
+    const errorUserId = (errorSession?.user as any)?.id;
 
     await ErrorLog.create({
       route: '/api/feedback',
       error: error.message || 'Failed to update feedback',
       statusCode: 500,
-      userId,
+      userId: errorUserId,
     }).catch((err) => console.error('Error logging error:', err));
 
     return NextResponse.json(
       { message: 'Failed to update feedback' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    // Check for admin session from cookies (admin login uses custom cookies)
+    const adminRole = request.cookies.get('admin_role')?.value;
+    const adminId = request.cookies.get('admin_id')?.value;
+
+    // Also check NextAuth session as fallback
+    let userRole = adminRole;
+    if (!userRole) {
+      const deleteSession = await getServerSession(authOptions) as any;
+      
+      if (!deleteSession?.user) {
+        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      }
+      
+      userRole = (deleteSession.user as any)?.role;
+    }
+
+    if (!userRole || !['admin', 'superadmin'].includes(userRole)) {
+      return NextResponse.json(
+        { message: 'Forbidden: Admin access required' },
+        { status: 403 }
+      );
+    }
+
+    await dbConnect();
+
+    const { feedbackId } = await request.json();
+
+    if (!feedbackId) {
+      return NextResponse.json(
+        { message: 'Invalid feedbackId' },
+        { status: 400 }
+      );
+    }
+
+    const feedback = await Feedback.findByIdAndDelete(feedbackId);
+
+    if (!feedback) {
+      return NextResponse.json(
+        { message: 'Feedback not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(
+      { message: 'Feedback deleted successfully' },
+      { status: 200 }
+    );
+  } catch (error: any) {
+    console.error('Error deleting feedback:', error);
+
+    const errorSession = await getServerSession(authOptions) as any;
+    const errorUserId = (errorSession?.user as any)?.id;
+
+    await ErrorLog.create({
+      route: '/api/feedback',
+      error: error.message || 'Failed to delete feedback',
+      statusCode: 500,
+      userId: errorUserId,
+    }).catch((err) => console.error('Error logging error:', err));
+
+    return NextResponse.json(
+      { message: 'Failed to delete feedback' },
       { status: 500 }
     );
   }

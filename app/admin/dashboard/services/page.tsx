@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { CreateServiceModal } from '@/components/modals/create-service-modal';
+import { DeleteConfirmModal } from '@/components/modals/delete-confirm-modal';
 import { Edit2, Trash2, Tag, Type } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -23,6 +24,10 @@ export default function ServicesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [editingService, setEditingService] = useState<Service | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchServices();
@@ -44,11 +49,22 @@ export default function ServicesPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this service?')) return;
+  const handleEdit = (service: Service) => {
+    setEditingService(service);
+    setIsModalOpen(true);
+  };
 
+  const handleDeleteClick = (service: Service) => {
+    setServiceToDelete(service);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!serviceToDelete) return;
+    
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/services/${id}`, {
+      const response = await fetch(`/api/services/${serviceToDelete._id}`, {
         method: 'DELETE',
       });
 
@@ -60,6 +76,10 @@ export default function ServicesPage() {
       }
     } catch (error) {
       toast.error('Error deleting service');
+    } finally {
+      setIsDeleting(false);
+      setDeleteConfirmOpen(false);
+      setServiceToDelete(null);
     }
   };
 
@@ -144,7 +164,7 @@ export default function ServicesPage() {
                       variant="outline"
                       size="sm"
                       className="flex-1"
-                      disabled
+                      onClick={() => handleEdit(service)}
                     >
                       <Edit2 className="w-4 h-4 mr-1" />
                       Edit
@@ -153,7 +173,7 @@ export default function ServicesPage() {
                       variant="destructive"
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleDelete(service._id)}
+                      onClick={() => handleDeleteClick(service)}
                     >
                       <Trash2 className="w-4 h-4 mr-1" />
                       Delete
@@ -168,8 +188,22 @@ export default function ServicesPage() {
 
       <CreateServiceModal
         open={isModalOpen}
-        onOpenChange={setIsModalOpen}
+        onOpenChange={(open) => {
+          setIsModalOpen(open);
+          if (!open) setEditingService(null);
+        }}
         onSuccess={fetchServices}
+        editingService={editingService}
+      />
+
+      <DeleteConfirmModal
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title="Delete Service"
+        description="Are you sure you want to delete this service? This action cannot be undone."
+        itemName={serviceToDelete?.name}
+        isLoading={isDeleting}
+        onConfirm={handleDeleteConfirm}
       />
     </motion.div>
   );

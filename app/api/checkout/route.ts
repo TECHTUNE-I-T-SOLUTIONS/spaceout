@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/auth';
 import dbConnect from '@/lib/db';
 import CheckIn from '@/lib/models/CheckIn';
 import ErrorLog from '@/lib/models/ErrorLog';
@@ -9,7 +10,7 @@ import { sendCheckOutPushNotification } from '@/lib/push-notification';
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions) as any;
 
     if (!session?.user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
@@ -88,15 +89,13 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    console.error('Check-out error:', error);
-
-    const session = await auth();
+  } catch (error) {
+    const session = await getServerSession(authOptions) as any;
     const userId = (session?.user as any)?.id;
 
     await ErrorLog.create({
       route: '/api/checkout',
-      error: error.message || 'Check-out failed',
+      error: error instanceof Error ? error.message : 'Check-out failed',
       statusCode: 500,
       userId,
     }).catch((err) => console.error('Error logging error:', err));

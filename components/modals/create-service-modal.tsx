@@ -13,6 +13,12 @@ interface CreateServiceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  editingService?: {
+    _id: string;
+    name: string;
+    category: string;
+    description: string;
+  } | null;
 }
 
 interface Branch {
@@ -21,7 +27,7 @@ interface Branch {
   location: string;
 }
 
-export function CreateServiceModal({ open, onOpenChange, onSuccess }: CreateServiceModalProps) {
+export function CreateServiceModal({ open, onOpenChange, onSuccess, editingService }: CreateServiceModalProps) {
   const [formData, setFormData] = useState({
     branchId: '',
     name: '',
@@ -33,6 +39,25 @@ export function CreateServiceModal({ open, onOpenChange, onSuccess }: CreateServ
   const [isFetchingBranches, setIsFetchingBranches] = useState(true);
 
   const categories = ['workspace', 'office', 'conference', 'content', 'custom'];
+
+  // Initialize form data when editing
+  useEffect(() => {
+    if (editingService) {
+      setFormData({
+        branchId: '',
+        name: editingService.name,
+        category: editingService.category,
+        description: editingService.description,
+      });
+    } else {
+      setFormData({
+        branchId: '',
+        name: '',
+        category: '',
+        description: '',
+      });
+    }
+  }, [editingService]);
 
   useEffect(() => {
     const fetchBranches = async () => {
@@ -70,35 +95,55 @@ export function CreateServiceModal({ open, onOpenChange, onSuccess }: CreateServ
     setIsLoading(true);
 
     try {
-      if (!formData.branchId || !formData.name || !formData.category || !formData.description) {
+      if (!formData.name || !formData.category || !formData.description) {
         toast.error('Please fill in all required fields');
         setIsLoading(false);
         return;
       }
 
-      const response = await fetch('/api/services', {
-        method: 'POST',
+      const url = editingService 
+        ? `/api/services/${editingService._id}`
+        : '/api/services';
+      
+      const method = editingService ? 'PUT' : 'POST';
+
+      const payload = editingService
+        ? {
+            name: formData.name,
+            category: formData.category,
+            description: formData.description,
+          }
+        : {
+            branchId: formData.branchId,
+            name: formData.name,
+            category: formData.category,
+            description: formData.description,
+            pricingPlans: [],
+          };
+
+      if (!editingService && !formData.branchId) {
+        toast.error('Please select a branch');
+        setIsLoading(false);
+        return;
+      }
+
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          branchId: formData.branchId,
-          name: formData.name,
-          category: formData.category,
-          description: formData.description,
-          pricingPlans: [],
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || 'Failed to create service');
+        throw new Error(error.message || `Failed to ${editingService ? 'update' : 'create'} service`);
       }
 
-      toast.success('Service created successfully!');
+      toast.success(`Service ${editingService ? 'updated' : 'created'} successfully!`);
       setFormData({ branchId: '', name: '', category: '', description: '' });
       onOpenChange(false);
       onSuccess?.();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create service');
+      toast.error(error.message || `Failed to ${editingService ? 'update' : 'create'} service`);
     } finally {
       setIsLoading(false);
     }
@@ -108,16 +153,19 @@ export function CreateServiceModal({ open, onOpenChange, onSuccess }: CreateServ
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Create New Service</DialogTitle>
+          <DialogTitle>{editingService ? 'Edit Service' : 'Create New Service'}</DialogTitle>
           <DialogDescription>
-            Add a new workspace service with pricing plans.
+            {editingService 
+              ? 'Update this workspace service details.'
+              : 'Add a new workspace service with pricing plans.'}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="branchId">Branch *</Label>
-            {isFetchingBranches ? (
+          {!editingService && (
+            <div>
+              <Label htmlFor="branchId">Branch *</Label>
+              {isFetchingBranches ? (
               <div className="flex items-center justify-center p-3 bg-muted rounded-lg">
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
                 <span className="text-sm text-muted-foreground">Loading branches...</span>
@@ -140,6 +188,7 @@ export function CreateServiceModal({ open, onOpenChange, onSuccess }: CreateServ
               </Select>
             )}
           </div>
+          )}
 
           <div>
             <Label htmlFor="name">Service Name *</Label>
@@ -186,7 +235,7 @@ export function CreateServiceModal({ open, onOpenChange, onSuccess }: CreateServ
 
           <div className="bg-muted p-3 rounded-lg text-sm">
             <p className="text-muted-foreground">
-              <span className="font-semibold">Note:</span> You can add pricing plans after creating the service.
+              <span className="font-semibold">Note:</span> {editingService ? 'Update the service details. Pricing plans can be managed separately.' : 'You can add pricing plans after creating the service.'}
             </p>
           </div>
 
@@ -200,7 +249,7 @@ export function CreateServiceModal({ open, onOpenChange, onSuccess }: CreateServ
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Creating...' : 'Create Service'}
+              {isLoading ? (editingService ? 'Updating...' : 'Creating...') : (editingService ? 'Update Service' : 'Create Service')}
             </Button>
           </div>
         </form>

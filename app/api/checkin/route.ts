@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/auth';
 import dbConnect from '@/lib/db';
 import CheckIn from '@/lib/models/CheckIn';
+import Branch from '@/lib/models/Branch';
 import User from '@/lib/models/User';
 import Service from '@/lib/models/Service';
 import ErrorLog from '@/lib/models/ErrorLog';
@@ -10,7 +12,7 @@ import { sendCheckInPushNotification, sendAdminNotificationOnCheckIn } from '@/l
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions) as any;
 
     if (!session?.user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
@@ -107,7 +109,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Check-in error:', error);
 
-    const session = await auth();
+    const session = await getServerSession(authOptions) as any;
     const userId = (session?.user as any)?.id;
 
     await ErrorLog.create({
@@ -126,7 +128,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
 
     if (!session?.user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });

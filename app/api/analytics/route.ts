@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/auth';
 import dbConnect from '@/lib/db';
 import Payment from '@/lib/models/Payment';
 import CheckIn from '@/lib/models/CheckIn';
@@ -10,7 +11,7 @@ import ErrorLog from '@/lib/models/ErrorLog';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions) as any;
 
     if (!session?.user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
@@ -145,9 +146,7 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch (error: any) {
-    console.error('Error fetching analytics:', error);
-
-    const session = await auth();
+    const session = await getServerSession(authOptions) as any;
     const userId = (session?.user as any)?.id;
 
     await ErrorLog.create({

@@ -42,9 +42,9 @@ export default function PaymentsPage() {
       });
       // Mock data for demo
       setPayments([
-        { id: '1', userId: 'user1', amount: 50000, status: 'completed', date: '2024-03-01', method: 'card' },
-        { id: '2', userId: 'user2', amount: 75000, status: 'completed', date: '2024-02-28', method: 'transfer' },
-        { id: '3', userId: 'user3', amount: 30000, status: 'pending', date: '2024-02-27', method: 'card' },
+        { id: '1', userId: 'user1', amount: 50000, status: 'completed', date: '2026-03-01', method: 'card' },
+        { id: '2', userId: 'user2', amount: 75000, status: 'completed', date: '2026-02-28', method: 'transfer' },
+        { id: '3', userId: 'user3', amount: 30000, status: 'pending', date: '2026-02-27', method: 'card' },
       ]);
     } finally {
       setLoading(false);

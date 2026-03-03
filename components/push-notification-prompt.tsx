@@ -63,9 +63,34 @@ export function PushNotificationPrompt() {
           throw new Error('VAPID public key not configured');
         }
 
+        // Convert VAPID key from URL-safe base64 to Uint8Array
+        console.log('[Push Notification] Converting VAPID key to Uint8Array');
+        let applicationServerKey: Uint8Array;
+        try {
+          // Handle URL-safe base64 (with - and _ instead of + and /)
+          const base64 = vapidPublicKey
+            .replace(/-/g, '+')
+            .replace(/_/g, '/');
+          
+          // Add padding if needed
+          const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+          const standardBase64 = base64 + padding;
+          
+          const binary = atob(standardBase64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+          }
+          applicationServerKey = bytes;
+          console.log('[Push Notification] VAPID key converted successfully, length:', bytes.length);
+        } catch (keyError) {
+          console.error('[Push Notification] VAPID key conversion failed:', keyError);
+          throw new Error('Invalid VAPID public key format');
+        }
+
         const subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: vapidPublicKey,
+          applicationServerKey,
         });
         console.log('[Push Notification] Push subscription created:', subscription);
 
@@ -77,12 +102,15 @@ export function PushNotificationPrompt() {
           body: JSON.stringify({ subscription: subscription.toJSON() }),
         });
 
+        console.log('[Push Notification] Response status:', response.status);
+
         if (response.ok) {
           console.log('[Push Notification] Subscription saved successfully');
           localStorage.setItem('spaceout_push_consent', 'accepted');
           setIsVisible(false);
         } else {
           const error = await response.json();
+          console.error('[Push Notification] Server error:', error);
           throw new Error(`Failed to save subscription: ${error.message}`);
         }
       } else {

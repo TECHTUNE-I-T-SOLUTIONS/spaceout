@@ -25,7 +25,7 @@ export function AnimatedHeading({ text, className = '' }: AnimatedHeadingProps) 
       opacity: 1,
       y: 0,
       transition: {
-        duration: 0.7,
+        duration: 0.2,
         ease: 'easeOut',
       },
     },
@@ -60,18 +60,18 @@ export function AnimatedHeading({ text, className = '' }: AnimatedHeadingProps) 
                 key={letterIndex}
                 animate={{
                   color: [
-                    'rgb(85, 81, 81)',      // White
+                    'rgb(233, 229, 229)',      // White
                     'rgb(240, 240, 240)',      // Off-white
-                    'rgb(0, 0, 0)',            // Black
-                    'rgb(50, 50, 50)',         // Dark gray
-                    'rgb(255, 255, 255)',      // Back to white
+                    'rgb(231, 212, 127)',            // Black
+                    'rgb(209, 185, 75)',         // Dark gray
+                    'rgb(235, 235, 235)',      // Back to white
                   ],
                 }}
                 transition={{
-                  duration: 4,
+                  duration: 8,
                   repeat: Infinity,
                   ease: 'easeInOut',
-                  delay: (wordIndex * word.length + letterIndex) * 0.05,
+                  delay: (wordIndex * word.length + letterIndex) * 0.09,
                 }}
                 style={{
                   textShadow: 'inherit',

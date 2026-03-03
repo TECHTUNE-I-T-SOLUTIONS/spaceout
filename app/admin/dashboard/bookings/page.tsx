@@ -42,9 +42,9 @@ export default function BookingsPage() {
       });
       // Mock data for demo
       setBookings([
-        { id: '1', userId: 'user1', serviceId: 'service1', status: 'completed', date: '2024-03-01', amount: 50000 },
-        { id: '2', userId: 'user2', serviceId: 'service2', status: 'pending', date: '2024-03-02', amount: 75000 },
-        { id: '3', userId: 'user3', serviceId: 'service3', status: 'cancelled', date: '2024-02-28', amount: 30000 },
+        { id: '1', userId: 'user1', serviceId: 'service1', status: 'completed', date: '2026-03-01', amount: 50000 },
+        { id: '2', userId: 'user2', serviceId: 'service2', status: 'pending', date: '2026-03-02', amount: 75000 },
+        { id: '3', userId: 'user3', serviceId: 'service3', status: 'cancelled', date: '2026-02-28', amount: 30000 },
       ]);
     } finally {
       setLoading(false);

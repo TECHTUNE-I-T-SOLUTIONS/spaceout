@@ -20,6 +20,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { LogoutConfirmModal } from '@/components/logout-confirm-modal';
+import { useSidebar } from '@/lib/sidebar-context';
 
 const menuItems = [
   { href: '/user/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -33,8 +34,7 @@ const menuItems = [
 
 export function UserSidebar() {
   const pathname = usePathname();
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false);
+  const { isOpen, toggle } = useSidebar();
   const [logoutOpen, setLogoutOpen] = useState(false);
 
   const isActive = (href: string) => pathname === href;
@@ -44,14 +44,15 @@ export function UserSidebar() {
       {/* Header with collapse toggle - Desktop only */}
       {!isMobile && (
         <div className="flex items-center justify-between p-4 border-b border-border">
-          {!isDesktopCollapsed && <h2 className="text-lg font-bold">User Portal</h2>}
+          {isOpen && <h2 className="text-lg font-bold">User Portal</h2>}
           <Button
             size="icon"
             variant="ghost"
-            onClick={() => setIsDesktopCollapsed(!isDesktopCollapsed)}
-            title={isDesktopCollapsed ? 'Expand' : 'Collapse'}
+            onClick={() => toggle()}
+            title={isOpen ? 'Collapse' : 'Expand'}
+            className="ml-auto"
           >
-            <ChevronLeft className={`w-5 h-5 transition-transform ${isDesktopCollapsed ? 'rotate-180' : ''}`} />
+            <ChevronLeft className={`w-5 h-5 transition-transform ${!isOpen ? 'rotate-180' : ''}`} />
           </Button>
         </div>
       )}
@@ -61,16 +62,15 @@ export function UserSidebar() {
           <Link
             key={item.href}
             href={item.href}
-            onClick={() => isMobile && setIsMobileOpen(false)}
             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
               isActive(item.href)
                 ? 'bg-primary text-primary-foreground'
                 : 'text-foreground hover:bg-muted'
-            } ${isDesktopCollapsed && !isMobile ? 'justify-center' : ''}`}
-            title={isDesktopCollapsed && !isMobile ? item.label : undefined}
+            } ${!isOpen && !isMobile ? 'justify-center' : ''}`}
+            title={!isOpen && !isMobile ? item.label : undefined}
           >
             <item.icon className="w-5 h-5 flex-shrink-0" />
-            {(!isDesktopCollapsed || isMobile) && (
+            {(isOpen || isMobile) && (
               <span className="text-sm font-medium">{item.label}</span>
             )}
           </Link>
@@ -81,11 +81,11 @@ export function UserSidebar() {
         <Button
           onClick={() => setLogoutOpen(true)}
           variant="ghost"
-          className={`w-full text-foreground hover:bg-muted ${isDesktopCollapsed && !isMobile ? 'px-0' : 'justify-start'}`}
-          title={isDesktopCollapsed && !isMobile ? 'Sign Out' : undefined}
+          className={`w-full text-foreground hover:bg-muted ${!isOpen && !isMobile ? 'px-0' : 'justify-start'}`}
+          title={!isOpen && !isMobile ? 'Sign Out' : undefined}
         >
           <LogOut className="w-5 h-5 flex-shrink-0 mr-3" />
-          {(!isDesktopCollapsed || isMobile) && (
+          {(isOpen || isMobile) && (
             <span className="text-sm font-medium">Sign Out</span>
           )}
         </Button>
@@ -101,23 +101,11 @@ export function UserSidebar() {
         animate={{ x: 0 }}
         transition={{ duration: 0.3 }}
         className={`hidden md:fixed left-0 top-0 h-screen border-r border-border bg-background z-40 md:flex flex-col transition-all duration-300 ${
-          isDesktopCollapsed ? 'w-20' : 'w-64'
+          isOpen ? 'w-64' : 'w-20'
         }`}
       >
         <SidebarContent isMobile={false} />
       </motion.div>
-
-      {/* Mobile Drawer */}
-      <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
-        <SheetTrigger asChild className="md:hidden fixed">
-          <Button size="icon" variant="ghost" className="fixed top-4 right-4 z-50">
-            {isMobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="w-64 p-0">
-          <SidebarContent isMobile={true} />
-        </SheetContent>
-      </Sheet>
 
       {/* Logout Confirmation Modal */}
       <LogoutConfirmModal isOpen={logoutOpen} onOpenChange={setLogoutOpen} />

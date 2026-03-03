@@ -1,5 +1,6 @@
-import { UserSidebar } from '@/components/user-sidebar';
 import { SessionProvider } from '@/components/session-provider';
+import { SidebarProvider } from '@/lib/sidebar-context';
+import { UserLayoutWrapper } from '@/components/user-layout-wrapper';
 import { requireUser } from '@/lib/auth-middleware';
 
 export const dynamic = 'force-dynamic';
@@ -13,12 +14,9 @@ export default async function UserLayout({
 
   return (
     <SessionProvider>
-      <UserSidebar />
-      <main className="min-h-screen md:ml-64 bg-background overflow-auto">
-        <div className="p-4 md:p-8">
-          {children}
-        </div>
-      </main>
+      <SidebarProvider>
+        <UserLayoutWrapper>{children}</UserLayoutWrapper>
+      </SidebarProvider>
     </SessionProvider>
   );
 }

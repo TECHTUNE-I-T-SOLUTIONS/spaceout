@@ -12,33 +12,56 @@ const handler = NextAuth({
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
+        console.log('[Auth] Starting authorization with email:', credentials?.email);
+        
         if (!credentials?.email || !credentials?.password) {
-          throw new Error('Email and password are required');
+          console.error('[Auth] Missing email or password');
+          return null;
         }
 
         try {
+          console.log('[Auth] Connecting to database...');
           await dbConnect();
+          console.log('[Auth] Database connected successfully');
 
-          const user = await User.findOne({ email: credentials.email }).select('+password');
+          const normalizedEmail = credentials.email.toLowerCase().trim();
+          console.log('[Auth] Searching for user with email:', normalizedEmail);
 
+          // Query the database for user
+          const user = await User.findOne({ email: normalizedEmail }).select('+password');
+          
           if (!user) {
-            throw new Error('No user found with this email');
+            console.error('[Auth] User not found in database for email:', normalizedEmail);
+            // Try to get count of all users for debugging
+            const userCount = await User.countDocuments();
+            console.log('[Auth] Total users in database:', userCount);
+            return null;
           }
+
+          console.log('[Auth] User found:', user._id, user.email);
 
           if (!user.isActive) {
-            throw new Error('Your account has been deactivated');
+            console.error('[Auth] Account deactivated for user:', normalizedEmail);
+            return null;
           }
 
+          console.log('[Auth] Verifying password for user:', normalizedEmail);
+          
+          // Verify password
           const isPasswordValid = await verifyPassword(
             credentials.password,
             user.password
           );
 
           if (!isPasswordValid) {
-            throw new Error('Invalid password');
+            console.error('[Auth] Invalid password for user:', normalizedEmail);
+            return null;
           }
 
+          console.log('[Auth] Authentication successful for user:', normalizedEmail);
+          
+          // Return user object if authentication successful
           return {
             id: user._id.toString(),
             email: user.email,
@@ -47,7 +70,9 @@ const handler = NextAuth({
             branchId: user.branchId?.toString(),
           };
         } catch (error: any) {
-          throw new Error(error.message || 'Authentication failed');
+          console.error('[Auth] Authorization error:', error.message);
+          console.error('[Auth] Error stack:', error.stack);
+          return null;
         }
       },
     }),
@@ -60,6 +85,8 @@ const handler = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.email = user.email;
+        token.name = user.name;
         token.role = (user as any).role;
         token.branchId = (user as any).branchId;
       }
@@ -79,10 +106,12 @@ const handler = NextAuth({
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   jwt: {
-    secret: process.env.NEXTAUTH_SECRET,
+    secret: process.env.NEXTAUTH_SECRET || 'default-secret-for-development',
     maxAge: 30 * 24 * 60 * 60,
   },
+  trustHost: true,
 });
 
 export { handler as GET, handler as POST };
+
 

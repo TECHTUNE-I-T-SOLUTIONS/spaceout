@@ -1,7 +1,5 @@
 import NextAuth, { type NextAuthConfig } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import dbConnect from './lib/db';
-import User from './lib/models/User';
 import { verifyPassword } from './lib/auth';
 
 const config: NextAuthConfig = {
@@ -18,6 +16,9 @@ const config: NextAuthConfig = {
         }
 
         try {
+          const dbConnect = (await import('./lib/db')).default;
+          const User = (await import('./lib/models/User')).default;
+          
           await dbConnect();
 
           const user = await User.findOne({ email: credentials.email }).select('+password');
@@ -84,6 +85,6 @@ const config: NextAuthConfig = {
   },
 } satisfies NextAuthConfig;
 
-export const authOptions = config;
+export const authOptions: NextAuthConfig = config;
 export const { auth, handlers, signIn, signOut } = NextAuth(config);
 

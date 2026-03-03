@@ -1,8 +1,11 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import './User'; // Ensure User model is registered
+import './Branch'; // Ensure Branch model is registered
 
 export interface IReview extends Document {
   userId: mongoose.Types.ObjectId;
-  branchId: mongoose.Types.ObjectId;
+  branchId?: mongoose.Types.ObjectId;
+  spaceName?: string;
   rating: number;
   comment: string;
   approved: boolean;
@@ -20,7 +23,9 @@ const ReviewSchema = new Schema<IReview>(
     branchId: {
       type: Schema.Types.ObjectId,
       ref: 'Branch',
-      required: true,
+    },
+    spaceName: {
+      type: String,
     },
     rating: {
       type: Number,

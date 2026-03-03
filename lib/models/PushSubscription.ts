@@ -1,9 +1,9 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IPushSubscription extends Document {
-  userId: mongoose.Types.ObjectId;
+  userId: string; // Can be ObjectId string or anonymous ID like "anon_xxx"
   subscription: object; // PushSubscriptionJSON
-  userRole?: 'user' | 'admin'; // Role of the user
+  userRole?: 'user' | 'admin' | 'visitor'; // Role of the user
   userAgent?: string;
   isActive: boolean;
   createdAt: Date;
@@ -13,8 +13,7 @@ export interface IPushSubscription extends Document {
 const PushSubscriptionSchema = new Schema<IPushSubscription>(
   {
     userId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
+      type: Schema.Types.Mixed, // Accept both ObjectId strings and anonymous IDs
       required: true,
     },
     subscription: {
@@ -23,8 +22,8 @@ const PushSubscriptionSchema = new Schema<IPushSubscription>(
     },
     userRole: {
       type: String,
-      enum: ['user', 'admin'],
-      default: 'user',
+      enum: ['user', 'admin', 'visitor'],
+      default: 'visitor',
     },
     userAgent: String,
     isActive: {

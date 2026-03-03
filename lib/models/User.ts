@@ -16,6 +16,10 @@ export interface IUser extends Document {
   role: 'user' | 'admin' | 'superadmin';
   branchId?: mongoose.Types.ObjectId;
   hasMembership: boolean;
+  membershipStatus?: 'active' | 'inactive' | 'expired';
+  membershipType?: 'annual' | 'monthly' | 'lifetime';
+  membershipActivatedAt?: Date;
+  membershipExpiryDate?: Date;
   membershipExpiry?: Date;
   prepaidUntil?: Date;
   passportUrl?: string;
@@ -77,6 +81,21 @@ const UserSchema = new Schema<IUser>(
     hasMembership: {
       type: Boolean,
       default: false,
+    },
+    membershipStatus: {
+      type: String,
+      enum: ['active', 'inactive', 'expired'],
+      default: 'inactive',
+    },
+    membershipType: {
+      type: String,
+      enum: ['annual', 'monthly', 'lifetime'],
+    },
+    membershipActivatedAt: {
+      type: Date,
+    },
+    membershipExpiryDate: {
+      type: Date,
     },
     membershipExpiry: {
       type: Date,

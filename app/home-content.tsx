@@ -1,0 +1,255 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Footer } from '@/components/footer';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { AnimatedHeading } from '@/components/animated-heading';
+import { ParticleGlassBackground } from '@/components/particle-glass-background';
+import Link from 'next/link';
+import { Zap, Lightbulb, Shield, Users } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
+
+const heroImages = [
+  '/assets/inside (1).jpeg',
+  '/assets/inside (2).jpeg',
+  '/assets/inside (3).jpeg',
+  '/assets/inside (4).jpeg',
+];
+
+export function HomeContent() {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.2,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.8, ease: 'easeOut' },
+    },
+  };
+
+  // Rotate background images every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % heroImages.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <>
+      {/* Hero Section with Background Images */}
+      <section className="relative overflow-hidden py-20 md:py-32 min-h-[600px] flex items-center justify-center">
+        {/* Background Image Carousel */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentImageIndex}
+            className="absolute inset-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <Image
+              src={heroImages[currentImageIndex]}
+              alt="SpaceOut Office Space"
+              fill
+              priority
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 85vw"
+            />
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Dark overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/20 to-black/20" />
+
+        {/* Hero Content */}
+        <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+          <motion.div
+            className="max-w-full mx-auto text-center"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <AnimatedHeading text="Cool Spaces for Everyone" />
+
+            <motion.p variants={itemVariants} className="text-lg md:text-xl text-white mb-8 text-balance mt-8 drop-shadow-lg">
+              Spaces, Coworking and office solutions. Experience stable power, professional lighting, and environments designed for focus.
+            </motion.p>
+
+            <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/auth/register">
+                <Button size="lg" className="w-full sm:w-auto">
+                  Get Started
+                </Button>
+              </Link>
+              <Link href="/pricing">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto bg-white/10 border-white text-white hover:bg-white/20">
+                  View Pricing
+                </Button>
+              </Link>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Amenities Section */}
+      <section id="services" className="py-20 bg-card border-t border-border">
+        <div className="w-full px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Choose SpaceOut?</h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Designed for professionals who demand more from their workspace
+            </p>
+          </motion.div>
+
+          <motion.div
+            className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            {[
+              {
+                icon: Zap,
+                title: 'Stable Power',
+                description: 'Consistent, reliable electricity so you stay productive all day',
+              },
+              {
+                icon: Lightbulb,
+                title: 'Professional Lighting',
+                description: 'Carefully designed lighting that reduces eye strain and enhances focus',
+              },
+              {
+                icon: Shield,
+                title: 'Quiet Environment',
+                description: 'Sound-proofed areas designed for deep work and concentration',
+              },
+              {
+                icon: Users,
+                title: 'Community',
+                description: 'Network with like-minded professionals and small teams',
+              },
+            ].map((feature, idx) => (
+              <motion.div key={idx} variants={itemVariants}>
+                <Card className="flex flex-col items-center p-6 h-full backdrop-blur-sm bg-muted/40 border-muted/60 hover:border-primary hover:bg-muted/60 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-1 group cursor-pointer">
+                  <feature.icon className="w-8 h-8 text-primary mb-4 group-hover:scale-110 transition-transform duration-300" />
+                  <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors duration-300">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground group-hover:text-muted-foreground/80 transition-colors duration-300">{feature.description}</p>
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Services Section */}
+      <section className="py-20">
+        <div className="w-full px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Our Spaces</h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Flexible options tailored to your work style and needs
+            </p>
+          </motion.div>
+
+          <motion.div
+            className="grid md:grid-cols-4 gap-6"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            {[
+              {
+                title: 'General Workspace',
+                description: 'Open-plan professional workspace perfect for flexible work schedules',
+              },
+              {
+                title: 'Office/Meeting Rooms',
+                description: 'Private spaces for confidential meetings and focused team collaboration',
+              },
+              {
+                title: 'Event Space',
+                description: 'Unique venue perfect for workshops, seminars, and networking events',
+              },
+              {
+                title: 'Content Creation Spaces',
+                description: 'Specialized areas with professional lighting and soundproofing for creators and streamers',
+              },
+            ].map((space, idx) => (
+              <motion.div key={idx} variants={itemVariants}>
+                <Card className="flex flex-col justify-between p-6 h-full hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 hover:-translate-y-1">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">{space.title}</h3>
+                    <p className="text-muted-foreground text-sm">{space.description}</p>
+                  </div>
+                  <Link href="/services" className="mt-4">
+                    <Button variant="outline" className="w-full">
+                      Learn More
+                    </Button>
+                  </Link>
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 bg-primary/5 border-t border-border">
+        <div className="w-full px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+          <motion.div
+            className="text-center"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Find Your Perfect Space?</h2>
+            <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto">
+              Join hundreds of professionals who trust SpaceOut for their workspace needs
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/auth/register">
+                <Button size="lg">Get Started Now</Button>
+              </Link>
+              <Link href="/contact">
+                <Button size="lg" variant="outline">
+                  Contact Us
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      <Footer />
+    </>
+  );
+}

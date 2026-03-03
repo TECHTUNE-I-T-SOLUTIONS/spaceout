@@ -2,6 +2,7 @@ import { AdminSidebar } from '@/components/admin-sidebar';
 import { AdminMobileHeader } from '@/components/admin-mobile-header';
 import { SessionProvider } from '@/components/session-provider';
 import { requireAdmin } from '@/lib/auth-middleware';
+import AdminChatWidget from '@/components/admin-chat-widget';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,7 @@ export default async function AdminDashboardLayout({
           {children}
         </div>
       </main>
+      <AdminChatWidget />
     </SessionProvider>
   );
 }

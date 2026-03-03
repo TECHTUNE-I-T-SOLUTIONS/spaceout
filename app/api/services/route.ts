@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Service from '@/lib/models/Service';
+import Branch from '@/lib/models/Branch';
 import ErrorLog from '@/lib/models/ErrorLog';
 
 export async function GET(request: NextRequest) {

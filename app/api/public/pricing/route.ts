@@ -1,17 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
-import Pricing from '@/lib/models/Pricing';
+import Service from '@/lib/models/Service';
 
 export async function GET(req: NextRequest) {
   try {
     await dbConnect();
 
-    const pricingPlans = await Pricing.find({ isActive: true })
+    // Fetch all active services and extract their pricing plans
+    const services = await Service.find({ isActive: true })
       .populate('branchId', 'name')
-      .sort({ createdAt: -1 });
+      .lean();
+
+    // Flatten pricing plans from all services
+    const allPricingPlans: any[] = [];
+    services.forEach((service: any) => {
+      if (service.pricingPlans && Array.isArray(service.pricingPlans)) {
+        service.pricingPlans.forEach((plan: any, index: number) => {
+          allPricingPlans.push({
+            ...plan,
+            serviceId: service._id,
+            serviceName: service.name,
+            planIndex: index,
+          });
+        });
+      }
+    });
 
     return NextResponse.json(
-      { success: true, data: pricingPlans },
+      { success: true, data: allPricingPlans },
       { status: 200 }
     );
   } catch (error) {
