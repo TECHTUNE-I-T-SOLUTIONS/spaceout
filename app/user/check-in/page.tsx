@@ -293,7 +293,7 @@ export default function CheckInPage() {
     return rates;
   };
 
-  const handlePlanSelection = (
+  const handlePlanSelection = async (
     service: Service,
     plan: PricingPlan,
     rateType: string,
@@ -301,31 +301,67 @@ export default function CheckInPage() {
     wifiIncluded: boolean,
     requiresMembership: boolean = false
   ) => {
-    // If non-member selecting member rate, add membership fee
-    let membershipFee = 0;
-    if (requiresMembership && !userMembership?.hasMembership) {
-      membershipFee = plan.accessCardFee || 0;
-    }
+    try {
+      // Check if user has active subscription for this specific service
+      let hasServiceSubscription = false;
+      let subscriptionData = null;
 
-    const totalPrice = price + membershipFee;
+      if (session?.user?.id) {
+        const response = await fetch(`/api/users/check-service-subscription?serviceId=${service._id}`);
+        if (response.ok) {
+          const data = await response.json();
+          hasServiceSubscription = data.hasActiveSubscription;
+          subscriptionData = data.subscription;
+        }
+      }
 
-    const newPlan: SelectedPlan = {
-      service,
-      plan,
-      selectedRate: rateType as any,
-      price,
-      wifiIncluded,
-      requiresMembership: requiresMembership && !userMembership?.hasMembership,
-      membershipFee,
-      totalPrice,
-    };
+      // If user has active subscription, use member pricing automatically
+      let finalPrice = price;
+      let finalWifiIncluded = wifiIncluded;
+      let finalMembershipFee = 0;
+      let finalRequiresMembership = false;
+      let appliedRate = rateType;
 
-    // Check if they already paid for this service today
-    if (todayCheckIns[service._id]) {
-      setPendingPlan(newPlan);
-      setDuplicateCheckInDialog(true);
-    } else {
-      setSelectedPlan(newPlan);
+      if (hasServiceSubscription && plan.memberPrice) {
+        // User has active subscription - use member price automatically
+        finalPrice = plan.memberPrice;
+        finalWifiIncluded = true;
+        appliedRate = 'member';
+        finalMembershipFee = 0; // No card fee for active subscribers
+        finalRequiresMembership = false;
+      } else {
+        // Original logic for non-subscribers
+        let membershipFee = 0;
+        if (requiresMembership && !userMembership?.hasMembership) {
+          membershipFee = plan.accessCardFee || 0;
+        }
+        finalMembershipFee = membershipFee;
+        finalRequiresMembership = requiresMembership && !userMembership?.hasMembership;
+      }
+
+      const totalPrice = finalPrice + finalMembershipFee;
+
+      const newPlan: SelectedPlan = {
+        service,
+        plan,
+        selectedRate: appliedRate as any,
+        price: finalPrice,
+        wifiIncluded: finalWifiIncluded,
+        requiresMembership: finalRequiresMembership,
+        membershipFee: finalMembershipFee,
+        totalPrice,
+      };
+
+      // Check if they already paid for this service today
+      if (todayCheckIns[service._id]) {
+        setPendingPlan(newPlan);
+        setDuplicateCheckInDialog(true);
+      } else {
+        setSelectedPlan(newPlan);
+      }
+    } catch (error) {
+      console.error('Error selecting plan:', error);
+      toast.error('Error processing plan selection');
     }
   };
 
@@ -880,6 +916,17 @@ export default function CheckInPage() {
                     </p>
                   </div>
                 )}
+
+              {selectedPlan.selectedRate === 'member' && !selectedPlan.requiresMembership && !selectedPlan.membershipFee && (
+                <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-3 rounded-lg">
+                  <p className="text-sm text-green-800 dark:text-green-200 font-semibold">
+                    ✅ Active Membership
+                  </p>
+                  <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                    You're getting member rates because you have an active membership for this service. No additional card fees!
+                  </p>
+                </div>
+              )}
 
               {selectedPlan.plan.accessCardFee && selectedPlan.requiresMembership && (
                 <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 p-3 rounded-lg">

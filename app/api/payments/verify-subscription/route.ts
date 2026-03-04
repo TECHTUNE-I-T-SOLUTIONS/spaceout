@@ -23,16 +23,23 @@ export async function GET(request: NextRequest) {
 
     await dbConnect();
 
-    // Find payment by Paystack reference
-    const payment = await Payment.findOne({
+    // Find payment by reference - try to get the full document, not lean
+    let payment = await Payment.findOne({
       reference: reference,
-      paymentType: 'subscription',
     });
 
     if (!payment) {
-      return NextResponse.json(
-        { error: 'Payment not found' },
-        { status: 404 }
+      console.error('Payment not found for reference:', reference);
+      
+      // Log all payments for debugging
+      const allPayments = await Payment.find({ status: 'pending' }).select('reference').limit(5);
+      console.error('Sample pending payments:', allPayments);
+
+      return NextResponse.redirect(
+        new URL(
+          `/user/astronaut-card?success=false&message=${encodeURIComponent('Payment not found')}`,
+          process.env.NEXT_PUBLIC_APP_URL
+        )
       );
     }
 
@@ -53,9 +60,11 @@ export async function GET(request: NextRequest) {
     const paystackData = await response.json();
 
     if (!paystackData.status) {
-      return NextResponse.json(
-        { error: 'Payment verification failed', payment: payment.toObject() },
-        { status: 400 }
+      return NextResponse.redirect(
+        new URL(
+          `/user/astronaut-card?success=false&message=Payment not verified`,
+          process.env.NEXT_PUBLIC_APP_URL
+        )
       );
     }
 
@@ -63,12 +72,11 @@ export async function GET(request: NextRequest) {
     if (paystackData.data.status !== 'success') {
       payment.status = paystackData.data.status;
       await payment.save();
-      return NextResponse.json(
-        {
-          error: `Payment ${paystackData.data.status}`,
-          payment: payment.toObject(),
-        },
-        { status: 400 }
+      return NextResponse.redirect(
+        new URL(
+          `/user/astronaut-card?success=false&message=Payment ${paystackData.data.status}`,
+          process.env.NEXT_PUBLIC_APP_URL
+        )
       );
     }
 
@@ -79,9 +87,16 @@ export async function GET(request: NextRequest) {
     await payment.save();
 
     // Create subscription record
+    let subscriptionId = '';
     if (payment.metadata) {
-      const { serviceName, serviceId, planName, duration, isAccessCard, planId } = payment.metadata as any;
+      const { serviceName, serviceId: metadataServiceId, planName, duration, isAccessCard, planId } = payment.metadata as any;
+      // Use metadata serviceId, fallback to payment.serviceId
+      const serviceId = metadataServiceId || payment.serviceId;
       
+      if (!serviceId) {
+        throw new Error('Missing serviceId for subscription creation');
+      }
+
       const purchaseDate = new Date();
       const expiryDate = new Date();
       expiryDate.setDate(expiryDate.getDate() + duration);
@@ -103,6 +118,7 @@ export async function GET(request: NextRequest) {
       });
 
       await subscription.save();
+      subscriptionId = subscription._id.toString();
 
       // Update user hasMembership if not an access card
       if (!isAccessCard) {
@@ -111,6 +127,8 @@ export async function GET(request: NextRequest) {
           membershipExpiry: expiryDate,
         });
       }
+    } else {
+      throw new Error('Payment metadata is missing');
     }
 
     // Send push notification
@@ -125,29 +143,33 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Subscription payment verified successfully',
-      payment: {
-        _id: payment._id,
-        status: payment.status,
-        amount: payment.amount,
-      },
-    });
+    return NextResponse.redirect(
+      new URL(
+        `/user/astronaut-card?success=true&subscriptionId=${subscriptionId}`,
+        process.env.NEXT_PUBLIC_APP_URL
+      )
+    );
   } catch (error: any) {
     console.error('Subscription payment verification error:', error);
     
-    await dbConnect();
-    await ErrorLog.create({
-      component: 'verify-subscription',
-      error: error.message,
-      stack: error.stack,
-      timestamp: new Date(),
-    });
+    try {
+      await dbConnect();
+      const ErrorLog = (await import('@/lib/models/ErrorLog')).default;
+      await ErrorLog.create({
+        route: '/api/payments/verify-subscription',
+        error: error.message || 'Unknown error',
+        statusCode: 500,
+        timestamp: new Date(),
+      });
+    } catch (logErr) {
+      console.error('Failed to log error:', logErr);
+    }
 
-    return NextResponse.json(
-      { error: error.message || 'Failed to verify payment' },
-      { status: 500 }
+    return NextResponse.redirect(
+      new URL(
+        `/user/astronaut-card?success=false&message=${encodeURIComponent(error.message || 'Payment verification failed')}`,
+        process.env.NEXT_PUBLIC_APP_URL
+      )
     );
   }
 }

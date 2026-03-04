@@ -7,23 +7,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Search, DollarSign, Calendar, User, Filter, Edit2, Trash2 } from 'lucide-react';
+import { Loader2, Search, DollarSign, Calendar, User, Filter } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { CreateServiceModal } from '@/components/modals/create-service-modal';
-import { DeleteConfirmModal } from '@/components/modals/delete-confirm-modal';
-import { motion } from 'framer-motion';
 
 interface Service {
   _id: string;
   name: string;
   description?: string;
   location?: string;
-  category?: string;
-  branchId?: { _id: string; name: string };
   isActive: boolean;
   createdAt: string;
-  pricingPlans?: any[];
 }
 
 interface UserSubscription {
@@ -54,7 +48,7 @@ interface SubscriptionsResponse {
   };
 }
 
-export default function ServicesPage() {
+export default function AdminServicesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('subscriptions');
@@ -66,13 +60,6 @@ export default function ServicesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [itemsPerPage] = useState(10);
-  
-  // Service management state
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingService, setEditingService] = useState<Service | null>(null);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -95,7 +82,7 @@ export default function ServicesPage() {
       const response = await fetch('/api/services?includeInactive=true');
       if (response.ok) {
         const data = await response.json();
-        setServices(Array.isArray(data) ? data : data.data || []);
+        setServices(data);
       } else {
         toast.error('Failed to fetch services');
       }
@@ -149,46 +136,6 @@ export default function ServicesPage() {
     setCurrentPage(1);
   };
 
-  const handleEdit = (service: Service) => {
-    setEditingService(service);
-    setIsModalOpen(true);
-  };
-
-  const handleDeleteClick = (service: Service) => {
-    setServiceToDelete(service);
-    setDeleteConfirmOpen(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!serviceToDelete) return;
-    
-    setIsDeleting(true);
-    try {
-      const response = await fetch(`/api/services/${serviceToDelete._id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        toast.success('Service deleted successfully');
-        fetchServices();
-      } else {
-        toast.error('Failed to delete service');
-      }
-    } catch (error) {
-      toast.error('Error deleting service');
-    } finally {
-      setIsDeleting(false);
-      setDeleteConfirmOpen(false);
-      setServiceToDelete(null);
-    }
-  };
-
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setEditingService(null);
-    fetchServices();
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -211,7 +158,7 @@ export default function ServicesPage() {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Services & Subscriptions</h1>
         <p className="text-muted-foreground">Manage your services and view user subscriptions</p>
@@ -248,7 +195,7 @@ export default function ServicesPage() {
                   <select
                     value={statusFilter}
                     onChange={(e) => handleStatusFilterChange(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-md bg-background text-foreground border-input"
+                    className="w-full px-3 py-2 border rounded-md bg-background text-foreground"
                   >
                     <option value="">All Status</option>
                     <option value="active">Active</option>
@@ -350,18 +297,6 @@ export default function ServicesPage() {
 
         {/* Services Tab */}
         <TabsContent value="services" className="space-y-6">
-          <div className="flex gap-4">
-            <Button
-              onClick={() => {
-                setEditingService(null);
-                setIsModalOpen(true);
-              }}
-              className="bg-primary hover:bg-primary/90"
-            >
-              + Create Service
-            </Button>
-          </div>
-
           {loading ? (
             <div className="flex items-center justify-center h-96">
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -390,58 +325,15 @@ export default function ServicesPage() {
                       {service.description}
                     </p>
                   )}
-                  {service.category && (
-                    <p className="text-xs text-muted-foreground mb-4">
-                      Category: {service.category}
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground mb-4">
+                  <p className="text-xs text-muted-foreground">
                     Created: {formatDate(service.createdAt)}
                   </p>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(service)}
-                      className="flex-1"
-                    >
-                      <Edit2 className="w-4 h-4 mr-2" />
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDeleteClick(service)}
-                      className="flex-1 text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete
-                    </Button>
-                  </div>
                 </Card>
               ))}
             </div>
           )}
-
-          {/* Service Modal */}
-          <CreateServiceModal
-            isOpen={isModalOpen}
-            onOpenChange={handleModalClose}
-            initialData={editingService || undefined}
-          />
-
-          {/* Delete Confirmation Modal */}
-          <DeleteConfirmModal
-            isOpen={deleteConfirmOpen}
-            onOpenChange={setDeleteConfirmOpen}
-            onConfirm={handleDeleteConfirm}
-            title="Delete Service"
-            description={`Are you sure you want to delete "${serviceToDelete?.name}"? This action cannot be undone.`}
-            isLoading={isDeleting}
-            confirmText="Delete"
-          />
         </TabsContent>
       </Tabs>
-    </motion.div>
+    </div>
   );
 }

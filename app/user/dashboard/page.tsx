@@ -403,7 +403,7 @@ export default function UserDashboard() {
       {/* Membership CTA */}
       <motion.div variants={itemVariants}>
         <Card className="p-8 bg-primary text-primary-foreground border-primary">
-          <h3 className="text-xl font-bold mb-2">Upgrade Your Experience</h3>
+          <h3 className="text-xl font-bold mb-2">Become an Astronaut</h3>
           <p className="mb-6 opacity-90">
             Unlock exclusive benefits with SpaceOut! Upgrade your subscription, purchase a SpaceOut Card for exclusive access fees, or become an Astronaut member for premium perks and priority booking.
           </p>

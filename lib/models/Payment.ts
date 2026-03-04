@@ -95,6 +95,7 @@ const PaymentSchema = new Schema<IPayment>(
 
 // Index for quick lookup
 PaymentSchema.index({ userId: 1, status: 1 });
-PaymentSchema.index({ paystackReference: 1 });
+PaymentSchema.index({ paystackReference: 1 }, { sparse: true });
+PaymentSchema.index({ reference: 1 }, { unique: true, sparse: true });
 
 export default mongoose.models.Payment || mongoose.model<IPayment>('Payment', PaymentSchema);

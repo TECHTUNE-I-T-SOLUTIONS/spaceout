@@ -237,7 +237,7 @@ export function MembershipModal({ open, onOpenChange }: MembershipModalProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Upgrade Your Experience</DialogTitle>
+          <DialogTitle className="text-2xl">Become an Astronaut</DialogTitle>
         </DialogHeader>
 
         {loading ? (

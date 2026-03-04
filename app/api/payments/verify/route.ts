@@ -114,14 +114,14 @@ export async function POST(request: NextRequest) {
 
     const { reference, status, paystackReference } = await request.json();
 
-    // Support both legacy paymentReference and new paystackReference
+    // Support both legacy paystackReference and reference
     let payment = null;
     if (paystackReference) {
       payment = await Payment.findOne({ paystackReference });
     } else if (reference) {
       payment = await Payment.findOne({
         $or: [
-          { paymentReference: reference },
+          { reference: reference },
           { paystackReference: reference },
         ],
       });

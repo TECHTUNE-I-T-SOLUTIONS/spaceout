@@ -113,19 +113,17 @@ export async function POST(
       );
     }
 
-    // Broadcast message via Supabase
-    try {
-      await broadcastMessage(id, {
-        conversationId: id,
-        sender: 'staff',
-        senderName: 'Admin',
-        content: content.trim(),
-        createdAt: new Date().toISOString(),
-      });
-    } catch (error) {
+    // Return immediately - broadcast message via Supabase asynchronously
+    broadcastMessage(id, {
+      conversationId: id,
+      sender: 'staff',
+      senderName: 'Admin',
+      content: content.trim(),
+      createdAt: new Date().toISOString(),
+    }).catch((error) => {
       console.error('[Admin Chat] Failed to broadcast message:', error);
-      // Don't fail the response if Supabase broadcast fails
-    }
+      // Log but continue - don't fail the response
+    });
 
     return NextResponse.json({
       message: 'Message sent successfully',

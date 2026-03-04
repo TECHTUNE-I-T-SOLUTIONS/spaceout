@@ -57,6 +57,17 @@ export default function AdminChatWidget() {
   const conversationsChannelRef = useRef<RealtimeChannel | null>(null);
   const conversationChannelRef = useRef<RealtimeChannel | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesViewportRef = useRef<HTMLDivElement>(null);
+
+  // Debug state changes
+  useEffect(() => {
+    console.log('[Admin] State changed:', {
+      isOpen,
+      selectedConversationId: selectedConversation?._id,
+      messagesCount: selectedConversation?.messages.length || 0,
+      inputValue: messageInput.length,
+    });
+  }, [isOpen, selectedConversation?._id, selectedConversation?.messages.length, messageInput.length]);
 
   // Initialize Supabase Real-time subscriptions
   useEffect(() => {
@@ -145,8 +156,11 @@ export default function AdminChatWidget() {
 
   // Auto-scroll to bottom
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (messagesViewportRef.current) {
+      const viewport = messagesViewportRef.current;
+      setTimeout(() => {
+        viewport.scrollTop = viewport.scrollHeight;
+      }, 0);
     }
   }, [selectedConversation?.messages]);
 
@@ -199,33 +213,76 @@ export default function AdminChatWidget() {
 
     if (!messageInput.trim() || !selectedConversation) return;
 
-    const message = messageInput;
+    const content = messageInput;
+    const messageId = Math.random().toString(36).substring(7);
+    
+    // Create optimistic message object
+    const optimisticMessage: AdminMessage = {
+      id: messageId,
+      senderType: 'admin',
+      senderName: 'Admin',
+      content,
+      createdAt: new Date(),
+      isRead: true,
+    };
+
+    console.log('[Admin] Optimistic message being added:', optimisticMessage);
+
+    // Immediately update UI (optimistic update)
+    setSelectedConversation((prev) => {
+      if (!prev) return null;
+      const updated = {
+        ...prev,
+        messages: [...prev.messages, optimisticMessage],
+      };
+      console.log('[Admin] State updated with optimistic message. Total messages:', updated.messages.length);
+      return updated;
+    });
     setMessageInput('');
+    console.log('[Admin] Input cleared, message input should now be empty');
 
     try {
+      // Send to API
+      console.log('[Admin] Sending message to API...');
       const res = await fetch(
-        `/api/admin/support/conversations/${selectedConversation._id}/messages`,
+        `/api/admin/support/conversations/${selectedConversation._id}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: message }),
+          body: JSON.stringify({ content }),
         }
       );
 
       if (!res.ok) throw new Error('Failed to send message');
+      console.log('[Admin] Message sent to API successfully');
 
-      // Broadcast via Supabase for real-time delivery
-      await broadcastMessage(selectedConversation._id, {
+      // Broadcast via Supabase for real-time delivery to user (fire-and-forget)
+      broadcastMessage(selectedConversation._id, {
         conversationId: selectedConversation._id,
         sender: 'admin',
         senderName: 'Admin',
-        content: message,
+        content,
         createdAt: new Date().toISOString(),
+      }).catch((err) => {
+        console.error('[Admin] Broadcast error:', err);
       });
+
+      toast.success('Message sent');
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('[Admin] Error sending message:', error);
       toast.error('Failed to send message');
-      setMessageInput(message);
+      
+      // Remove optimistic message on error
+      setSelectedConversation((prev) =>
+        prev
+          ? {
+              ...prev,
+              messages: prev.messages.filter((msg) => msg.id !== messageId),
+            }
+          : null
+      );
+      // Restore input
+      setMessageInput(content);
     }
   };
 
@@ -383,48 +440,53 @@ export default function AdminChatWidget() {
                 </div>
 
                 {/* Messages */}
-                <ScrollArea className="flex-1 p-4">
-                  {conversationLoading ? (
-                    <div className="flex items-center justify-center h-full">
-                      <Loader2 className="animate-spin" />
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {selectedConversation.messages.map((msg) => (
-                        <div
-                          key={msg.id}
-                          className={`flex ${
-                            msg.senderType === 'admin'
-                              ? 'justify-end'
-                              : 'justify-start'
-                          }`}
-                        >
+                <div className="flex-1 overflow-hidden flex flex-col">
+                  <div 
+                    ref={messagesViewportRef}
+                    className="flex-1 overflow-y-auto p-4"
+                  >
+                    {conversationLoading ? (
+                      <div className="flex items-center justify-center h-full">
+                        <Loader2 className="animate-spin" />
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {selectedConversation.messages.map((msg) => (
                           <div
-                            className={`max-w-[70%] rounded-lg p-3 ${
+                            key={msg.id}
+                            className={`flex ${
                               msg.senderType === 'admin'
-                                ? 'bg-gray-600 text-white'
-                                : 'bg-muted text-foreground'
+                                ? 'justify-end'
+                                : 'justify-start'
                             }`}
                           >
-                            <p className="text-xs font-semibold mb-1">
-                              {msg.senderName}
-                            </p>
-                            <p className="text-sm break-words">
-                              {msg.content}
-                            </p>
-                            <p className="text-xs opacity-70 mt-1">
-                              {new Date(msg.createdAt).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </p>
+                            <div
+                              className={`max-w-[70%] rounded-lg p-3 ${
+                                msg.senderType === 'admin'
+                                  ? 'bg-gray-600 text-white'
+                                  : 'bg-muted text-foreground'
+                              }`}
+                            >
+                              <p className="text-xs font-semibold mb-1">
+                                {msg.senderName}
+                              </p>
+                              <p className="text-sm break-words">
+                                {msg.content}
+                              </p>
+                              <p className="text-xs opacity-70 mt-1">
+                                {new Date(msg.createdAt).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                      <div ref={scrollRef} />
-                    </div>
-                  )}
-                </ScrollArea>
+                        ))}
+                        <div ref={scrollRef} />
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 {/* Message Input */}
                 {selectedConversation.status === 'open' ? (

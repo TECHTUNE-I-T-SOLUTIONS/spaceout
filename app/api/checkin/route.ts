@@ -8,6 +8,7 @@ import User from '@/lib/models/User';
 import Service from '@/lib/models/Service';
 import ErrorLog from '@/lib/models/ErrorLog';
 import PushSubscription from '@/lib/models/PushSubscription';
+import UserSubscription from '@/lib/models/UserSubscription';
 import { sendCheckInPushNotification, sendAdminNotificationOnCheckIn } from '@/lib/push-notification';
 
 export async function POST(request: NextRequest) {

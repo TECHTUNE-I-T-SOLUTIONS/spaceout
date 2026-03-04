@@ -7,7 +7,7 @@ import { broadcastNewConversation } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session: any = await getServerSession(authOptions);
 
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -15,18 +15,19 @@ export async function POST(request: NextRequest) {
 
     await dbConnect();
 
-    const userId = (session.user as any)?.id || session.user?.email;
+    const userId = session.user?.id || session.user?.email;
+    console.log('[Chat] Creating/fetching conversation for userId:', userId);
 
     // Check if user has active conversation
     let conversation = await ChatConversation.findOne({
-      userId,
+      userId: userId,
       status: { $in: ['open', 'in_progress'] },
     });
 
     if (!conversation) {
       // Create new conversation
       conversation = new ChatConversation({
-        userId,
+        userId: userId,
         subject: 'General Support',
         department: 'general_support',
         messages: [],
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest) {
       });
 
       await conversation.save();
+      console.log('[Chat] Created conversation:', conversation._id, 'for userId:', userId);
 
       // Broadcast new conversation via Supabase
       try {
@@ -68,7 +70,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session: any = await getServerSession(authOptions);
 
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -76,9 +78,14 @@ export async function GET(request: NextRequest) {
 
     await dbConnect();
 
-    const userId = (session.user as any)?.id || session.user?.email;
+    const userId = session.user?.id || session.user?.email;
+    
+    console.log('[Chat] Fetching conversations for userId:', userId);
 
-    const conversations = await ChatConversation.find({ userId })
+    // Query for conversations matching the user
+    const conversations = await ChatConversation.find({ 
+      userId: userId
+    })
       .sort({ updatedAt: -1 })
       .limit(10);
 

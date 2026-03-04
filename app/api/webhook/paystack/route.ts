@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const { reference, status, amount } = data;
 
     // Find payment
-    const payment = await Payment.findOne({ paymentReference: reference });
+    const payment = await Payment.findOne({ reference: reference });
 
     if (!payment) {
       console.warn(`Payment not found for reference: ${reference}`);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Menu, Telescope, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import Link from 'next/link';
@@ -22,6 +22,7 @@ const menuItems = [
   { href: '/user/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/user/check-in', icon: LogIn, label: 'Check In' },
   { href: '/user/bookings', icon: Calendar, label: 'Bookings' },
+  { href: '/user/astronaut-card', icon: Telescope, label: 'Astronaut Card' },
   { href: '/user/payments', icon: CreditCard, label: 'Payments' },
   { href: '/user/reviews', icon: Star, label: 'Reviews' },
   { href: '/user/feedback', icon: MessageSquare, label: 'Feedback' },

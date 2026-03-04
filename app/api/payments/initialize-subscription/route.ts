@@ -48,28 +48,53 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique reference
-    const reference = `SUB-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    // Generate unique reference with retry logic to handle duplicate key errors
+    let payment;
+    let retries = 3;
+    let lastError = null;
 
-    // Create payment record
-    const payment = new Payment({
-      userId,
-      serviceId,
-      email: user.email,
-      amount,
-      reference,
-      status: 'pending',
-      paymentType: 'subscription',
-      metadata: {
-        planId,
-        planName,
-        serviceName,
-        duration,
-        isAccessCard,
-      },
-    });
+    while (retries > 0) {
+      try {
+        const reference = `SUB-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
 
-    await payment.save();
+        // Create payment record
+        payment = new Payment({
+          userId,
+          serviceId,
+          email: user.email,
+          amount,
+          reference,
+          status: 'pending',
+          paymentType: 'subscription',
+          serviceName,
+          planName,
+          metadata: {
+            planId,
+            planName,
+            serviceName,
+            serviceId,
+            duration,
+            isAccessCard,
+          },
+        });
+
+        await payment.save();
+        break; // Success, exit retry loop
+      } catch (err: any) {
+        lastError = err;
+        if (err.code === 11000 && retries > 1) {
+          // Duplicate key error, retry with new reference
+          retries--;
+          continue;
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    if (!payment) {
+      throw lastError || new Error('Failed to create payment record');
+    }
 
     // Initialize Paystack payment
     const paystackResponse = await fetch('https://api.paystack.co/transaction/initialize', {
@@ -81,7 +106,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         email: user.email,
         amount: amount * 100, // Paystack expects amount in kobo
-        reference,
+        reference: payment.reference,
         metadata: {
           full_name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
           userId,
@@ -92,6 +117,7 @@ export async function POST(request: NextRequest) {
           duration,
           isAccessCard,
         },
+        callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payments/verify-subscription`,
       }),
     });
 
@@ -121,7 +147,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Payment initialized successfully',
-      reference,
+      reference: payment.reference,
       paymentId: payment._id,
       authorization_url: paystackData.data.authorization_url,
       access_code: paystackData.data.access_code,
