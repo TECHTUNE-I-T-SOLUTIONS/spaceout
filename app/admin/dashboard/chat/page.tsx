@@ -213,7 +213,7 @@ export default function AdminChatPage() {
 
   const statusColors = {
     open: 'bg-green-500',
-    in_progress: 'bg-blue-500',
+    in_progress: 'bg-gray-500',
     closed: 'bg-gray-500',
     archived: 'bg-gray-400',
   };
@@ -249,7 +249,7 @@ export default function AdminChatPage() {
                       onClick={() => handleSelectConversation(conv)}
                       className={`w-full text-left p-3 rounded-lg transition-all ${
                         selectedConversation?._id === conv._id
-                          ? 'bg-blue-500 text-white'
+                          ? 'bg-gray-500 text-white'
                           : 'bg-gray-100 hover:bg-gray-200'
                       }`}
                     >
@@ -323,7 +323,7 @@ export default function AdminChatPage() {
                       <div
                         className={`max-w-xs rounded-lg p-3 ${
                           msg.sender === 'admin'
-                            ? 'bg-blue-600 text-white'
+                            ? 'bg-gray-600 text-white'
                             : 'bg-gray-200 text-gray-900'
                         }`}
                       >
@@ -331,7 +331,7 @@ export default function AdminChatPage() {
                         <p
                           className={`text-xs mt-1 ${
                             msg.sender === 'admin'
-                              ? 'text-blue-100'
+                              ? 'text-gray-100'
                               : 'text-gray-600'
                           }`}
                         >

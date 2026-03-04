@@ -4,9 +4,11 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { CreditCard, Calendar, CheckCircle, Clock, Wifi, WifiOff, Loader2, TrendingUp, TrendingDown } from 'lucide-react';
+import { CreditCard, Calendar, CheckCircle, Clock, Wifi, WifiOff, Loader2, TrendingUp, TrendingDown, AlertCircle, Shield } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { useState, useEffect } from 'react';
 import { MembershipModal } from '@/components/membership-modal';
+import { DocumentVerificationModal } from '@/components/document-verification-modal';
 import { toast } from 'sonner';
 
 interface CheckIn {
@@ -31,14 +33,74 @@ interface PaymentRecord {
   createdAt: string;
 }
 
+interface UserSubscription {
+  _id: string;
+  serviceName: string;
+  planName: string;
+  expiryDate: string;
+  status: 'active' | 'expired';
+  isAccessCard: boolean;
+}
+
+interface UserProfile {
+  hasMembership: boolean;
+  membershipExpiry?: string;
+  passportUrl?: string;
+  signatureUrl?: string;
+}
+
 export default function UserDashboard() {
   const [showMembershipModal, setShowMembershipModal] = useState(false);
+  const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loadingCheckIns, setLoadingCheckIns] = useState(true);
   const [loadingPayments, setLoadingPayments] = useState(true);
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
-  // Fetch check-ins
+  // Fetch user profile and check for missing documents
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        setLoadingProfile(true);
+        const response = await fetch('/api/user/profile');
+        if (response.ok) {
+          const data = await response.json();
+          setUserProfile(data);
+          
+          // Show document verification modal if documents are missing
+          if (!data.passportUrl || !data.signatureUrl) {
+            setShowDocumentModal(true);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
+
+  // Fetch subscriptions
+  useEffect(() => {
+    const fetchSubscriptions = async () => {
+      try {
+        const response = await fetch('/api/user/subscriptions');
+        if (response.ok) {
+          const data = await response.json();
+          setSubscriptions(data.subscriptions || []);
+        }
+      } catch (error) {
+        console.error('Error fetching subscriptions:', error);
+      }
+    };
+
+    fetchSubscriptions();
+  }, []);
   useEffect(() => {
     const fetchCheckIns = async () => {
       try {
@@ -114,25 +176,26 @@ export default function UserDashboard() {
           {
             icon: CreditCard,
             label: 'Membership Status',
-            value: 'Inactive',
-            color: 'text-amber-500',
+            value: userProfile?.hasMembership ? 'Active' : 'Inactive',
+            color: userProfile?.hasMembership ? 'text-green-500' : 'text-amber-500',
+            badge: userProfile?.hasMembership ? 'Active' : null,
+          },
+          {
+            icon: Shield,
+            label: 'Verification Status',
+            value: userProfile?.passportUrl && userProfile?.signatureUrl ? 'Verified' : 'Pending',
+            color: userProfile?.passportUrl && userProfile?.signatureUrl ? 'text-green-500' : 'text-amber-500',
           },
           {
             icon: Clock,
-            label: 'Hours Used',
-            value: '0 hours',
+            label: 'Active Memberships',
+            value: subscriptions.filter(s => s.status === 'active').length,
             color: 'text-blue-500',
           },
           {
-            icon: Calendar,
-            label: 'Active Bookings',
-            value: '0',
-            color: 'text-green-500',
-          },
-          {
             icon: CheckCircle,
-            label: 'Check-Ins Today',
-            value: '0',
+            label: 'Total Subscriptions',
+            value: subscriptions.length,
             color: 'text-purple-500',
           },
         ].map((stat, idx) => (
@@ -142,6 +205,7 @@ export default function UserDashboard() {
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
                   <p className="text-2xl font-bold">{stat.value}</p>
+                  {stat.badge && <Badge className="mt-2 bg-green-500 text-white">{stat.badge}</Badge>}
                 </div>
                 <stat.icon className={`w-6 h-6 ${stat.color}`} />
               </div>
@@ -171,6 +235,61 @@ export default function UserDashboard() {
           </Link>
         </div>
       </motion.div>
+
+      {/* Document Verification Alert */}
+      {!loadingProfile && (!userProfile?.passportUrl || !userProfile?.signatureUrl) && (
+        <motion.div variants={itemVariants} className="mb-8">
+          <Card className="p-4 border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-1">Verification Required</h3>
+                <p className="text-sm text-amber-800 dark:text-amber-200 mb-3">
+                  Please upload your passport and signature documents to proceed with check-ins.
+                </p>
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => setShowDocumentModal(true)}
+                >
+                  Upload Documents
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Active Subscriptions */}
+      {subscriptions.filter(s => s.status === 'active').length > 0 && (
+        <motion.div variants={itemVariants} className="mb-8">
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <Badge className="bg-green-500 text-white">Active</Badge>
+            Your Active Memberships
+          </h2>
+          <div className="space-y-3">
+            {subscriptions.filter(s => s.status === 'active').map((sub) => (
+              <motion.div key={sub._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <Card className="p-4 border-l-4 border-l-green-500">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-semibold">{sub.serviceName}</p>
+                        {sub.isAccessCard && <Badge variant="outline" className="text-xs">Access Card</Badge>}
+                      </div>
+                      <p className="text-sm text-muted-foreground">{sub.planName}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Expires: {new Date(sub.expiryDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Badge className="bg-green-500 text-white">Active</Badge>
+                  </div>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* Recent Check-Ins */}
       <motion.div variants={itemVariants} className="mb-8">
@@ -284,21 +403,31 @@ export default function UserDashboard() {
       {/* Membership CTA */}
       <motion.div variants={itemVariants}>
         <Card className="p-8 bg-primary text-primary-foreground border-primary">
-          <h3 className="text-xl font-bold mb-2">Upgrade Your Membership</h3>
+          <h3 className="text-xl font-bold mb-2">Upgrade Your Experience</h3>
           <p className="mb-6 opacity-90">
-            Get priority access and special rates with an annual membership. Join our community of professionals and enjoy exclusive benefits.
+            Unlock exclusive benefits with SpaceOut! Upgrade your subscription, purchase a SpaceOut Card for exclusive access fees, or become an Astronaut member for premium perks and priority booking.
           </p>
           <Button 
             variant="secondary"
             onClick={() => setShowMembershipModal(true)}
           >
-            Become a Member
+            Explore Options
           </Button>
         </Card>
       </motion.div>
 
       {/* Membership Modal */}
       <MembershipModal open={showMembershipModal} onOpenChange={setShowMembershipModal} />
+
+      {/* Document Verification Modal */}
+      <DocumentVerificationModal 
+        open={showDocumentModal} 
+        onOpenChange={setShowDocumentModal}
+        onUploadSuccess={() => {
+          // Refetch profile to update verification status
+          fetch('/api/user/profile').then(r => r.json()).then(setUserProfile);
+        }}
+      />
     </motion.div>
   );
 }

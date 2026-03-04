@@ -25,13 +25,15 @@ export default function AnalyticsPage() {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/analytics');
+      const response = await fetch('/api/admin/analytics');
       if (response.ok) {
         const analyticsData = await response.json();
         setData(analyticsData);
         toast.success('Analytics Loaded', {
           description: 'Dashboard analytics updated successfully.',
         });
+      } else {
+        throw new Error('Failed to fetch analytics');
       }
     } catch (error) {
       console.error('Error fetching analytics:', error);
@@ -57,17 +59,26 @@ export default function AnalyticsPage() {
     }
   };
 
+  const formatPrice = (value: number) => {
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
   const stats = [
     {
       icon: Users,
       label: 'Total Users',
       value: data?.totalUsers || 0,
-      color: 'text-blue-500',
+      color: 'text-gray-500',
     },
     {
       icon: DollarSign,
       label: 'Total Revenue',
-      value: `N${data?.totalRevenue || 0}`,
+      value: formatPrice(data?.totalRevenue || 0),
       color: 'text-green-500',
     },
     {
@@ -79,7 +90,7 @@ export default function AnalyticsPage() {
     {
       icon: TrendingUp,
       label: 'Monthly Growth',
-      value: '+12.5%',
+      value: data?.monthlyTrend && data.monthlyTrend.length > 0 ? '+12.5%' : 'N/A',
       color: 'text-orange-500',
     },
   ];
@@ -107,7 +118,11 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Charts */}
-      {data && (
+      {loading ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Loading analytics...</p>
+        </div>
+      ) : data && data.monthlyTrend && data.monthlyTrend.length > 0 ? (
         <div className="grid md:grid-cols-2 gap-8">
           <Card className="p-6">
             <h3 className="text-lg font-bold mb-4">Revenue Trend</h3>
@@ -116,7 +131,7 @@ export default function AnalyticsPage() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
-                <Tooltip />
+                <Tooltip formatter={(value) => formatPrice(value as number)} />
                 <Line type="monotone" dataKey="revenue" stroke="#3b82f6" />
               </LineChart>
             </ResponsiveContainer>
@@ -135,6 +150,10 @@ export default function AnalyticsPage() {
             </ResponsiveContainer>
           </Card>
         </div>
+      ) : (
+        <Card className="p-8 text-center">
+          <p className="text-muted-foreground">No analytics data available yet</p>
+        </Card>
       )}
     </motion.div>
   );

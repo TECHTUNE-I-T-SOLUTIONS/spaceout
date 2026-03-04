@@ -1,11 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { Session } from 'next-auth';
 import { authOptions } from '@/auth';
 import dbConnect from '@/lib/db';
 
+declare module 'next-auth' {
+  interface User {
+    id: string;
+  }
+  interface Session {
+    user: User & {
+      id: string;
+    };
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session: Session | null = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
       return NextResponse.json(

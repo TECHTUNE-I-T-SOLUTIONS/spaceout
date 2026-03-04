@@ -57,7 +57,7 @@ export function CookieConsentBanner() {
               <Button
                 size="sm"
                 onClick={handleAccept}
-                className="whitespace-nowrap bg-blue-600 hover:bg-blue-700"
+                className="whitespace-nowrap bg-gray-600 hover:bg-gray-700"
               >
                 Accept & Continue
               </Button>

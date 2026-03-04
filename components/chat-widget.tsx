@@ -185,7 +185,7 @@ export default function ChatWidget() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-8 right-8 bg-blue-600 text-white rounded-full p-4 shadow-lg hover:bg-blue-700 transition-all duration-200 hover:scale-110 z-40"
+          className="fixed bottom-8 right-8 bg-gray-600 text-white rounded-full p-4 shadow-lg hover:bg-gray-700 transition-all duration-200 hover:scale-110 z-40"
           title="Open chat support"
         >
           <MessageCircle className="w-6 h-6" />
@@ -196,16 +196,16 @@ export default function ChatWidget() {
       {isOpen && (
         <Card className="fixed bottom-8 right-8 w-96 h-[500px] flex flex-col shadow-2xl z-50 bg-white">
           {/* Header */}
-          <div className="bg-blue-600 text-white p-4 flex items-center justify-between rounded-t-lg">
+          <div className="bg-gray-600 text-white p-4 flex items-center justify-between rounded-t-lg">
             <div>
               <h3 className="font-semibold">Support Chat</h3>
-              <p className="text-xs text-blue-100">
+              <p className="text-xs text-gray-100">
                 {isTyping ? 'Admin is typing...' : 'We usually reply within minutes'}
               </p>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="hover:bg-blue-700 p-1 rounded"
+              className="hover:bg-gray-700 p-1 rounded"
             >
               <X className="w-5 h-5" />
             </button>
@@ -238,7 +238,7 @@ export default function ChatWidget() {
                   <div
                     className={`max-w-xs rounded-lg p-3 ${
                       msg.senderType === 'user'
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-gray-600 text-white'
                         : 'bg-gray-100 text-gray-900'
                     }`}
                   >
@@ -246,7 +246,7 @@ export default function ChatWidget() {
                     <p
                       className={`text-xs mt-1 ${
                         msg.senderType === 'user'
-                          ? 'text-blue-100'
+                          ? 'text-gray-100'
                           : 'text-gray-500'
                       }`}
                     >

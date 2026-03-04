@@ -138,13 +138,13 @@ export function HomeContent() {
               },
               {
                 icon: Lightbulb,
-                title: 'Professional Lighting',
-                description: 'Carefully designed lighting that reduces eye strain and enhances focus',
+                title: 'Fast Internet',
+                description: 'High-speed WiFi and stable connectivity for seamless work',
               },
               {
                 icon: Shield,
-                title: 'Quiet Environment',
-                description: 'Sound-proofed areas designed for deep work and concentration',
+                title: 'Fair Pricing',
+                description: 'Transparent, competitive rates with flexible plans for everyone',
               },
               {
                 icon: Users,
@@ -180,7 +180,7 @@ export function HomeContent() {
           </motion.div>
 
           <motion.div
-            className="grid md:grid-cols-4 gap-6"
+            className="grid md:grid-cols-2 lg:grid-cols-5 gap-6"
             variants={containerVariants}
             initial="hidden"
             whileInView="visible"
@@ -194,6 +194,10 @@ export function HomeContent() {
               {
                 title: 'Office/Meeting Rooms',
                 description: 'Private spaces for confidential meetings and focused team collaboration',
+              },
+              {
+                title: 'Conference Room',
+                description: 'Professional conference facilities for large meetings, presentations, and team workshops',
               },
               {
                 title: 'Event Space',

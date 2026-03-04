@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { QuestionnaireBuilder } from '@/components/questionnaire-builder';
-import { Loader2, BarChart3, Edit, Trash2, Eye } from 'lucide-react';
+import { Loader2, BarChart3, Edit, Trash2, Eye, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -39,6 +39,9 @@ export default function AdminQuestionnairesPage() {
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editingQuestionnaire, setEditingQuestionnaire] = useState<Questionnaire | null>(null);
+  const [showBuilder, setShowBuilder] = useState(false);
+  const [managingQuestions, setManagingQuestions] = useState<string | null>(null);
 
   useEffect(() => {
     fetchQuestionnaires();
@@ -47,7 +50,7 @@ export default function AdminQuestionnairesPage() {
   const fetchQuestionnaires = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/questionnaires');
+      const res = await fetch('/api/admin/questionnaires');
       if (!res.ok) throw new Error('Failed to fetch questionnaires');
 
       const data = await res.json();
@@ -65,7 +68,7 @@ export default function AdminQuestionnairesPage() {
 
     setDeleting(true);
     try {
-      const res = await fetch(`/api/questionnaires/${deleteId}`, {
+      const res = await fetch(`/api/admin/questionnaires/${deleteId}`, {
         method: 'DELETE',
       });
 
@@ -84,7 +87,7 @@ export default function AdminQuestionnairesPage() {
 
   const publishQuestionnaire = async (id: string) => {
     try {
-      const res = await fetch(`/api/questionnaires/${id}`, {
+      const res = await fetch(`/api/admin/questionnaires/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'published' }),
@@ -123,13 +126,24 @@ export default function AdminQuestionnairesPage() {
             <h1 className="text-3xl font-bold">Questionnaires</h1>
             <p className="text-gray-600 mt-2">Create and manage surveys for your users</p>
           </div>
-          <QuestionnaireBuilder onQuestionnnaireCreated={fetchQuestionnaires} />
+          <QuestionnaireBuilder 
+            onQuestionnaireCreated={fetchQuestionnaires}
+            editingQuestionnaire={editingQuestionnaire}
+            onEditClose={() => {
+              setEditingQuestionnaire(null);
+              setShowBuilder(false);
+            }}
+            showBuilder={showBuilder}
+            setShowBuilder={setShowBuilder}
+            managingQuestionsId={managingQuestions}
+            setManagingQuestionsId={setManagingQuestions}
+          />
         </div>
 
         {/* Questionnaires List */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <Loader2 className="w-8 h-8 animate-spin text-gray-600" />
           </div>
         ) : questionnaires.length === 0 ? (
           <Card>
@@ -184,7 +198,7 @@ export default function AdminQuestionnairesPage() {
                       </div>
 
                       {questionnaire.showOnCheckIn && (
-                        <div className="mt-3 inline-block bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
+                        <div className="mt-3 inline-block bg-gray-50 text-gray-700 px-3 py-1 rounded-full text-xs font-medium">
                           ✓ Shows on Check-In
                         </div>
                       )}
@@ -200,6 +214,15 @@ export default function AdminQuestionnairesPage() {
                         </Link>
                       )}
 
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setManagingQuestions(questionnaire._id)}
+                        title="Add or edit questions"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+
                       {questionnaire.status === 'draft' && (
                         <Button
                           size="sm"
@@ -210,7 +233,15 @@ export default function AdminQuestionnairesPage() {
                         </Button>
                       )}
 
-                      <Button size="sm" variant="ghost">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingQuestionnaire(questionnaire);
+                          setShowBuilder(true);
+                        }}
+                        title="Edit questionnaire"
+                      >
                         <Edit className="w-4 h-4" />
                       </Button>
 

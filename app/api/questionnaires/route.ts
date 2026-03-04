@@ -2,15 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Questionnaire from '@/lib/models/Questionnaire';
 import Question from '@/lib/models/Question';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/auth';
+import { cookies } from 'next/headers';
+import Admin from '@/lib/models/Admin';
 
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
-    const session = await getServerSession(authOptions);
+    
+    // Check admin authentication via cookies
+    const cookieStore = await cookies();
+    const adminId = cookieStore.get('admin_id')?.value;
 
-    if (!session?.user) {
+    if (!adminId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -34,27 +37,29 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const cookieStore = await cookies();
+    const adminEmail = cookieStore.get('admin_email')?.value;
+    const adminId = cookieStore.get('admin_id')?.value;
     const body = await request.json();
 
-    if (!session?.user) {
+    if (!adminEmail || !adminId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify admin role
-    const userRole = (session.user as any)?.role;
-    if (userRole !== 'admin' && userRole !== 'superadmin') {
+    await dbConnect();
+
+    // Verify admin exists and is active
+    const admin = await Admin.findById(adminId);
+    if (!admin || !admin.isActive) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-
-    await dbConnect();
 
     const { title, description, startDate, endDate, isRequired, showOnCheckIn } = body;
 
     const questionnaire = await Questionnaire.create({
       title,
       description,
-      adminId: (session.user as any).id,
+      adminId: adminId,
       startDate: new Date(startDate),
       endDate: endDate ? new Date(endDate) : null,
       isRequired,

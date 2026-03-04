@@ -100,6 +100,25 @@ export default function ProfilePage() {
     }
   };
 
+  const handlePassportImageUpload = async (uploadedFile: any) => {
+    try {
+      // uploadedFile is already uploaded and has a url
+      setProfile((prev) => ({
+        ...prev,
+        passportUrl: uploadedFile.url,
+      }));
+
+      toast.success('Passport Updated', {
+        description: 'Your passport image has been updated successfully.',
+      });
+    } catch (error) {
+      console.error('Passport upload error:', error);
+      toast.error('Upload Failed', {
+        description: 'Failed to update passport image.',
+      });
+    }
+  };
+
   const handlePassportUpload = async (file: File) => {
     try {
       setIsUploadingPassport(true);
@@ -240,7 +259,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl space-y-6">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-auto space-y-6">
       <div>
         <h1 className="text-3xl font-bold">My Profile</h1>
         <p className="text-muted-foreground mt-1">Manage your account information</p>
@@ -250,7 +269,15 @@ export default function ProfilePage() {
       <Card className="p-6">
         <h2 className="text-xl font-semibold mb-4">Profile Picture</h2>
         <div className="flex flex-col items-center">
-          {profile.profileImage ? (
+          {profile.passportUrl ? (
+            <div className="mb-4">
+              <img
+                src={profile.passportUrl}
+                alt="Passport"
+                className="w-32 h-40 object-cover border-4 border-primary rounded"
+              />
+            </div>
+          ) : profile.profileImage ? (
             <div className="mb-4">
               <img
                 src={profile.profileImage}
@@ -259,16 +286,17 @@ export default function ProfilePage() {
               />
             </div>
           ) : (
-            <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center mb-4">
-              <span className="text-muted-foreground text-4xl">👤</span>
+            <div className="w-32 h-40 bg-muted flex items-center justify-center mb-4 rounded">
+              <span className="text-muted-foreground text-4xl">📄</span>
             </div>
           )}
           {isEditing && (
             <div className="w-full max-w-xs">
+              <p className="text-sm text-muted-foreground mb-2">Upload Passport Image</p>
               <FileUpload
                 accept="image/*"
                 maxSize={2 * 1024 * 1024}
-                onUploadSuccess={handleProfileImageUpload}
+                onUploadSuccess={handlePassportImageUpload}
               />
             </div>
           )}

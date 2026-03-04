@@ -140,7 +140,7 @@ export default function AdminDashboard() {
             icon: Users,
             label: 'Active Users',
             value: stats.activeUsers.toLocaleString(),
-            color: 'text-blue-500',
+            color: 'text-gray-500',
           },
           {
             icon: DollarSign,

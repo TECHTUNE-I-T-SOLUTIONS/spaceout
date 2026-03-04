@@ -4,6 +4,15 @@ import dbConnect from '@/lib/db';
 
 let authOptions: any;
 
+interface CustomSession {
+  user?: {
+    id?: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  };
+}
+
 async function getAuthOptions() {
   if (!authOptions) {
     authOptions = (await import('@/auth')).authOptions;
@@ -14,7 +23,7 @@ async function getAuthOptions() {
 export async function GET(request: NextRequest) {
   try {
     const options = await getAuthOptions();
-    const session = await getServerSession(options);
+    const session = (await getServerSession(options)) as CustomSession | null;
 
     // If no session, return false for hasMembership (guest user)
     if (!session?.user?.id) {
@@ -35,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     const user = await User.findById(session.user.id).select(
       'email hasMembership membershipExpiry'
-    ).lean();
+    ).lean() as any;
 
     if (!user) {
       return NextResponse.json(

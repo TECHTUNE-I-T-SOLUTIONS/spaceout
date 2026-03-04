@@ -33,7 +33,7 @@ export default function QuestionnaireAnalyticsPage() {
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const response = await fetch(`/api/questionnaires/${questionnaireId}/analytics`);
+        const response = await fetch(`/api/admin/questionnaires/${questionnaireId}/analytics`);
         if (!response.ok) throw new Error('Failed to fetch analytics');
 
         const data = await response.json();
@@ -88,7 +88,7 @@ export default function QuestionnaireAnalyticsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-gray-600" />
       </div>
     );
   }
@@ -193,7 +193,7 @@ export default function QuestionnaireAnalyticsPage() {
                               <div className="flex items-center gap-3">
                                 <div className="w-32 bg-gray-200 rounded-full h-2">
                                   <div
-                                    className="bg-blue-600 h-2 rounded-full"
+                                    className="bg-gray-600 h-2 rounded-full"
                                     style={{ width: `${percentage}%` }}
                                   />
                                 </div>
@@ -213,7 +213,7 @@ export default function QuestionnaireAnalyticsPage() {
                 {question.type === 'rating' && (
                   <div>
                     <div className="text-center mb-4">
-                      <div className="text-4xl font-bold text-blue-600">
+                      <div className="text-4xl font-bold text-gray-600">
                         {question.avgRating?.toFixed(2)} / 5
                       </div>
                       <p className="text-gray-600">Average Rating</p>
@@ -221,7 +221,7 @@ export default function QuestionnaireAnalyticsPage() {
                     <div className="flex justify-center gap-3">
                       {[1, 2, 3, 4, 5].map((rating) => (
                         <div key={rating} className="text-center">
-                          <div className="w-12 h-12 flex items-center justify-center rounded-full bg-blue-100 font-semibold">
+                          <div className="w-12 h-12 flex items-center justify-center rounded-full bg-gray-100 font-semibold">
                             {rating}
                           </div>
                           <p className="text-xs text-gray-500 mt-1">⭐</p>

@@ -3,49 +3,75 @@
 import { Card } from '@/components/ui/card';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { Loader2, Download, Eye } from 'lucide-react';
+import { Loader2, Download, Search, Eye, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
 interface Payment {
-  id: string;
-  userId: string;
+  _id: string;
+  reference: string;
+  email: string;
   amount: number;
   status: 'completed' | 'pending' | 'failed';
-  date: string;
-  method: string;
+  serviceName: string;
+  userId: string;
+  createdAt: string;
+  paymentVerifiedAt?: string;
 }
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+  const [filters, setFilters] = useState({
+    search: '',
+    status: 'all',
+    sortBy: 'createdAt',
+    sortOrder: '-1',
+  });
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
 
   useEffect(() => {
     fetchPayments();
-  }, []);
+  }, [filters, pagination.page]);
 
   const fetchPayments = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/payments');
+      const params = new URLSearchParams();
+      params.append('page', pagination.page.toString());
+      params.append('limit', pagination.limit.toString());
+      params.append('sortBy', filters.sortBy);
+      params.append('sortOrder', filters.sortOrder);
+
+      if (filters.status !== 'all') {
+        params.append('status', filters.status);
+      }
+
+      if (filters.search) {
+        params.append('search', filters.search);
+      }
+
+      const response = await fetch(`/api/payments?${params}`);
       if (response.ok) {
         const data = await response.json();
-        setPayments(data);
-        toast.success('Payments Loaded', {
-          description: `Fetched ${data.length} payment records.`,
-        });
+        setPayments(data.payments);
+        setPagination(prev => ({
+          ...prev,
+          total: data.pagination.total,
+        }));
+      } else {
+        throw new Error('Failed to fetch payments');
       }
     } catch (error) {
       console.error('Error fetching payments:', error);
       toast.error('Failed to Load Payments', {
         description: 'Unable to fetch payment records.',
       });
-      // Mock data for demo
-      setPayments([
-        { id: '1', userId: 'user1', amount: 50000, status: 'completed', date: '2026-03-01', method: 'card' },
-        { id: '2', userId: 'user2', amount: 75000, status: 'completed', date: '2026-02-28', method: 'transfer' },
-        { id: '3', userId: 'user3', amount: 30000, status: 'pending', date: '2026-02-27', method: 'card' },
-      ]);
     } finally {
       setLoading(false);
     }
@@ -70,67 +96,269 @@ export default function PaymentsPage() {
     }
   };
 
+  const formatCurrency = (amount: number) => {
+    return `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">Payments</h1>
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Payments</h1>
+          <p className="text-muted-foreground">Manage and track all transactions</p>
+        </div>
         <Button 
           className="flex items-center gap-2"
           onClick={handleExport}
         >
-          <Download size={18} />
-          Export CSV
+          <Download className="w-4 h-4" />
+          Export
         </Button>
       </div>
 
+      {/* Filters */}
+      <Card className="p-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="text-sm font-medium mb-2 block">Search</label>
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
+              <Input
+                placeholder="Reference, email, service..."
+                value={filters.search}
+                onChange={(e) => {
+                  setFilters(prev => ({ ...prev, search: e.target.value }));
+                  setPagination(prev => ({ ...prev, page: 1 }));
+                }}
+                className="pl-10"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">Status</label>
+            <select
+              value={filters.status}
+              onChange={(e) => {
+                setFilters(prev => ({ ...prev, status: e.target.value }));
+                setPagination(prev => ({ ...prev, page: 1 }));
+              }}
+              className="w-full px-3 py-2 border rounded-lg bg-background"
+            >
+              <option value="all">All Statuses</option>
+              <option value="completed">Completed</option>
+              <option value="pending">Pending</option>
+              <option value="failed">Failed</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">Sort By</label>
+            <select
+              value={filters.sortBy}
+              onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value }))}
+              className="w-full px-3 py-2 border rounded-lg bg-background"
+            >
+              <option value="createdAt">Date</option>
+              <option value="amount">Amount</option>
+              <option value="reference">Reference</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">Order</label>
+            <select
+              value={filters.sortOrder}
+              onChange={(e) => setFilters(prev => ({ ...prev, sortOrder: e.target.value }))}
+              className="w-full px-3 py-2 border rounded-lg bg-background"
+            >
+              <option value="-1">Newest First</option>
+              <option value="1">Oldest First</option>
+            </select>
+          </div>
+        </div>
+      </Card>
+
+      {/* Payments Table */}
       {loading ? (
-        <Card className="p-8 text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading payment records...</p>
+        <Card className="p-8 flex justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </Card>
       ) : payments.length === 0 ? (
         <Card className="p-8 text-center">
-          <h2 className="text-2xl font-bold mb-4">No Payments Found</h2>
-          <p className="text-muted-foreground">Payment records will appear here once users make bookings.</p>
+          <p className="text-muted-foreground">No payments found</p>
         </Card>
       ) : (
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted border-b">
-                <tr>
-                  <th className="p-4 text-left">Transaction ID</th>
-                  <th className="p-4 text-left">Amount</th>
-                  <th className="p-4 text-left">Status</th>
-                  <th className="p-4 text-left">Method</th>
-                  <th className="p-4 text-left">Date</th>
-                  <th className="p-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {payments.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-muted/50">
-                    <td className="p-4 font-mono text-xs">#{payment.id}</td>
-                    <td className="p-4 font-bold">₦{payment.amount.toLocaleString()}</td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(payment.status)}`}>
-                        {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="p-4 capitalize">{payment.method}</td>
-                    <td className="p-4">{new Date(payment.date).toLocaleDateString()}</td>
-                    <td className="p-4 text-right">
-                      <Button variant="ghost" size="sm" title="View Details">
-                        <Eye size={16} />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+        <div className="space-y-4">
+          {payments.map((payment) => (
+            <motion.div
+              key={payment._id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Card className="p-4 hover:shadow-lg transition-shadow">
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Reference</p>
+                    <p className="font-mono text-sm font-semibold">{payment.reference}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">User Email</p>
+                    <p className="text-sm">{payment.email}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Service</p>
+                    <p className="text-sm font-semibold">{payment.serviceName}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Amount</p>
+                    <p className="text-lg font-bold text-primary">{formatCurrency(payment.amount)}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Date</p>
+                    <p className="text-sm">{new Date(payment.createdAt).toLocaleDateString()}</p>
+                  </div>
+
+                  <div className="flex justify-end gap-2 items-center">
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedPayment(payment);
+                        setViewModalOpen(true);
+                      }}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                    <Badge className={getStatusColor(payment.status)}>
+                      {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                    </Badge>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          ))}
+
+          {/* Pagination */}
+          {pagination.total > pagination.limit && (
+            <div className="flex justify-center gap-2 mt-6">
+              <Button
+                variant="outline"
+                disabled={pagination.page === 1}
+                onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
+              >
+                Previous
+              </Button>
+              <span className="flex items-center text-sm text-muted-foreground px-4">
+                Page {pagination.page} of {Math.ceil(pagination.total / pagination.limit)}
+              </span>
+              <Button
+                variant="outline"
+                disabled={pagination.page * pagination.limit >= pagination.total}
+                onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </div>
       )}
+
+      {/* View Modal */}
+      <Dialog open={viewModalOpen} onOpenChange={setViewModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Payment Details</DialogTitle>
+          </DialogHeader>
+
+          {selectedPayment && (
+            <div className="space-y-6">
+              {/* Transaction Summary */}
+              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950 rounded-lg p-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Reference ID</p>
+                      <p className="font-mono font-semibold text-sm">{selectedPayment.reference}</p>
+                    </div>
+                    <Badge className={getStatusColor(selectedPayment.status)}>
+                      {selectedPayment.status.charAt(0).toUpperCase() + selectedPayment.status.slice(1)}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* User Information */}
+              <div>
+                <h4 className="font-semibold mb-3">User Information</h4>
+                <div className="space-y-2 bg-muted/50 rounded-lg p-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Email</span>
+                    <span className="text-sm font-medium">{selectedPayment.email}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">User ID</span>
+                    <span className="text-sm font-mono text-muted-foreground">{selectedPayment.userId.substring(0, 12)}...</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Transaction Details */}
+              <div>
+                <h4 className="font-semibold mb-3">Transaction Details</h4>
+                <div className="space-y-2 bg-muted/50 rounded-lg p-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Service</span>
+                    <span className="text-sm font-medium">{selectedPayment.serviceName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Amount Paid</span>
+                    <span className="text-sm font-bold text-primary">{formatCurrency(selectedPayment.amount)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dates */}
+              <div>
+                <h4 className="font-semibold mb-3">Dates</h4>
+                <div className="space-y-2 bg-muted/50 rounded-lg p-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Transaction Date</span>
+                    <span className="text-sm font-medium">
+                      {new Date(selectedPayment.createdAt).toLocaleDateString('en-NG', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })} {new Date(selectedPayment.createdAt).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  {selectedPayment.paymentVerifiedAt && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Verified Date</span>
+                      <span className="text-sm font-medium">
+                        {new Date(selectedPayment.paymentVerifiedAt).toLocaleDateString('en-NG', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })} {new Date(selectedPayment.paymentVerifiedAt).toLocaleTimeString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <Button onClick={() => setViewModalOpen(false)} className="w-full">
+                Close
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

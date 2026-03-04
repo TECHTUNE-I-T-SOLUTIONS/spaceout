@@ -21,6 +21,7 @@ import {
   Settings,
   LogOut,
   Zap,
+  LogIn,
 } from 'lucide-react';
 import { LogoutConfirmModal } from '@/components/logout-confirm-modal';
 
@@ -40,10 +41,12 @@ export function AdminMobileHeader({ userRole }: AdminMobileHeaderProps) {
     { href: '/admin/dashboard/analytics', icon: BarChart3, label: 'Analytics' },
     { href: '/admin/dashboard/users', icon: Users, label: 'Users' },
     { href: '/admin/dashboard/payments', icon: ShoppingCart, label: 'Payments' },
+    { href: '/admin/dashboard/checkins', icon: LogIn, label: 'Check-Ins' },
     { href: '/admin/dashboard/bookings', icon: Calendar, label: 'Bookings' },
     { href: '/admin/dashboard/gallery', icon: Image, label: 'Gallery' },
     { href: '/admin/dashboard/reviews', icon: Star, label: 'Reviews' },
     { href: '/admin/dashboard/feedback', icon: MessageSquare, label: 'Feedback' },
+    { href: '/admin/dashboard/questionnaires', icon: MessageSquare, label: 'Questionnaires' },
   ];
 
   const superadminMenuItems = [

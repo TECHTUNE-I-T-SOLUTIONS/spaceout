@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getServerSession, Session } from 'next-auth';
 import { authOptions } from '@/auth';
 import dbConnect from '@/lib/db';
 
@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = (await getServerSession(authOptions)) as Session | null;
 
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -25,7 +25,7 @@ export async function GET(
 
     const checkIn = await CheckIn.findById(id).select(
       'userId serviceId serviceName planName planType durationLabel durationInHours durationInDays selectedRate amount wifiIncluded status paymentStatus checkedInAt checkedOutAt paymentVerifiedAt'
-    ).lean();
+    ).lean() as any;
 
     if (!checkIn) {
       return NextResponse.json(

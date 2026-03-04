@@ -45,9 +45,6 @@ export function CreatePricingModal({ open, onOpenChange, onSuccess, editingPlan 
     flatPrice: '',
     memberPrice: '',
     nonMemberPrice: '',
-    nonWifiPrice: '',
-    nonWifiPriceMember: '',
-    nonWifiPriceNonMember: '',
     isPerHead: false,
     requiresMembershipCard: false,
     accessCardFee: '',
@@ -75,9 +72,6 @@ export function CreatePricingModal({ open, onOpenChange, onSuccess, editingPlan 
         flatPrice: plan.flatPrice?.toString() || '',
         memberPrice: plan.memberPrice?.toString() || '',
         nonMemberPrice: plan.nonMemberPrice?.toString() || '',
-        nonWifiPrice: plan.nonWifiPrice?.toString() || '',
-        nonWifiPriceMember: plan.nonWifiPriceMember?.toString() || '',
-        nonWifiPriceNonMember: plan.nonWifiPriceNonMember?.toString() || '',
         isPerHead: plan.isPerHead || false,
         requiresMembershipCard: plan.requiresMembershipCard || false,
         accessCardFee: plan.accessCardFee?.toString() || '',
@@ -96,9 +90,6 @@ export function CreatePricingModal({ open, onOpenChange, onSuccess, editingPlan 
         flatPrice: '',
         memberPrice: '',
         nonMemberPrice: '',
-        nonWifiPrice: '',
-        nonWifiPriceMember: '',
-        nonWifiPriceNonMember: '',
         isPerHead: false,
         requiresMembershipCard: false,
         accessCardFee: '',
@@ -184,11 +175,8 @@ export function CreatePricingModal({ open, onOpenChange, onSuccess, editingPlan 
       const flatPrice = formData.flatPrice ? parseFloat(formData.flatPrice) : 0;
       const memberPrice = formData.memberPrice ? parseFloat(formData.memberPrice) : 0;
       const nonMemberPrice = formData.nonMemberPrice ? parseFloat(formData.nonMemberPrice) : 0;
-      const nonWifiPrice = formData.nonWifiPrice ? parseFloat(formData.nonWifiPrice) : 0;
-      const nonWifiPriceMember = formData.nonWifiPriceMember ? parseFloat(formData.nonWifiPriceMember) : 0;
-      const nonWifiPriceNonMember = formData.nonWifiPriceNonMember ? parseFloat(formData.nonWifiPriceNonMember) : 0;
 
-      if (flatPrice === 0 && memberPrice === 0 && nonMemberPrice === 0 && nonWifiPrice === 0 && nonWifiPriceMember === 0 && nonWifiPriceNonMember === 0) {
+      if (flatPrice === 0 && memberPrice === 0 && nonMemberPrice === 0) {
         toast.error('Please set at least one price');
         setIsLoading(false);
         return;
@@ -215,9 +203,6 @@ export function CreatePricingModal({ open, onOpenChange, onSuccess, editingPlan 
         flatPrice: flatPrice > 0 ? flatPrice : undefined,
         memberPrice: memberPrice > 0 ? memberPrice : undefined,
         nonMemberPrice: nonMemberPrice > 0 ? nonMemberPrice : undefined,
-        nonWifiPrice: nonWifiPrice > 0 ? nonWifiPrice : undefined,
-        nonWifiPriceMember: nonWifiPriceMember > 0 ? nonWifiPriceMember : undefined,
-        nonWifiPriceNonMember: nonWifiPriceNonMember > 0 ? nonWifiPriceNonMember : undefined,
         isPerHead: formData.isPerHead,
         requiresMembershipCard: formData.requiresMembershipCard,
         accessCardFee: formData.requiresMembershipCard && accessCardFee > 0 ? accessCardFee : undefined,
@@ -271,9 +256,6 @@ export function CreatePricingModal({ open, onOpenChange, onSuccess, editingPlan 
         flatPrice: '',
         memberPrice: '',
         nonMemberPrice: '',
-        nonWifiPrice: '',
-        nonWifiPriceMember: '',
-        nonWifiPriceNonMember: '',
         isPerHead: false,
         requiresMembershipCard: false,
         accessCardFee: '',
@@ -481,42 +463,7 @@ export function CreatePricingModal({ open, onOpenChange, onSuccess, editingPlan 
                   placeholder="0"
                 />
               </div>
-              <div>
-                <Label htmlFor="nonWifiPrice">Non-WiFi Price (₦)</Label>
-                <Input
-                  id="nonWifiPrice"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.nonWifiPrice}
-                  onChange={(e) => setFormData(prev => ({ ...prev, nonWifiPrice: e.target.value }))}
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <Label htmlFor="nonWifiPriceMember">Non-WiFi Member Price (₦)</Label>
-                <Input
-                  id="nonWifiPriceMember"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.nonWifiPriceMember}
-                  onChange={(e) => setFormData(prev => ({ ...prev, nonWifiPriceMember: e.target.value }))}
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <Label htmlFor="nonWifiPriceNonMember">Non-WiFi Non-Member Price (₦)</Label>
-                <Input
-                  id="nonWifiPriceNonMember"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.nonWifiPriceNonMember}
-                  onChange={(e) => setFormData(prev => ({ ...prev, nonWifiPriceNonMember: e.target.value }))}
-                  placeholder="0"
-                />
-              </div>
+
             </div>
           </div>
 

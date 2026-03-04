@@ -16,6 +16,7 @@ import {
   Menu,
   X,
   ChevronLeft,
+  Rocket,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -25,6 +26,7 @@ import { useSidebar } from '@/lib/sidebar-context';
 const menuItems = [
   { href: '/user/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/user/check-in', icon: LogIn, label: 'Check In' },
+  { href: '/user/astronaut-card', icon: Rocket, label: 'Astronaut Card' },
   { href: '/user/bookings', icon: Calendar, label: 'Bookings' },
   { href: '/user/payments', icon: CreditCard, label: 'Payments' },
   { href: '/user/reviews', icon: Star, label: 'Reviews' },

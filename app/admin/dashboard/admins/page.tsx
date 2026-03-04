@@ -70,7 +70,7 @@ export default function AdminsPage() {
     if (role === 'superadmin') {
       return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
     }
-    return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+    return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
   };
 
   const getRoleIcon = (role: string) => {

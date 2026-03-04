@@ -1,24 +1,60 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signOut } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface LogoutConfirmModalProps {
-  isOpen: boolean;
+  isOpen?: boolean;
+  open?: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function LogoutConfirmModal({ isOpen, onOpenChange }: LogoutConfirmModalProps) {
+export function LogoutConfirmModal({ isOpen = false, open, onOpenChange }: LogoutConfirmModalProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const router = useRouter();
+  const modalOpen = open ?? isOpen;
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const response = await fetch('/api/admins', { method: 'GET' });
+        setIsAdmin(response.ok);
+      } catch (error) {
+        setIsAdmin(false);
+      }
+    };
+
+    if (modalOpen) {
+      checkAdminStatus();
+    }
+  }, [modalOpen]);
 
   const handleLogout = async () => {
     setIsLoading(true);
-    await signOut({ redirect: true, redirectUrl: '/' });
+    try {
+      if (isAdmin) {
+        const response = await fetch('/api/auth/admin-logout', { method: 'POST' });
+        if (response.ok) {
+          router.push('/admin/auth/login');
+          router.refresh();
+        } else {
+          console.error('Admin logout failed');
+          setIsLoading(false);
+        }
+      } else {
+        await signOut({ redirect: true, redirectUrl: '/auth/login' });
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      setIsLoading(false);
+    }
   };
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
+    <AlertDialog open={modalOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogTitle>Sign Out</AlertDialogTitle>
         <AlertDialogDescription>

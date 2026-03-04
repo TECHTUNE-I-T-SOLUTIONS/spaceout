@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
-import { Clock, AlertCircle, Loader2, Zap, Wifi, WifiOff } from 'lucide-react';
+import { Clock, AlertCircle, Loader2, Zap, Wifi, WifiOff, CheckCircle, LogOut, List, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSession } from 'next-auth/react';
 
@@ -45,6 +47,21 @@ interface SelectedPlan {
   totalPrice: number;
 }
 
+interface CheckInRecord {
+  _id: string;
+  serviceId: string;
+  serviceName: string;
+  planName: string;
+  planType: string;
+  durationLabel: string;
+  amount: number;
+  selectedRate: string;
+  status: string;
+  paymentStatus: string;
+  checkedInAt: string;
+  checkedOutAt?: string;
+}
+
 export default function CheckInPage() {
   const { data: session } = useSession();
   const [services, setServices] = useState<Service[]>([]);
@@ -53,7 +70,103 @@ export default function CheckInPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [userMembership, setUserMembership] = useState<any>(null);
   const [checkingMembership, setCheckingMembership] = useState(true);
+  const [activeTab, setActiveTab] = useState('check-in');
+  const [checkInHistory, setCheckInHistory] = useState<CheckInRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+  const [todayCheckIns, setTodayCheckIns] = useState<{ [serviceId: string]: boolean }>({});
+  const [duplicateCheckInDialog, setDuplicateCheckInDialog] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState<SelectedPlan | null>(null);
+  const [serverTime, setServerTime] = useState<Date>(new Date());
+  const [checkoutConfirmDialog, setCheckoutConfirmDialog] = useState(false);
+  const [pendingCheckoutId, setPendingCheckoutId] = useState<string | null>(null);
+  const [checkoutRecord, setCheckoutRecord] = useState<CheckInRecord | null>(null);
 
+
+  // Fetch server time on mount
+  useEffect(() => {
+    const fetchServerTime = async () => {
+      try {
+        const response = await fetch('/api/server-time');
+        if (response.ok) {
+          const data = await response.json();
+          setServerTime(new Date(data.timestamp));
+        }
+      } catch (error) {
+        console.error('Error fetching server time:', error);
+      }
+    };
+
+    fetchServerTime();
+  }, []);
+
+  // Fetch check-in history
+  const fetchCheckInHistory = async (page = 1) => {
+    if (!session?.user?.id) return;
+
+    try {
+      setHistoryLoading(true);
+      const response = await fetch(`/api/checkin/history?page=${page}&limit=${pagination.limit}`);
+      if (response.ok) {
+        const data = await response.json();
+        setCheckInHistory(data.checkIns);
+        setPagination({
+          page,
+          limit: pagination.limit,
+          total: data.pagination.total,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching check-in history:', error);
+      toast.error('Failed to load check-in history');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // Fetch today's check-ins to show paid badges
+  const fetchTodayCheckIns = async () => {
+    if (!session?.user?.id) return;
+
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const response = await fetch(`/api/checkin/history?limit=100`);
+      if (response.ok) {
+        const data = await response.json();
+        const todayMap: { [serviceId: string]: boolean } = {};
+        
+        // Check which services have successful check-ins today
+        data.checkIns.forEach((checkIn: CheckInRecord) => {
+          const checkedInDate = new Date(checkIn.checkedInAt);
+          checkedInDate.setHours(0, 0, 0, 0);
+          
+          if (checkedInDate.getTime() === today.getTime() && checkIn.paymentStatus === 'completed') {
+            todayMap[checkIn.serviceId] = true;
+          }
+        });
+        
+        setTodayCheckIns(todayMap);
+      }
+    } catch (error) {
+      console.error('Error fetching today check-ins:', error);
+    }
+  };
+
+  // Fetch history when tab changes
+  useEffect(() => {
+    if (activeTab === 'history') {
+      fetchCheckInHistory();
+    }
+  }, [activeTab, session?.user?.id]);
+
+  // Fetch today's check-ins on component update
+  useEffect(() => {
+    if (session?.user?.id && activeTab === 'check-in') {
+      fetchTodayCheckIns();
+    }
+  }, [session?.user?.id, activeTab]);
 
   // Check user's membership status
   useEffect(() => {
@@ -196,7 +309,7 @@ export default function CheckInPage() {
 
     const totalPrice = price + membershipFee;
 
-    setSelectedPlan({
+    const newPlan: SelectedPlan = {
       service,
       plan,
       selectedRate: rateType as any,
@@ -205,7 +318,15 @@ export default function CheckInPage() {
       requiresMembership: requiresMembership && !userMembership?.hasMembership,
       membershipFee,
       totalPrice,
-    });
+    };
+
+    // Check if they already paid for this service today
+    if (todayCheckIns[service._id]) {
+      setPendingPlan(newPlan);
+      setDuplicateCheckInDialog(true);
+    } else {
+      setSelectedPlan(newPlan);
+    }
   };
 
   const handleCheckIn = async () => {
@@ -254,6 +375,53 @@ export default function CheckInPage() {
     } catch (error: any) {
       toast.error('Payment Error', {
         description: error.message || 'Failed to process check-in',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCheckout = (checkInId: string, record: CheckInRecord) => {
+    setPendingCheckoutId(checkInId);
+    setCheckoutRecord(record);
+    setCheckoutConfirmDialog(true);
+  };
+
+  const confirmCheckout = async () => {
+    if (!pendingCheckoutId) {
+      toast.error('Error: Check-in ID not found');
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+
+      const response = await fetch(`/api/checkin/${pendingCheckoutId}/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to checkout');
+      }
+
+      const data = await response.json();
+
+      toast.success('Checked out successfully', {
+        description: `${data.checkIn.serviceName} - ${data.checkIn.planName}`,
+      });
+
+      // Reset dialog states
+      setCheckoutConfirmDialog(false);
+      setPendingCheckoutId(null);
+      setCheckoutRecord(null);
+
+      // Refresh check-in history
+      await fetchCheckInHistory(pagination.page);
+    } catch (error: any) {
+      toast.error('Checkout Error', {
+        description: error.message || 'Failed to complete checkout',
       });
     } finally {
       setIsProcessing(false);
@@ -309,14 +477,43 @@ export default function CheckInPage() {
       animate="visible"
     >
       <motion.div variants={itemVariants} className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Check In</h1>
+        <h1 className="text-3xl font-bold mb-2">Check In & History</h1>
         <p className="text-muted-foreground">
-          Select a service and plan to check in
+          Check in to services or view your check-in history
           {userMembership?.hasMembership && (
             <span className="ml-2 text-green-600 font-semibold">• ⭐ Member rates available (get better prices!)</span>
           )}
         </p>
       </motion.div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="check-in" className="flex items-center justify-center gap-2">
+            <List className="w-4 h-4 md:hidden" />
+            <span className="hidden md:inline">Check In</span>
+          </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center justify-center gap-2">
+            <History className="w-4 h-4 md:hidden" />
+            <span className="hidden md:inline">Check-In History</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="check-in" className="mt-6">
+          {/* Timezone Note */}
+          <Card className="mb-6 p-4 bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-800">
+            <div className="flex gap-3">
+              <Clock className="w-5 h-5 text-gray-600 dark:text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Server Time (Nigeria, WAT)</p>
+                <p className="text-sm text-gray-800 dark:text-gray-200 mb-2">
+                  Current Server Time: <span className="font-mono font-bold">{serverTime.toLocaleString('en-NG', { timeZone: 'Africa/Lagos' })}</span>
+                </p>
+                <p className="text-xs text-gray-700 dark:text-gray-300">
+                  📱 Note: Check-in times are based on our server time (Nigeria timezone). If your device time differs from the server time, it may affect your check-in timestamp. Please ensure your device time is accurate for proper check-in records.
+                </p>
+              </div>
+            </div>
+          </Card>
 
       {services.length === 0 ? (
         <Card className="p-8 text-center">
@@ -327,7 +524,15 @@ export default function CheckInPage() {
           {services.map((service) => (
             <motion.div key={service._id} variants={itemVariants}>
               <Card className="p-6">
-                <h2 className="text-2xl font-bold mb-2">{service.name}</h2>
+                <div className="flex items-center gap-3 mb-2">
+                  <h2 className="text-2xl font-bold">{service.name}</h2>
+                  {todayCheckIns[service._id] && (
+                    <Badge className="bg-green-500 text-white flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      Paid Today
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground mb-6">
                   {service.description || service.category || 'Premium workspace'}
                 </p>
@@ -460,8 +665,140 @@ export default function CheckInPage() {
           ))}
         </div>
       )}
+        </TabsContent>
 
-      {/* Checkout Dialog */}
+        {/* Check-In History Tab */}
+        <TabsContent value="history" className="mt-6">
+          {historyLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+                <p className="text-muted-foreground">Loading check-in history...</p>
+              </div>
+            </div>
+          ) : checkInHistory.length === 0 ? (
+            <Card className="p-8 text-center">
+              <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">No Check-Ins Yet</h3>
+              <p className="text-muted-foreground">
+                You haven't checked in to any services yet. Head to the Check In tab to get started!
+              </p>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {checkInHistory.map((checkIn) => {
+                const checkedInDate = new Date(checkIn.checkedInAt);
+                const today = new Date();
+                const isToday = checkedInDate.toDateString() === today.toDateString();
+
+                return (
+                  <motion.div
+                    key={checkIn._id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Card className="p-4 border-l-4 border-l-green-500">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="font-semibold text-lg">{checkIn.serviceName}</h3>
+                            {isToday && !checkIn.checkedOutAt && (
+                              <Badge className="bg-green-500 text-white flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" />
+                                Checked In Today
+                              </Badge>
+                            )}
+                            {checkIn.paymentStatus === 'completed' ? (
+                              <Badge className="bg-gray-500 text-white">Paid</Badge>
+                            ) : (
+                              <Badge variant="outline">Pending</Badge>
+                            )}
+                            {checkIn.checkedOutAt && (
+                              <Badge className="bg-blue-500 text-white flex items-center gap-1">
+                                <LogOut className="w-3 h-3" />
+                                Checked Out
+                              </Badge>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3 text-sm">
+                            <div>
+                              <p className="text-muted-foreground text-xs mb-1">Plan</p>
+                              <p className="font-medium">{checkIn.planName}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground text-xs mb-1">Duration</p>
+                              <p className="font-medium">{checkIn.durationLabel}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground text-xs mb-1">Checked In</p>
+                              <p className="font-medium">{checkedInDate.toLocaleDateString()} {checkedInDate.toLocaleTimeString()}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground text-xs mb-1">Amount</p>
+                              <p className="font-medium text-primary">₦{checkIn.amount?.toLocaleString() || '0'}</p>
+                            </div>
+                          </div>
+
+                          {checkIn.checkedOutAt && (
+                            <div className="mt-3 pt-3 border-t">
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <LogOut className="w-3 h-3" />
+                                Checked out: {new Date(checkIn.checkedOutAt).toLocaleString()}
+                              </p>
+                            </div>
+                          )}
+
+                          {!checkIn.checkedOutAt && (
+                            <div className="mt-3 pt-3 border-t flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => handleCheckout(checkIn._id, checkIn)}
+                                className="flex items-center gap-1"
+                              >
+                                <LogOut className="w-4 h-4" />
+                                Check Out
+                              </Button>
+                              <span className="text-xs text-muted-foreground">
+                                Checked in for {Math.floor((new Date().getTime() - checkedInDate.getTime()) / (1000 * 60))} minutes
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+
+              {/* Pagination */}
+              {pagination.total > pagination.limit && (
+                <div className="flex justify-center gap-2 mt-6">
+                  <Button
+                    variant="outline"
+                    disabled={pagination.page === 1}
+                    onClick={() => fetchCheckInHistory(pagination.page - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <span className="flex items-center text-sm text-muted-foreground">
+                    Page {pagination.page} of {Math.ceil(pagination.total / pagination.limit)}
+                  </span>
+                  <Button
+                    variant="outline"
+                    disabled={pagination.page * pagination.limit >= pagination.total}
+                    onClick={() => fetchCheckInHistory(pagination.page + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
       <Dialog open={!!selectedPlan} onOpenChange={() => setSelectedPlan(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -534,11 +871,11 @@ export default function CheckInPage() {
 
               {!userMembership?.hasMembership &&
                 selectedPlan.selectedRate.includes('Member') && (
-                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 p-3 rounded-lg">
-                    <p className="text-sm text-blue-800 dark:text-blue-200 font-semibold">
+                  <div className="bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 p-3 rounded-lg">
+                    <p className="text-sm text-gray-800 dark:text-gray-200 font-semibold">
                       ✨ You'll get membership benefits!
                     </p>
-                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                    <p className="text-xs text-gray-700 dark:text-gray-300 mt-1">
                       Your membership card fee is included in the total. After payment, you'll be able to use member rates on future check-ins.
                     </p>
                   </div>
@@ -581,6 +918,151 @@ export default function CheckInPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Duplicate Check-In Confirmation Dialog */}
+      <Dialog open={duplicateCheckInDialog} onOpenChange={setDuplicateCheckInDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-600" />
+              Confirm Duplicate Check-In
+            </DialogTitle>
+            <DialogDescription>
+              You've already checked in to this service today
+            </DialogDescription>
+          </DialogHeader>
+
+          {pendingPlan && (
+            <div className="space-y-4">
+              <Card className="p-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold">Service</p>
+                    <p className="font-semibold">{pendingPlan.service.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold">Plan</p>
+                    <p className="font-semibold">{pendingPlan.plan.planName}</p>
+                  </div>
+                </div>
+              </Card>
+
+              <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 p-3 rounded-lg">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  <strong>⚠️ Warning:</strong> You already have a successful check-in for {pendingPlan.service.name} today ({new Date().toLocaleDateString()}). 
+                </p>
+                <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-2">
+                  If you continue, you will be charged again for another check-in session. This is useful if you're leaving and want to check back in later.
+                </p>
+              </div>
+
+              <div className="bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 p-3 rounded-lg">
+                <p className="text-xs text-gray-800 dark:text-gray-200 font-semibold mb-1">Server Time (Nigeria, WAT)</p>
+                <p className="text-xs text-gray-700 dark:text-gray-300">
+                  Current: {new Date().toLocaleString('en-NG', { timeZone: 'Africa/Lagos' })}
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setDuplicateCheckInDialog(false);
+                    setPendingPlan(null);
+                  }}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (pendingPlan) {
+                      setSelectedPlan(pendingPlan);
+                    }
+                    setDuplicateCheckInDialog(false);
+                    setPendingPlan(null);
+                  }}
+                  className="flex-1"
+                >
+                  Yes, Check In Again
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Checkout Confirmation Dialog */}
+      <Dialog open={checkoutConfirmDialog} onOpenChange={setCheckoutConfirmDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Check-Out</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to check out now?
+            </DialogDescription>
+          </DialogHeader>
+
+          {checkoutRecord && (
+            <div className="space-y-4">
+              <div className="bg-muted p-4 rounded-lg space-y-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Service</p>
+                  <p className="font-semibold">{checkoutRecord.serviceName}</p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground">Plan</p>
+                  <p className="font-semibold">{checkoutRecord.planName}</p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground">Checked In</p>
+                  <p className="font-semibold text-sm">
+                    {new Date(checkoutRecord.checkedInAt).toLocaleString()}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 border-t">
+                  <LogOut className="w-4 h-4 text-blue-500" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Session Duration</p>
+                    <p className="font-semibold">
+                      {Math.floor((new Date().getTime() - new Date(checkoutRecord.checkedInAt).getTime()) / (1000 * 60))} minutes
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-sm text-muted-foreground">
+                You will be checked out from {checkoutRecord.serviceName} and your session will be recorded.
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              disabled={isProcessing}
+              onClick={() => {
+                setCheckoutConfirmDialog(false);
+                setPendingCheckoutId(null);
+                setCheckoutRecord(null);
+              }}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmCheckout}
+              disabled={isProcessing}
+              className="flex-1 flex items-center justify-center gap-2"
+            >
+              {isProcessing && <Loader2 className="w-4 h-4 animate-spin" />}
+              Confirm Check-Out
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </motion.div>

@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       email: data.email,
       status: 'pending',
       paymentMethod: 'paystack',
-      reference: '', // Will be updated from Paystack
+      reference: `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`, // Generate unique reference
       metadata: {
         planType: data.planType,
         selectedRate: data.selectedRate,

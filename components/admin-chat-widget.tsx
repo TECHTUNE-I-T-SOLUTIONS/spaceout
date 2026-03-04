@@ -259,7 +259,7 @@ export default function AdminChatWidget() {
       {/* Chat Widget Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-200 z-40"
+        className="fixed bottom-6 right-6 bg-gray-600 hover:bg-gray-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-200 z-40"
         title="Support Center"
       >
         <MessageCircle size={24} />
@@ -274,7 +274,7 @@ export default function AdminChatWidget() {
       {isOpen && (
         <div className="fixed bottom-24 right-6 w-96 h-[600px] bg-white dark:bg-slate-900 rounded-lg shadow-2xl flex flex-col z-40 border border-gray-200 dark:border-gray-700">
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-t-lg flex items-center justify-between">
+          <div className="bg-gradient-to-r from-gray-600 to-gray-700 text-white p-4 rounded-t-lg flex items-center justify-between">
             <div>
               <h3 className="font-semibold">Support Center</h3>
               <p className="text-xs opacity-90">
@@ -284,7 +284,7 @@ export default function AdminChatWidget() {
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="hover:bg-blue-800 p-1 rounded transition"
+              className="hover:bg-gray-800 p-1 rounded transition"
             >
               <X size={20} />
             </button>
@@ -372,7 +372,7 @@ export default function AdminChatWidget() {
                     <span
                       className={`text-xs font-semibold px-2 py-1 rounded ${
                         selectedConversation.status === 'open'
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100'
+                          ? 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-100'
                           : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100'
                       }`}
                     >
@@ -402,7 +402,7 @@ export default function AdminChatWidget() {
                           <div
                             className={`max-w-[70%] rounded-lg p-3 ${
                               msg.senderType === 'admin'
-                                ? 'bg-blue-600 text-white'
+                                ? 'bg-gray-600 text-white'
                                 : 'bg-muted text-foreground'
                             }`}
                           >

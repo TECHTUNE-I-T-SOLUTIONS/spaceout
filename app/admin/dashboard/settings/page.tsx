@@ -5,11 +5,22 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
 import { useSession } from 'next-auth/react';
 import { FileUpload } from '@/components/file-upload';
-import { Save, AlertCircle, Loader2 } from 'lucide-react';
+import { Save, AlertCircle, Loader2, Mail, Phone, MapPin, Shield } from 'lucide-react';
 import { toast } from 'sonner';
+
+interface AdminProfile {
+  _id: string;
+  email: string;
+  name: string;
+  role: string;
+  branch?: string;
+  phone?: string;
+  createdAt?: string;
+}
 
 interface SettingsData {
   businessName: string;
@@ -24,6 +35,8 @@ export default function SettingsPage() {
   const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [adminProfile, setAdminProfile] = useState<AdminProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [settings, setSettings] = useState<SettingsData>({
     businessName: 'SpaceOut',
     businessEmail: 'admin@spaceout.com',
@@ -36,7 +49,26 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setIsMounted(true);
+    fetchAdminProfile();
   }, []);
+
+  const fetchAdminProfile = async () => {
+    try {
+      setProfileLoading(true);
+      const response = await fetch('/api/admins');
+      if (response.ok) {
+        const admins: AdminProfile[] = await response.json();
+        // Get the first admin (current admin)
+        if (admins.length > 0) {
+          setAdminProfile(admins[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching admin profile:', error);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
 
   const handleInputChange = (field: keyof SettingsData, value: string) => {
     setSettings((prev) => ({ ...prev, [field]: value }));
@@ -108,6 +140,72 @@ export default function SettingsPage() {
           {isSuperAdmin ? 'Manage system-wide configuration' : 'Manage your branch settings'}
         </p>
       </div>
+
+      {/* Your Account / Admin Profile */}
+      <Card className="p-6 border-l-4 border-l-primary">
+        <h2 className="text-xl font-bold mb-6">Your Account</h2>
+
+        {profileLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : adminProfile ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Name</p>
+              <p className="font-semibold">{adminProfile.name}</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                <Mail className="w-3 h-3" /> Email
+              </p>
+              <p className="font-semibold">{adminProfile.email}</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                <Shield className="w-3 h-3" /> Role
+              </p>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold">{adminProfile.role.charAt(0).toUpperCase() + adminProfile.role.slice(1)}</p>
+                <Badge className={adminProfile.role === 'superadmin' ? 'bg-purple-500' : 'bg-blue-500'}>
+                  {adminProfile.role === 'superadmin' ? 'Super Admin' : 'Admin'}
+                </Badge>
+              </div>
+            </div>
+
+            {adminProfile.phone && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                  <Phone className="w-3 h-3" /> Phone
+                </p>
+                <p className="font-semibold">{adminProfile.phone}</p>
+              </div>
+            )}
+
+            {adminProfile.branch && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                  <MapPin className="w-3 h-3" /> Branch
+                </p>
+                <p className="font-semibold">{adminProfile.branch}</p>
+              </div>
+            )}
+
+            {adminProfile.createdAt && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Member Since</p>
+                <p className="font-semibold">{new Date(adminProfile.createdAt).toLocaleDateString()}</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-6 text-muted-foreground">
+            <p>Unable to load admin profile</p>
+          </div>
+        )}
+      </Card>
 
       {/* Business Information */}
       <Card className="p-6">
@@ -210,24 +308,7 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      {/* Account Info */}
-      <Card className="p-6 bg-muted/50">
-        <h3 className="font-semibold mb-4">Your Account</h3>
-        <div className="space-y-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Email:</span>
-            <span className="font-medium">{session?.user?.email}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Name:</span>
-            <span className="font-medium">{session?.user?.name || 'Admin'}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Role:</span>
-            <span className="font-medium capitalize">{userRole || 'administrator'}</span>
-          </div>
-        </div>
-      </Card>
+
 
       {/* Save Button */}
       <div className="flex justify-end pt-4">

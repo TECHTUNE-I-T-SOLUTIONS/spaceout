@@ -25,6 +25,11 @@ export function Footer() {
                   Location
                 </Link>
               </li>
+              <li>
+                <Link href="/reviews" className="hover:text-foreground transition-colors">
+                  Reviews
+                </Link>
+              </li>
             </ul>
           </div>
           <div>

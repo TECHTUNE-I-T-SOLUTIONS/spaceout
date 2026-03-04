@@ -148,7 +148,7 @@ export default function FeedbackPage() {
       case 'complaint':
         return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100';
       case 'suggestion':
-        return 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100';
+        return 'bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100';
       default:
         return 'bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100';
     }
@@ -189,9 +189,9 @@ export default function FeedbackPage() {
                   <p className="text-sm">{feedback.message}</p>
 
                   {feedback.adminReply && (
-                    <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 rounded border border-blue-200 dark:border-blue-800">
-                      <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 mb-1">Admin Reply ({feedback.adminReplyDate})</p>
-                      <p className="text-sm text-blue-800 dark:text-blue-200">{feedback.adminReply}</p>
+                    <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-950 rounded border border-gray-200 dark:border-gray-800">
+                      <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">Admin Reply ({feedback.adminReplyDate})</p>
+                      <p className="text-sm text-gray-800 dark:text-gray-200">{feedback.adminReply}</p>
                     </div>
                   )}
                 </div>
