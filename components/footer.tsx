@@ -81,17 +81,12 @@ export function Footer() {
             <h4 className="font-semibold mb-4">Connect</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <a href="#" className="hover:text-foreground transition-colors">
-                  X
+                <a href="https://www.tiktok.com/@spaceout.workstation?_r=1&_t6=ZS-94PfjjvxQJd" className="hover:text-foreground transition-colors">
+                  TikTok
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-foreground transition-colors">
-                  LinkedIn
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-foreground transition-colors">
+                <a href="https://www.instagram.com/spaceout.workstation?igsh=ZGVwaHhtNW9pbXBr" className="hover:text-foreground transition-colors">
                   Instagram
                 </a>
               </li>
