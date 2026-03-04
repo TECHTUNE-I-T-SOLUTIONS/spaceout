@@ -6,6 +6,7 @@ import { CookieConsentBanner } from '@/components/cookie-consent-banner'
 import { PushNotificationPrompt } from '@/components/push-notification-prompt'
 import ChatWidget from '@/components/chat-widget'
 import { ClientOnlyWrapper } from '@/components/client-only-wrapper'
+import { SpaceParticles } from '@/components/space-particles'
 import './globals.css'
 
 const geist = Geist({ subsets: ["latin"], variable: '--font-geist-sans' });
@@ -48,13 +49,18 @@ export default function RootLayout({
       <head />
       <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
         <Providers>
-          {children}
-          <ChatWidget />
           <ClientOnlyWrapper>
-            <CookieConsentBanner />
-            <PushNotificationPrompt />
+            <SpaceParticles />
           </ClientOnlyWrapper>
-          <Analytics />
+          <div className="relative z-20">
+            {children}
+            <ChatWidget />
+            <ClientOnlyWrapper>
+              <CookieConsentBanner />
+              <PushNotificationPrompt />
+            </ClientOnlyWrapper>
+            <Analytics />
+          </div>
         </Providers>
       </body>
     </html>

@@ -12,9 +12,28 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 
 const heroImages = [
-  '/assets/inside (1).jpeg',
+  '/assets/IMG_8850.jpg',
+  '/assets/IMG_8851.jpg',
+  '/assets/IMG_8852.jpg',
+  '/assets/IMG_8853.jpg',
+  '/assets/IMG_8854.jpg',
+  '/assets/IMG_8855.jpg',
+  '/assets/IMG_8856.jpg',
+  '/assets/IMG_8857.jpg',
+  '/assets/IMG_8858.jpg',
+  '/assets/IMG_8859.jpg',
+  '/assets/IMG_8862.jpg',
+  '/assets/IMG_8863.jpg',
+  '/assets/IMG_8864.jpg',
+  '/assets/IMG_8865.jpg',
+  '/assets/IMG_8866.jpg',
+  '/assets/IMG_8867.jpg',
+  '/assets/IMG_8868.jpg',
+  '/assets/IMG_8869.jpg',
+  '/assets/IMG_8870.jpg',
+  '/assets/IMG_8871.jpg',
+  '/assets/IMG_8872.jpg',
   '/assets/inside (2).jpeg',
-  '/assets/inside (3).jpeg',
   '/assets/inside (4).jpeg',
 ];
 
@@ -41,18 +60,18 @@ export function HomeContent() {
     },
   };
 
-  // Rotate background images every 5 seconds
+  // Rotate background images every 6 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImageIndex((prev) => (prev + 1) % heroImages.length);
-    }, 5000);
+    }, 6000);
 
     return () => clearInterval(interval);
   }, []);
 
   return (
     <>
-      {/* Hero Section with Background Images */}
+      {/* Hero Section with Background Images (Space Particles are global) */}
       <section className="relative overflow-hidden py-20 md:py-32 min-h-[600px] flex items-center justify-center">
         {/* Background Image Carousel */}
         <AnimatePresence mode="wait">
@@ -71,6 +90,11 @@ export function HomeContent() {
               priority
               className="object-cover"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 85vw"
+              onError={(e) => {
+                // Fallback if image fails to load
+                const imgElement = e.target as HTMLImageElement;
+                imgElement.src = '/assets/IMG_8850.jpg';
+              }}
             />
           </motion.div>
         </AnimatePresence>
