@@ -22,10 +22,92 @@ interface ShootingStar {
   delay: number;
 }
 
+interface Planet {
+  id: number;
+  name: string;
+  size: number;
+  distance: number;
+  color: string;
+  orbitDuration: number;
+  opacity: number;
+  rotationDuration: number;
+  glow: string;
+}
+
 export function SpaceParticles() {
   const [stars, setStars] = useState<Star[]>([]);
   const [shootingStars, setShootingStars] = useState<ShootingStar[]>([]);
   const [mounted, setMounted] = useState(false);
+
+  // Solar System planets with realistic properties
+  const planets: Planet[] = [
+    {
+      id: 0,
+      name: 'Mercury',
+      size: 8,
+      distance: 60,
+      color: 'from-gray-400 to-gray-500',
+      orbitDuration: 6,
+      opacity: 0.7,
+      rotationDuration: 3,
+      glow: 'rgba(150, 150, 150, 0.6)',
+    },
+    {
+      id: 1,
+      name: 'Venus',
+      size: 14,
+      distance: 100,
+      color: 'from-yellow-300 to-yellow-500',
+      orbitDuration: 10,
+      opacity: 0.75,
+      rotationDuration: 4,
+      glow: 'rgba(255, 200, 100, 0.7)',
+    },
+    {
+      id: 2,
+      name: 'Earth',
+      size: 15,
+      distance: 140,
+      color: 'from-blue-400 to-green-500',
+      orbitDuration: 14,
+      opacity: 0.8,
+      rotationDuration: 4,
+      glow: 'rgba(100, 150, 255, 0.6)',
+    },
+    {
+      id: 3,
+      name: 'Mars',
+      size: 10,
+      distance: 180,
+      color: 'from-red-500 to-orange-600',
+      orbitDuration: 18,
+      opacity: 0.7,
+      rotationDuration: 5,
+      glow: 'rgba(255, 100, 50, 0.5)',
+    },
+    {
+      id: 4,
+      name: 'Jupiter',
+      size: 40,
+      distance: 240,
+      color: 'from-orange-400 via-yellow-600 to-orange-700',
+      orbitDuration: 30,
+      opacity: 0.6,
+      rotationDuration: 3,
+      glow: 'rgba(200, 100, 50, 0.4)',
+    },
+    {
+      id: 5,
+      name: 'Saturn',
+      size: 35,
+      distance: 300,
+      color: 'from-yellow-200 to-yellow-400',
+      orbitDuration: 40,
+      opacity: 0.5,
+      rotationDuration: 5,
+      glow: 'rgba(255, 220, 100, 0.3)',
+    },
+  ];
 
   useEffect(() => {
     setMounted(true);
@@ -160,6 +242,76 @@ export function SpaceParticles() {
             </motion.div>
           );
         })}
+
+        {/* Solar System - centered on screen */}
+        <div className="absolute top-1/3 left-1/2 w-96 h-96">
+          {/* The Sun */}
+          <motion.div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-yellow-300 via-orange-400 to-red-500"
+            style={{
+              width: '30px',
+              height: '30px',
+              boxShadow: '0 0 40px rgba(255, 150, 0, 0.9), 0 0 80px rgba(255, 100, 0, 0.6)',
+            }}
+            animate={{
+              scale: [1, 1.1, 1],
+            }}
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            }}
+          />
+
+          {/* Orbital paths and planets */}
+          {planets.map((planet) => (
+            <motion.div
+              key={planet.id}
+              className="absolute top-1/2 left-1/2"
+              style={{
+                width: `${planet.distance * 2}px`,
+                height: `${planet.distance * 2}px`,
+                marginLeft: `-${planet.distance}px`,
+                marginTop: `-${planet.distance}px`,
+              }}
+              animate={{
+                rotate: 360,
+              }}
+              transition={{
+                duration: planet.orbitDuration,
+                repeat: Infinity,
+                ease: 'linear',
+              }}
+            >
+              {/* Orbit path */}
+              <div
+                className="absolute inset-0 border border-white/5 rounded-full"
+                style={{
+                  borderRadius: '50%',
+                }}
+              />
+
+              {/* Planet */}
+              <motion.div
+                className={`absolute top-0 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-br ${planet.color}`}
+                style={{
+                  width: `${planet.size}px`,
+                  height: `${planet.size}px`,
+                  opacity: planet.opacity,
+                  boxShadow: `0 0 ${planet.size * 1.5}px ${planet.glow}`,
+                }}
+                animate={{
+                  rotate: 360,
+                }}
+                transition={{
+                  duration: planet.rotationDuration,
+                  repeat: Infinity,
+                  ease: 'linear',
+                }}
+              />
+            </motion.div>
+          ))}
+        </div>
 
         {/* Distant nebula clouds */}
         <motion.div

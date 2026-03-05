@@ -7,6 +7,7 @@ import { PushNotificationPrompt } from '@/components/push-notification-prompt'
 import ChatWidget from '@/components/chat-widget'
 import { ClientOnlyWrapper } from '@/components/client-only-wrapper'
 import { SpaceParticles } from '@/components/space-particles'
+import { MobileBottomNav } from '@/components/mobile-bottom-nav'
 import './globals.css'
 
 const geist = Geist({ subsets: ["latin"], variable: '--font-geist-sans' });
@@ -51,6 +52,7 @@ export default function RootLayout({
         <Providers>
           <ClientOnlyWrapper>
             <SpaceParticles />
+            <MobileBottomNav />
           </ClientOnlyWrapper>
           <div className="relative z-20">
             {children}
