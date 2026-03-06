@@ -729,7 +729,7 @@ export default function UsersPage() {
                     phone: e.target.value,
                   })
                 }
-                placeholder="+1 (555) 000-0000"
+                placeholder="+234 (0) 809 988 5454"
                 className="mt-1"
                 required
               />
@@ -789,7 +789,7 @@ export default function UsersPage() {
                         },
                       })
                     }
-                    placeholder="+1 (555) 000-0000"
+                    placeholder="+234 (0) 809 988 5454"
                     className="mt-1"
                     required
                   />

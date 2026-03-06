@@ -314,8 +314,8 @@ export default function Location() {
                     <Clock className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
                     <div>
                       <h3 className="font-semibold mb-1">Hours</h3>
-                      <p className="text-muted-foreground">Mon-Fri: 6:00 AM - 10:00 PM</p>
-                      <p className="text-muted-foreground">Sat-Sun: 8:00 AM - 8:00 PM</p>
+                      <p className="text-muted-foreground">Mon-Fri: 9:00 AM - 6:00 PM</p>
+                      <p className="text-muted-foreground">Sat: 9:00 AM - 3:00 PM</p>
                     </div>
                   </div>
 
@@ -323,8 +323,8 @@ export default function Location() {
                     <Phone className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
                     <div>
                       <h3 className="font-semibold mb-1">Contact</h3>
-                      <p className="text-muted-foreground">+234 (0) 00 0000 0000</p>
-                      <p className="text-muted-foreground">hello@spaceout.com</p>
+                      <p className="text-muted-foreground">+234 (0) 809 988 5454</p>
+                      <p className="text-muted-foreground">hello@spaceoutworkstation.com</p>
                     </div>
                   </div>
                 </Card>
@@ -354,6 +354,7 @@ export default function Location() {
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.2 }}
+                      // @ts-ignore
                         className="absolute left-0 right-0 top-full mt-2 bg-background border border-input/50 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto"
                       >
                         {suggestions.map((suggestion, idx) => (
@@ -380,6 +381,7 @@ export default function Location() {
                       <motion.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
+                      // @ts-ignore
                         className="absolute left-0 right-0 top-full mt-2 bg-background border border-input/50 rounded-lg shadow-xl z-50 p-4 text-center"
                       >
                         <p className="text-sm text-muted-foreground">

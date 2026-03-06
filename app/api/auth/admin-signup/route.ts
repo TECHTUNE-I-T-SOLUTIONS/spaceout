@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Admin from "@/lib/models/Admin";
 import bcrypt from "bcryptjs";
-import { sendAdminWelcomeEmail } from "@/lib/email";
+import { sendAdminWelcomeEmail, sendNewUserSignupNotification } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   try {
@@ -54,6 +54,18 @@ export async function POST(req: NextRequest) {
     // Send welcome email
     const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL}/admin/auth/login`;
     await sendAdminWelcomeEmail(email, firstName, loginUrl);
+    
+    // Send admin notification about new admin signup
+    try {
+      await sendNewUserSignupNotification('spaceout.workstation@gmail.com', {
+        name: fullName,
+        email: email,
+        phone: 'N/A',
+        createdAt: new Date().toLocaleString(),
+      });
+    } catch (err) {
+      console.error('Failed to send admin notification:', err);
+    }
 
     const response = NextResponse.json(
       { message: "Admin account created successfully" },

@@ -7,6 +7,7 @@ import { Users, DollarSign, Calendar, Star, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface AdminSession {
   id: string;
@@ -26,6 +27,7 @@ interface DashboardStats {
 }
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const [admin, setAdmin] = useState<AdminSession | null>(null);
   const [stats, setStats] = useState<DashboardStats>({
     activeUsers: 0,
@@ -34,6 +36,7 @@ export default function AdminDashboard() {
     avgRating: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     fetchAdminData();
@@ -45,19 +48,21 @@ export default function AdminDashboard() {
       
       // Fetch admin session
       const adminResponse = await fetch('/api/auth/admin/me');
-      if (adminResponse.ok) {
-        const adminData = await adminResponse.json();
-        setAdmin(adminData);
+      if (!adminResponse.ok) {
+        // Admin not authenticated, redirect to login
+        router.push('/admin/login');
+        return;
       }
+      
+      const adminData = await adminResponse.json();
+      setAdmin(adminData);
+      setAuthChecked(true);
 
       // Fetch dashboard stats
       const statsResponse = await fetch('/api/admin/stats');
       if (statsResponse.ok) {
         const statsData = await statsResponse.json();
         setStats(statsData);
-        toast.success('Dashboard Loaded', {
-          description: 'Your dashboard data has been updated.',
-        });
       } else {
         // Use mock data if API fails
         setStats({
@@ -70,15 +75,10 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Error fetching admin data:', error);
       toast.error('Failed to Load Dashboard', {
-        description: 'Using cached data.',
+        description: 'Unable to fetch dashboard data.',
       });
-      // Use mock data
-      setStats({
-        activeUsers: 150,
-        totalRevenue: 2500000,
-        pendingBookings: 23,
-        avgRating: 4.7,
-      });
+      // Redirect to login on error
+      router.push('/admin/login');
     } finally {
       setLoading(false);
     }
@@ -102,6 +102,45 @@ export default function AdminDashboard() {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 },
   };
+
+  // Show loading skeleton while authenticating
+  if (loading) {
+    return (
+      <motion.div
+        className="max-w-6xl mx-auto"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <div className="mb-8">
+          <div className="h-8 w-48 bg-muted animate-pulse rounded mb-2" />
+          <div className="h-4 w-96 bg-muted animate-pulse rounded" />
+        </div>
+
+        <motion.div
+          className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <motion.div key={idx} variants={itemVariants}>
+              <Card className="p-6">
+                <div className="h-4 w-20 bg-muted animate-pulse rounded mb-2" />
+                <div className="h-8 w-32 bg-muted animate-pulse rounded" />
+              </Card>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="mb-8">
+          <Card className="p-6">
+            <div className="h-6 w-40 bg-muted animate-pulse rounded" />
+          </Card>
+        </motion.div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div

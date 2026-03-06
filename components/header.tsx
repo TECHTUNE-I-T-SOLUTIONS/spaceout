@@ -57,10 +57,10 @@ export function Header() {
           <div className="flex gap-2">
             {session ? (
               <Link
-                href="/user/dashboard"
+                href="/user/check-in"
                 className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
               >
-                Dashboard
+                Check In
               </Link>
             ) : (
               <>

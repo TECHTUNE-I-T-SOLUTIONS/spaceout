@@ -124,6 +124,10 @@ export async function GET(request: NextRequest) {
       if (!isAccessCard) {
         await User.findByIdAndUpdate(payment.userId, {
           hasMembership: true,
+          membershipStatus: 'active',
+          membershipType: 'annual',
+          membershipActivatedAt: purchaseDate,
+          membershipExpiryDate: expiryDate,
           membershipExpiry: expiryDate,
         });
       }

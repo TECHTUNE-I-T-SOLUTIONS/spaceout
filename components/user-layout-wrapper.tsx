@@ -3,6 +3,7 @@
 import { useSidebar } from '@/lib/sidebar-context';
 import { UserMobileHeader } from './user-mobile-header';
 import { UserSidebar } from './user-sidebar';
+import { FloatingContactWidget } from './floating-contact-widget';
 
 interface UserLayoutWrapperProps {
   children: React.ReactNode;
@@ -13,6 +14,9 @@ export function UserLayoutWrapper({ children }: UserLayoutWrapperProps) {
 
   return (
     <>
+      {/* Floating Contact Widget */}
+      <FloatingContactWidget />
+
       {/* Mobile Header & Sidebar */}
       <UserMobileHeader />
 

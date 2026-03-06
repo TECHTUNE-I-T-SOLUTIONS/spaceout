@@ -130,7 +130,7 @@ export default function AstronautCardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 p-4 md:p-8 transition-colors duration-200">
+    <div className="min-h-screen bg-transparent dark:bg-transparent p-4 md:p-8 transition-colors duration-200">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <Link href="/user/dashboard" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors">

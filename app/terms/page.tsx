@@ -15,6 +15,7 @@ export default function Terms() {
       <section className="relative overflow-hidden py-20 md:py-32 bg-card border-b border-border">
         <div className="container mx-auto px-4 max-w-7xl">
           <motion.div
+          // @ts-ignore
             className="max-w-3xl mx-auto text-center"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -30,6 +31,7 @@ export default function Terms() {
       <section className="py-20">
         <div className="container mx-auto px-4 max-w-4xl">
           <motion.div
+          // @ts-ignore
             className="prose prose-sm dark:prose-invert max-w-none space-y-6"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -91,7 +93,7 @@ export default function Terms() {
             <div>
               <h2 className="text-2xl font-bold mb-4">6. Contact Information</h2>
               <p className="text-muted-foreground">
-                For any questions regarding these Terms of Service, please contact us at info@spaceout.com
+                For any questions regarding these Terms of Service, please contact us at info@spaceoutworkstation.com
               </p>
             </div>
           </motion.div>

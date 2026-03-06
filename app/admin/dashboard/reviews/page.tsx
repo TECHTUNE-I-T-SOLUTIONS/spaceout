@@ -36,7 +36,7 @@ export default function ReviewsPage() {
         const transformedReviews = data.map((item: any) => ({
           id: item._id?.toString() || item.id || '',
           userId: item.userId?.name || item.userId || 'Unknown',
-          spaceName: item.spaceName || 'Unknown Space',
+          spaceName: item.branchId?.name || 'Unknown Space',
           rating: item.rating || 0,
           comment: item.comment || '',
           approved: item.approved || false,

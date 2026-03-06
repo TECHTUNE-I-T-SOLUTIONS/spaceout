@@ -6,12 +6,36 @@ export interface IEmergencyContact {
   relationship: string;
 }
 
+export interface IEducationalInfo {
+  institution?: string;
+  faculty?: string;
+  courseOfStudy?: string;
+  level?: string;
+}
+
+export interface IBusinessInfo {
+  firmName?: string;
+  businessDescription?: string;
+  officeAddress?: string;
+  officeHotline?: string;
+  officeEmail?: string;
+}
+
+export interface IServicePreferences {
+  loyaltyOption?: 'card' | 'no-card';
+  bookingPreferences?: string[];
+  usageDuration?: 'hourly' | 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'bi-annual' | 'annual';
+}
+
 export interface IUser extends Document {
   email: string;
   password: string;
   firstName: string;
   lastName: string;
   name: string;
+  sex?: 'male' | 'female' | 'prefer-not-to-say';
+  dateOfBirth?: Date;
+  houseAddress?: string;
   phone: string;
   role: 'user' | 'admin' | 'superadmin';
   branchId?: mongoose.Types.ObjectId;
@@ -23,11 +47,17 @@ export interface IUser extends Document {
   membershipExpiry?: Date;
   prepaidUntil?: Date;
   passportUrl?: string;
+  passportPhotoUrl?: string;
   signatureUrl?: string;
+  isStudent?: boolean;
+  educationalInfo?: IEducationalInfo;
+  businessInfo?: IBusinessInfo;
+  servicePreferences?: IServicePreferences;
   emergencyContact: IEmergencyContact;
   profileImage?: string;
   isActive: boolean;
   isEmailVerified?: boolean;
+  documentsUploaded?: boolean;
   resetToken?: string;
   resetTokenExpiry?: Date;
   createdAt: Date;
@@ -62,6 +92,16 @@ const UserSchema = new Schema<IUser>(
     name: {
       type: String,
       required: [true, 'Full name is required'],
+    },
+    sex: {
+      type: String,
+      enum: ['male', 'female', 'prefer-not-to-say'],
+    },
+    dateOfBirth: {
+      type: Date,
+    },
+    houseAddress: {
+      type: String,
     },
     phone: {
       type: String,
@@ -106,8 +146,39 @@ const UserSchema = new Schema<IUser>(
     passportUrl: {
       type: String,
     },
+    passportPhotoUrl: {
+      type: String,
+    },
     signatureUrl: {
       type: String,
+    },
+    isStudent: {
+      type: Boolean,
+      default: false,
+    },
+    educationalInfo: {
+      institution: String,
+      faculty: String,
+      courseOfStudy: String,
+      level: String,
+    },
+    businessInfo: {
+      firmName: String,
+      businessDescription: String,
+      officeAddress: String,
+      officeHotline: String,
+      officeEmail: String,
+    },
+    servicePreferences: {
+      loyaltyOption: {
+        type: String,
+        enum: ['card', 'no-card'],
+      },
+      bookingPreferences: [String],
+      usageDuration: {
+        type: String,
+        enum: ['hourly', 'daily', 'weekly', 'monthly', 'quarterly', 'bi-annual', 'annual'],
+      },
     },
     emergencyContact: {
       name: {
@@ -132,6 +203,10 @@ const UserSchema = new Schema<IUser>(
       default: true,
     },
     isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    documentsUploaded: {
       type: Boolean,
       default: false,
     },

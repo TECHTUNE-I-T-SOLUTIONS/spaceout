@@ -42,6 +42,7 @@ export default function About() {
       <section className="relative overflow-hidden py-20 md:py-32 bg-card border-b border-border">
         <div className="container mx-auto px-4 max-w-7xl">
           <motion.div
+          // @ts-ignore
             className="max-w-3xl mx-auto text-center"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -59,6 +60,7 @@ export default function About() {
       <section className="py-20">
         <div className="container mx-auto px-4 max-w-4xl">
           <motion.div
+          // @ts-ignore
             className="prose prose-sm dark:prose-invert max-w-none"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -76,7 +78,7 @@ export default function About() {
                 happens in great spaces, and we're committed to providing exactly that.
               </p>
               <p className="text-lg leading-relaxed">
-                Today, SpaceOut serves 200+ satisfied professionals, from solo entrepreneurs to small teams, 
+                Today, SpaceOut serves satisfied professionals, from solo entrepreneurs to small teams, 
                 offering flexible pricing, multiple workspace options, and a supportive community.
               </p>
             </div>
@@ -88,6 +90,7 @@ export default function About() {
       <section className="py-20 bg-card border-t border-border">
         <div className="container mx-auto px-4 max-w-7xl">
           <motion.div
+            // @ts-ignore
             className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -100,6 +103,7 @@ export default function About() {
           </motion.div>
 
           <motion.div
+          // @ts-ignore
             className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
@@ -125,7 +129,7 @@ export default function About() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-20">
+      {/* <section className="py-20">
         <div className="container mx-auto px-4 max-w-7xl">
           <motion.div
             className="grid md:grid-cols-4 gap-6"
@@ -134,7 +138,7 @@ export default function About() {
             viewport={{ once: true }}
           >
             {[
-              { number: '200+', label: 'Active Members' },
+              { number: '50+', label: 'Active Members' },
               { number: '5', label: 'Workspace Types' },
               { number: '1000+', label: 'Hours Worked' },
               { number: '4.9/5', label: 'Rating' },
@@ -154,7 +158,7 @@ export default function About() {
             ))}
           </motion.div>
         </div>
-      </section>
+      </section> */}
 
       {/* CTA Section */}
       <section className="py-20 bg-primary text-primary-foreground border-t border-border">

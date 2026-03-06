@@ -171,6 +171,7 @@ export default function BookingsPage() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
+      // @ts-ignore
       className="space-y-6"
     >
       <div className="flex items-center justify-between">

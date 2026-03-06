@@ -355,7 +355,7 @@ export default function ProfilePage() {
                 value={profile.phone || ''}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
                 disabled={!isEditing}
-                placeholder="+1 (555) 000-0000"
+                placeholder="+234 (0) 809 988 5454"
                 className="mt-1"
               />
             </div>

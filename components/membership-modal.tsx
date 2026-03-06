@@ -288,7 +288,7 @@ export function MembershipModal({ open, onOpenChange }: MembershipModalProps) {
                                   </div>
                                   {hasPurchasedPlan(service.name, plan.name) && (
                                     <Badge variant="default" className="bg-green-600 whitespace-nowrap">
-                                      Purchased
+                                      Owned
                                     </Badge>
                                   )}
                                 </div>
@@ -367,7 +367,7 @@ export function MembershipModal({ open, onOpenChange }: MembershipModalProps) {
                               {userSubscriptions.some(
                                 (sub) => sub.serviceName === service.name && sub.status === 'active' && sub.planName.includes('Card')
                               ) && (
-                                <Badge variant="default" className="bg-green-600 text-xs">Purchased</Badge>
+                                <Badge variant="default" className="bg-green-600 text-xs">Owned</Badge>
                               )}
                             </div>
                           </div>

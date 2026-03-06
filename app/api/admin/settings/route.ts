@@ -5,8 +5,8 @@ export async function GET(request: NextRequest) {
     // Return default settings
     const settings = {
       businessName: 'SpaceOut',
-      businessEmail: 'admin@spaceout.com',
-      businessPhone: '+1 (555) 000-0000',
+      businessEmail: 'admin@spaceoutworkstation.com',
+      businessPhone: '+234 (0) 809 988 5454',
       businessAddress: '123 Main St',
       businessCity: 'San Francisco',
       businessState: 'CA',

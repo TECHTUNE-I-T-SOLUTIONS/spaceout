@@ -5,18 +5,39 @@ import dbConnect from '@/lib/db';
 import Feedback from '@/lib/models/Feedback';
 import Branch from '@/lib/models/Branch';
 import ErrorLog from '@/lib/models/ErrorLog';
+import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions) as any;
+    const cookieStore = await cookies();
+    let userRole = '';
+    let userId = '';
+    let branchId = '';
 
-    if (!session?.user) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    // Check for NextAuth session (user authentication)
+    const session = await getServerSession(authOptions) as any;
+    
+    if (session?.user) {
+      userRole = (session.user as any)?.role;
+      userId = (session.user as any)?.id;
+      branchId = (session.user as any)?.branchId;
+    } else {
+      // Check for admin cookie authentication
+      const adminId = cookieStore.get('admin_id')?.value;
+      const adminRole = cookieStore.get('admin_role')?.value;
+      
+      if (!adminId || !adminRole) {
+        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      }
+      
+      userRole = adminRole;
+      userId = '';
+      branchId = '';
     }
 
-    const userRole = (session.user as any)?.role;
-    const userId = (session.user as any)?.id;
-    const branchId = (session.user as any)?.branchId;
+    if (!userRole) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
 
     await dbConnect();
 
@@ -24,8 +45,12 @@ export async function GET(request: NextRequest) {
 
     if (userRole === 'user') {
       query.userId = userId;
-    } else if (userRole === 'admin') {
-      query.branchId = branchId;
+    } else if (userRole === 'admin' || userRole === 'superadmin') {
+      // Admin can see all feedback or filtered by branch
+      // If admin has branchId, filter by that
+      if (branchId) {
+        query.branchId = branchId;
+      }
     }
 
     const feedback = await Feedback.find(query)

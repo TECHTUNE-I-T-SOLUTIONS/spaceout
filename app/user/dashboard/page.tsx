@@ -7,6 +7,8 @@ import { motion } from 'framer-motion';
 import { CreditCard, Calendar, CheckCircle, Clock, Wifi, WifiOff, Loader2, TrendingUp, TrendingDown, AlertCircle, Shield } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { MembershipModal } from '@/components/membership-modal';
 import { DocumentVerificationModal } from '@/components/document-verification-modal';
 import { toast } from 'sonner';
@@ -50,6 +52,8 @@ interface UserProfile {
 }
 
 export default function UserDashboard() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [showMembershipModal, setShowMembershipModal] = useState(false);
   const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
@@ -60,8 +64,17 @@ export default function UserDashboard() {
   const [loadingPayments, setLoadingPayments] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
+  // Check authentication and redirect if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/login');
+    }
+  }, [status, router]);
+
   // Fetch user profile and check for missing documents
   useEffect(() => {
+    if (status !== 'authenticated') return;
+
     const fetchUserProfile = async () => {
       try {
         setLoadingProfile(true);
@@ -83,10 +96,12 @@ export default function UserDashboard() {
     };
 
     fetchUserProfile();
-  }, []);
+  }, [status]);
 
   // Fetch subscriptions
   useEffect(() => {
+    if (status !== 'authenticated') return;
+
     const fetchSubscriptions = async () => {
       try {
         const response = await fetch('/api/user/subscriptions');
@@ -100,8 +115,11 @@ export default function UserDashboard() {
     };
 
     fetchSubscriptions();
-  }, []);
+  }, [status]);
+
   useEffect(() => {
+    if (status !== 'authenticated') return;
+
     const fetchCheckIns = async () => {
       try {
         setLoadingCheckIns(true);
@@ -118,10 +136,12 @@ export default function UserDashboard() {
     };
 
     fetchCheckIns();
-  }, []);
+  }, [status]);
 
   // Fetch payments
   useEffect(() => {
+    if (status !== 'authenticated') return;
+
     const fetchPayments = async () => {
       try {
         setLoadingPayments(true);
@@ -138,7 +158,7 @@ export default function UserDashboard() {
     };
 
     fetchPayments();
-  }, []);
+  }, [status]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -153,8 +173,48 @@ export default function UserDashboard() {
     visible: { opacity: 1, y: 0 },
   };
 
+  // Show loading skeleton while authentication is being checked
+  if (status === 'loading') {
+    return (
+      <motion.div
+        className="max-w-6xl mx-auto"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <div className="mb-8">
+          <div className="h-8 w-48 bg-muted animate-pulse rounded mb-2" />
+          <div className="h-4 w-64 bg-muted animate-pulse rounded" />
+        </div>
+
+        <motion.div
+          className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <motion.div key={idx} variants={itemVariants}>
+              <Card className="p-6">
+                <div className="h-4 w-20 bg-muted animate-pulse rounded mb-2" />
+                <div className="h-8 w-32 bg-muted animate-pulse rounded" />
+              </Card>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="mb-8">
+          <Card className="p-6">
+            <div className="h-6 w-40 bg-muted animate-pulse rounded" />
+          </Card>
+        </motion.div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
+    // @ts-ignore
       className="max-w-6xl mx-auto"
       variants={containerVariants}
       initial="hidden"
@@ -167,6 +227,7 @@ export default function UserDashboard() {
 
       {/* Stats Grid */}
       <motion.div
+      // @ts-ignore
         className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
         variants={containerVariants}
         initial="hidden"

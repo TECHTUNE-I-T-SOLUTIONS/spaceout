@@ -202,3 +202,58 @@ export async function sendAdminWelcomeEmail(
     text: `Welcome to SpaceOut Admin Panel, ${adminName}! Access your dashboard at: ${loginUrl}`,
   });
 }
+
+export async function sendNewUserSignupNotification(
+  adminEmail: string,
+  userDetails: {
+    name: string;
+    email: string;
+    phone: string;
+    createdAt: string;
+  }
+) {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #ffffff; margin: 0; padding: 0;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+          <div style="background-color: #f8f9fa; padding: 20px 0; text-align: center; border-bottom: 4px solid #10b981;">
+            <h1 style="color: #1f2937; margin: 0; font-size: 24px;">SpaceOut - Admin Alert</h1>
+          </div>
+          <div style="padding: 40px 20px;">
+            <h2 style="color: #1f2937; font-size: 20px; margin-bottom: 20px;">New User Registration 🎉</h2>
+            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
+              A new user has just signed up for SpaceOut. Here are their details:
+            </p>
+            <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 20px; border-radius: 5px; margin: 25px 0;">
+              <h3 style="color: #166534; margin-top: 0; font-size: 16px;">User Information</h3>
+              <p style="color: #15803d; margin: 10px 0;"><strong>Name:</strong> ${userDetails.name}</p>
+              <p style="color: #15803d; margin: 10px 0;"><strong>Email:</strong> <a href="mailto:${userDetails.email}" style="color: #10b981;">${userDetails.email}</a></p>
+              <p style="color: #15803d; margin: 10px 0;"><strong>Phone:</strong> ${userDetails.phone}</p>
+              <p style="color: #15803d; margin: 10px 0;"><strong>Registered:</strong> ${userDetails.createdAt}</p>
+            </div>
+            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
+              You can view this user's profile and manage their account from the SpaceOut admin dashboard.
+            </p>
+          </div>
+          <div style="border-top: 1px solid #e5e7eb; margin-top: 30px; padding-top: 20px; text-align: center;">
+            <p style="color: #6b7280; font-size: 12px; margin: 5px 0;">
+              © ${new Date().getFullYear()} SpaceOut. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  return sendEmail({
+    to: adminEmail,
+    subject: `New User Signup - ${userDetails.name}`,
+    html,
+    text: `New user registered: ${userDetails.name} (${userDetails.email})`,
+  });
+}

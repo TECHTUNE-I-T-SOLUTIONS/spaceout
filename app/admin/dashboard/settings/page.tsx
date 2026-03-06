@@ -39,9 +39,9 @@ export default function SettingsPage() {
   const [profileLoading, setProfileLoading] = useState(true);
   const [settings, setSettings] = useState<SettingsData>({
     businessName: 'SpaceOut',
-    businessEmail: 'admin@spaceout.com',
-    businessPhone: '+1 (555) 000-0000',
-    businessAddress: '123 Main St',
+    businessEmail: 'admin@spaceoutworkstation.com',
+    businessPhone: '+234 (0) 809 988 5454',
+    businessAddress: 'Tanke, Ilorin, Nigeria',
   });
 
   const userRole = (session?.user as any)?.role;
@@ -243,7 +243,7 @@ export default function SettingsPage() {
               id="businessPhone"
               value={settings.businessPhone}
               onChange={(e) => handleInputChange('businessPhone', e.target.value)}
-              placeholder="+1 (555) 000-0000"
+              placeholder="+234 (0) 809 988 5454"
               className="mt-1"
             />
           </div>

@@ -3,7 +3,7 @@ import dbConnect from '@/lib/db';
 import User from '@/lib/models/User';
 import PushSubscription from '@/lib/models/PushSubscription';
 import { hashPassword, isValidEmail } from '@/lib/auth';
-import { sendWelcomeEmail, sendAdminWelcomeEmail } from '@/lib/email';
+import { sendWelcomeEmail, sendAdminWelcomeEmail, sendNewUserSignupNotification } from '@/lib/email';
 import {
   sendWelcomePushNotification,
   sendAdminNotificationOnSignup,
@@ -123,6 +123,19 @@ export async function POST(request: NextRequest) {
     // Send welcome email
     const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/login`;
     await sendWelcomeEmail(user.email, user.name, loginUrl);
+    
+    // Send admin notification about new user signup
+    try {
+      await sendNewUserSignupNotification('spaceout.workstation@gmail.com', {
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        createdAt: new Date(user.createdAt).toLocaleString(),
+      });
+    } catch (err) {
+      console.error('Failed to send admin notification:', err);
+    }
+    
     const userSubscriptions = await PushSubscription.find({
       userId: user._id,
       isActive: true,
