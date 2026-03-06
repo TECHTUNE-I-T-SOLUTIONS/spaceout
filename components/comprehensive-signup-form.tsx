@@ -65,12 +65,17 @@ interface FormData {
 
   // Branch
   branchId: string;
+
+  // Emergency Contact
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  emergencyContactRelationship: string;
 }
 
 export function ComprehensiveSignupForm() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 6;
+  const totalSteps = 7;
 
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
@@ -98,6 +103,9 @@ export function ComprehensiveSignupForm() {
     bookingPreferences: [],
     usageDuration: '',
     branchId: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    emergencyContactRelationship: '',
   });
 
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -302,6 +310,22 @@ export function ComprehensiveSignupForm() {
       }
     }
 
+    if (currentStep === 7) {
+      // Emergency contact validation
+      if (!formData.emergencyContactName.trim()) {
+        setError('Emergency contact name is required');
+        return false;
+      }
+      if (!formData.emergencyContactPhone.trim()) {
+        setError('Emergency contact phone is required');
+        return false;
+      }
+      if (!formData.emergencyContactRelationship.trim()) {
+        setError('Emergency contact relationship is required');
+        return false;
+      }
+    }
+
     return true;
   };
 
@@ -388,6 +412,11 @@ export function ComprehensiveSignupForm() {
           usageDuration: formData.usageDuration,
         },
         branchId: formData.branchId,
+        emergencyContact: {
+          name: formData.emergencyContactName,
+          phone: formData.emergencyContactPhone,
+          relationship: formData.emergencyContactRelationship,
+        },
       };
 
       const response = await fetch('/api/auth/register', {
@@ -868,6 +897,58 @@ export function ComprehensiveSignupForm() {
                         {branch.name} - {branch.location}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </motion.div>
+        );
+
+      case 7:
+        return (
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+            <h2 className="text-2xl font-bold mb-6">Emergency Contact</h2>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="emergencyContactName">Emergency Contact Name *</Label>
+                <Input
+                  id="emergencyContactName"
+                  name="emergencyContactName"
+                  value={formData.emergencyContactName}
+                  onChange={handleChange}
+                  placeholder="John Doe"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="emergencyContactPhone">Emergency Contact Phone *</Label>
+                <Input
+                  id="emergencyContactPhone"
+                  name="emergencyContactPhone"
+                  value={formData.emergencyContactPhone}
+                  onChange={handleChange}
+                  placeholder="+234 803 555 0590"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="emergencyContactRelationship">Relationship *</Label>
+                <Select value={formData.emergencyContactRelationship} onValueChange={(value) => setFormData((prev) => ({ ...prev, emergencyContactRelationship: value }))}>
+                  <SelectTrigger id="emergencyContactRelationship">
+                    <SelectValue placeholder="Select relationship" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mother">Mother</SelectItem>
+                    <SelectItem value="father">Father</SelectItem>
+                    <SelectItem value="sibling">Sibling</SelectItem>
+                    <SelectItem value="spouse">Spouse</SelectItem>
+                    <SelectItem value="child">Child</SelectItem>
+                    <SelectItem value="friend">Friend</SelectItem>
+                    <SelectItem value="colleague">Colleague</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
