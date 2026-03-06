@@ -15,12 +15,22 @@ export async function POST(request: NextRequest) {
     await dbConnect();
 
     const {
+      fullName,
       firstName,
       lastName,
       name,
+      sex,
+      dateOfBirth,
+      houseAddress,
       email,
       password,
       phone,
+      passportPhotoUrl,
+      signatureUrl,
+      isStudent,
+      educationalInfo,
+      businessInfo,
+      servicePreferences,
       branchId,
       emergencyContact,
     } = await request.json();
@@ -33,9 +43,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Accept either firstName/lastName or name
-    const fullName = name || `${firstName} ${lastName}`;
-    if (!fullName) {
+    // Accept either firstName/lastName or fullName or name
+    const finalFullName = fullName || name || `${firstName} ${lastName}`;
+    const finalFirstName = firstName || fullName?.split(' ')[0] || name?.split(' ')[0];
+    const finalLastName = lastName || fullName?.split(' ').slice(1).join(' ') || name?.split(' ').slice(1).join(' ') || '';
+
+    if (!finalFullName) {
       return NextResponse.json(
         { message: 'Name is required' },
         { status: 400 }
@@ -84,22 +97,32 @@ export async function POST(request: NextRequest) {
 
     console.log('[Register] Creating user with data:', {
       email: email.toLowerCase(),
-      firstName,
-      lastName,
+      firstName: finalFirstName,
+      lastName: finalLastName,
       phone,
       branchId,
       hasBranchId: !!branchId,
+      isStudent,
     });
 
-    // Create user
+    // Create user with all new fields
     const user = await User.create({
-      firstName: firstName || fullName.split(' ')[0],
-      lastName: lastName || fullName.split(' ').slice(1).join(' '),
+      firstName: finalFirstName,
+      lastName: finalLastName,
       email: email.toLowerCase(),
       password: hashedPassword,
-      name: fullName,
+      name: finalFullName,
       phone,
       branchId,
+      sex: sex || undefined,
+      dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+      houseAddress: houseAddress || undefined,
+      passportPhotoUrl: passportPhotoUrl || undefined,
+      signatureUrl: signatureUrl || undefined,
+      isStudent: isStudent === true || isStudent === 'true',
+      educationalInfo: educationalInfo || undefined,
+      businessInfo: businessInfo || undefined,
+      servicePreferences: servicePreferences || undefined,
       emergencyContact: emergencyContact || { name: '', phone: '', relationship: '' },
       role: 'user',
       hasMembership: false,
@@ -130,6 +153,7 @@ export async function POST(request: NextRequest) {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        isStudent: user.isStudent,
         createdAt: new Date(user.createdAt).toLocaleString(),
       });
     } catch (err) {

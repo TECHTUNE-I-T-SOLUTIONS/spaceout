@@ -1,7 +1,7 @@
 'use client';
 
-import { EnhancedRegistrationForm } from '@/components/enhanced-registration-form';
+import { ComprehensiveSignupForm } from '@/components/comprehensive-signup-form';
 
 export default function EnhancedRegisterPage() {
-  return <EnhancedRegistrationForm />;
+  return <ComprehensiveSignupForm />;
 }
