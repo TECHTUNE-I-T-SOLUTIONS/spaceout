@@ -24,6 +24,7 @@ import {
   LogIn,
 } from 'lucide-react';
 import { LogoutConfirmModal } from '@/components/logout-confirm-modal';
+import { ThemeSwitcher } from '@/components/theme-switcher';
 
 interface AdminMobileHeaderProps {
   userRole: string;
@@ -142,17 +143,20 @@ export function AdminMobileHeader({ userRole }: AdminMobileHeaderProps) {
                   <Settings className="w-5 h-5 flex-shrink-0" />
                   <span className="text-sm font-medium">Settings</span>
                 </Link>
-                <Button
-                  variant="destructive"
-                  className="w-full justify-start gap-3"
-                  onClick={() => {
-                    setLogoutOpen(true);
-                    setIsMobileOpen(false);
-                  }}
-                >
-                  <LogOut className="w-5 h-5 flex-shrink-0" />
-                  <span className="text-sm font-medium">Logout</span>
-                </Button>
+                <div className="flex items-center justify-between gap-2">
+                  <Button
+                    variant="destructive"
+                    className="flex-1 justify-start gap-3"
+                    onClick={() => {
+                      setLogoutOpen(true);
+                      setIsMobileOpen(false);
+                    }}
+                  >
+                    <LogOut className="w-5 h-5 flex-shrink-0" />
+                    <span className="text-sm font-medium">Logout</span>
+                  </Button>
+                  <ThemeSwitcher />
+                </div>
               </div>
             </div>
           </SheetContent>

@@ -1,10 +1,12 @@
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: process.env.SMTP_SECURE === 'true', // true for 465, false for 587
   auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD,
   },
 });
 
@@ -20,17 +22,35 @@ export async function sendEmail({
   text?: string;
 }) {
   try {
+    // Validate email configuration
+    if (!process.env.SMTP_HOST || !process.env.SMTP_PORT || !process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+      throw new Error('Email configuration is missing. Please check your .env.local file.');
+    }
+
     const info = await transporter.sendMail({
-      from: `SpaceOut <${process.env.GMAIL_USER}>`,
+      from: `SpaceOut <${process.env.EMAIL_FROM}>`,
       to,
       subject,
       text,
       html,
     });
+
+    console.log(`Email sent successfully to ${to}. Message ID: ${info.messageId}`);
     return { success: true, messageId: info.messageId };
-  } catch (error) {
-    console.error('Email sending error:', error);
-    return { success: false, error };
+  } catch (error: any) {
+    const errorMessage = error.message || 'Unknown error occurred while sending email';
+    console.error('Email sending error:', {
+      error: errorMessage,
+      code: error.code,
+      response: error.response,
+      to,
+      timestamp: new Date().toISOString(),
+    });
+    return { 
+      success: false, 
+      error: errorMessage,
+      details: error.code === 'EENVELOPE' ? 'Invalid recipient email address' : undefined
+    };
   }
 }
 

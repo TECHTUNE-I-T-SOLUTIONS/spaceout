@@ -34,6 +34,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate relationship enum
+    const validRelationships = ['Spouse', 'Parent', 'Child', 'Sibling', 'Friend', 'Other'];
+    if (!validRelationships.includes(emergencyContact.relationship)) {
+      return NextResponse.json(
+        {
+          message: 'Invalid relationship value',
+          details: `Relationship must be one of: ${validRelationships.join(', ')}`,
+        },
+        { status: 400 }
+      );
+    }
+
     if (!passportUrl || !signatureUrl) {
       return NextResponse.json(
         { message: 'Passport and signature uploads are required' },
@@ -55,6 +67,15 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
+    // Check if both documents are uploaded
+    const documentsUploaded = !!(passportUrl && signatureUrl);
+    
+    console.log('[Register-Enhanced] Documents uploaded check:', {
+      passportUrl: !!passportUrl,
+      signatureUrl: !!signatureUrl,
+      documentsUploaded,
+    });
+
     // Create new user
     const user = await User.create({
       firstName,
@@ -69,10 +90,11 @@ export async function POST(request: NextRequest) {
         phone: emergencyContact.phone,
         relationship: emergencyContact.relationship,
       },
-      passportUrl,
+      passportPhotoUrl: passportUrl,
       signatureUrl,
       role: 'user',
       isActive: true,
+      documentsUploaded,
     });
 
     // Return success without password

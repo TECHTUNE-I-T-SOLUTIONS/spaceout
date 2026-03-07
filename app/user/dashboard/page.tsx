@@ -7,10 +7,8 @@ import { motion } from 'framer-motion';
 import { CreditCard, Calendar, CheckCircle, Clock, Wifi, WifiOff, Loader2, TrendingUp, TrendingDown, AlertCircle, Shield } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { MembershipModal } from '@/components/membership-modal';
-import { DocumentVerificationModal } from '@/components/document-verification-modal';
 import { toast } from 'sonner';
 
 interface CheckIn {
@@ -52,10 +50,8 @@ interface UserProfile {
 }
 
 export default function UserDashboard() {
-  const { data: session, status } = useSession();
   const router = useRouter();
   const [showMembershipModal, setShowMembershipModal] = useState(false);
-  const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
@@ -63,17 +59,45 @@ export default function UserDashboard() {
   const [loadingCheckIns, setLoadingCheckIns] = useState(true);
   const [loadingPayments, setLoadingPayments] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [sessionChecked, setSessionChecked] = useState(false);
 
-  // Check authentication and redirect if not authenticated
+  // Check authentication via API (more reliable than useSession hook)
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/login');
-    }
-  }, [status, router]);
+    const checkAuthentication = async () => {
+      try {
+        const response = await fetch('/api/auth/session', {
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          console.log('[Dashboard] Session check failed, redirecting to login');
+          router.push('/auth/login');
+          return;
+        }
 
-  // Fetch user profile and check for missing documents
+        const sessionData = await response.json();
+        
+        if (!sessionData || !sessionData.user || !sessionData.user.email) {
+          console.log('[Dashboard] No valid session, redirecting to login');
+          console.log('[Dashboard] Session data:', sessionData);
+          router.push('/auth/login');
+          return;
+        }
+
+        console.log('[Dashboard] Valid session found:', sessionData.user.email);
+        setSessionChecked(true);
+      } catch (error) {
+        console.error('[Dashboard] Error checking session:', error);
+        router.push('/auth/login');
+      }
+    };
+
+    checkAuthentication();
+  }, [router]);
+
+  // Fetch user profile only after session is confirmed
   useEffect(() => {
-    if (status !== 'authenticated') return;
+    if (!sessionChecked) return;
 
     const fetchUserProfile = async () => {
       try {
@@ -83,9 +107,25 @@ export default function UserDashboard() {
           const data = await response.json();
           setUserProfile(data);
           
-          // Show document verification modal if documents are missing
-          if (!data.passportUrl || !data.signatureUrl) {
-            setShowDocumentModal(true);
+          // Check if documents exist but flag is false, and update if needed
+          if (
+            !data.documentsUploaded &&
+            data.passportPhotoUrl &&
+            data.signatureUrl
+          ) {
+            console.log('[Dashboard] Documents exist but flag is false, updating...');
+            try {
+              await fetch('/api/user/profile', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ documentsUploaded: true }),
+              });
+              // Update local state
+              setUserProfile({ ...data, documentsUploaded: true });
+              console.log('[Dashboard] Documents flag updated to true');
+            } catch (error) {
+              console.error('[Dashboard] Error updating documents flag:', error);
+            }
           }
         }
       } catch (error) {
@@ -96,11 +136,11 @@ export default function UserDashboard() {
     };
 
     fetchUserProfile();
-  }, [status]);
+  }, [sessionChecked]);
 
   // Fetch subscriptions
   useEffect(() => {
-    if (status !== 'authenticated') return;
+    if (!sessionChecked) return;
 
     const fetchSubscriptions = async () => {
       try {
@@ -115,10 +155,10 @@ export default function UserDashboard() {
     };
 
     fetchSubscriptions();
-  }, [status]);
+  }, [sessionChecked]);
 
   useEffect(() => {
-    if (status !== 'authenticated') return;
+    if (!sessionChecked) return;
 
     const fetchCheckIns = async () => {
       try {
@@ -136,11 +176,11 @@ export default function UserDashboard() {
     };
 
     fetchCheckIns();
-  }, [status]);
+  }, [sessionChecked]);
 
   // Fetch payments
   useEffect(() => {
-    if (status !== 'authenticated') return;
+    if (!sessionChecked) return;
 
     const fetchPayments = async () => {
       try {
@@ -158,7 +198,7 @@ export default function UserDashboard() {
     };
 
     fetchPayments();
-  }, [status]);
+  }, [sessionChecked]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -174,7 +214,7 @@ export default function UserDashboard() {
   };
 
   // Show loading skeleton while authentication is being checked
-  if (status === 'loading') {
+  if (!sessionChecked) {
     return (
       <motion.div
         className="max-w-6xl mx-auto"
@@ -479,16 +519,6 @@ export default function UserDashboard() {
 
       {/* Membership Modal */}
       <MembershipModal open={showMembershipModal} onOpenChange={setShowMembershipModal} />
-
-      {/* Document Verification Modal */}
-      <DocumentVerificationModal 
-        open={showDocumentModal} 
-        onOpenChange={setShowDocumentModal}
-        onUploadSuccess={() => {
-          // Refetch profile to update verification status
-          fetch('/api/user/profile').then(r => r.json()).then(setUserProfile);
-        }}
-      />
     </motion.div>
   );
 }

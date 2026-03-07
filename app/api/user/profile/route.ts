@@ -27,13 +27,15 @@ export async function GET(request: NextRequest) {
       phone: user.phone || '',
       role: user.role || 'user',
       profileImage: user.profileImage || null,
-      passportUrl: user.passportUrl || null,
+      passportPhotoUrl: user.passportPhotoUrl || null,
+      passportUrl: user.passportPhotoUrl || null,
       signatureUrl: user.signatureUrl || null,
       emergencyContact: user.emergencyContact || { name: '', phone: '', relationship: '' },
       hasMembership: user.hasMembership || false,
       membershipExpiry: user.membershipExpiry || null,
       prepaidUntil: user.prepaidUntil || null,
       isEmailVerified: user.isEmailVerified || false,
+      documentsUploaded: user.documentsUploaded || false,
       createdAt: user.createdAt,
     });
   } catch (error) {
@@ -93,6 +95,52 @@ export async function PUT(request: NextRequest) {
     console.error('Error updating profile:', error);
     return NextResponse.json(
       { error: 'Failed to update profile' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await requireAuth();
+    
+    await dbConnect();
+
+    const body = await request.json();
+    const { documentsUploaded } = body;
+
+    if (typeof documentsUploaded !== 'boolean') {
+      return NextResponse.json(
+        { error: 'documentsUploaded must be a boolean' },
+        { status: 400 }
+      );
+    }
+
+    console.log('[Profile] Updating documentsUploaded to:', documentsUploaded);
+
+    const updatedUser = await User.findByIdAndUpdate(
+      session.user.id,
+      { documentsUploaded },
+      { new: true, runValidators: true }
+    ).lean();
+
+    if (!updatedUser) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    console.log('[Profile] documentsUploaded updated successfully for user:', updatedUser.email);
+
+    return NextResponse.json({
+      message: 'Documents flag updated successfully',
+      documentsUploaded: updatedUser.documentsUploaded,
+    });
+  } catch (error) {
+    console.error('Error updating documents flag:', error);
+    return NextResponse.json(
+      { error: 'Failed to update documents flag' },
       { status: 500 }
     );
   }

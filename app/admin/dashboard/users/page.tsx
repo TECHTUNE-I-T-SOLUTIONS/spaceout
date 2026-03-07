@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { Plus, Loader2, Trash2, Eye, Mail } from 'lucide-react';
+import { Plus, Loader2, Trash2, Eye, Mail, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -16,6 +16,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface User {
   _id: string;
@@ -36,6 +37,10 @@ interface User {
     relationship: string;
   };
   hasMembership?: boolean;
+  membershipStatus?: 'active' | 'inactive' | 'expired';
+  membershipType?: 'annual' | 'monthly' | 'lifetime';
+  membershipActivatedAt?: string;
+  membershipExpiryDate?: string;
   membershipExpiry?: string;
   branchId?: string;
 }
@@ -66,6 +71,11 @@ export default function UsersPage() {
       relationship: 'Parent',
     },
   });
+
+  // Batch email states
+  const [batchEmailSubject, setBatchEmailSubject] = useState('');
+  const [batchEmailMessage, setBatchEmailMessage] = useState('');
+  const [sendingBatchEmail, setSendingBatchEmail] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -182,6 +192,58 @@ export default function UsersPage() {
     }
   };
 
+  const handleSendBatchEmail = async () => {
+    if (!batchEmailSubject.trim() || !batchEmailMessage.trim()) {
+      toast.error('Validation Error', {
+        description: 'Please fill in both subject and message.',
+      });
+      return;
+    }
+
+    if (users.length === 0) {
+      toast.error('No Users', {
+        description: 'There are no users to send emails to.',
+      });
+      return;
+    }
+
+    try {
+      setSendingBatchEmail(true);
+      const response = await fetch('/api/admin/send-batch-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subject: batchEmailSubject,
+          message: batchEmailMessage,
+          userIds: users.map(u => u._id || u.id),
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast.success('Emails Sent', {
+          description: `${result.count} emails sent to all users successfully.`,
+        });
+        setBatchEmailSubject('');
+        setBatchEmailMessage('');
+      } else {
+        const error = await response.json();
+        toast.error('Failed to Send Emails', {
+          description: error.error || 'Unable to send emails at this time.',
+        });
+      }
+    } catch (error) {
+      console.error('Error sending batch emails:', error);
+      toast.error('Error', {
+        description: 'Failed to send emails.',
+      });
+    } finally {
+      setSendingBatchEmail(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -198,8 +260,22 @@ export default function UsersPage() {
         </Button>
       </div>
       
-      {loading ? (
-        <Card className="p-8 text-center">
+      <Tabs defaultValue="users" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
+          <TabsTrigger value="users" className="flex items-center gap-2">
+            <Eye size={16} />
+            Users & Management
+          </TabsTrigger>
+          <TabsTrigger value="emails" className="flex items-center gap-2">
+            <Mail size={16} />
+            Send Emails
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Users Tab */}
+        <TabsContent value="users" className="space-y-4">
+          {loading ? (
+            <Card className="p-8 text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">Loading users...</p>
         </Card>
@@ -285,7 +361,92 @@ export default function UsersPage() {
             </table>
           </div>
         </Card>
-      )}
+          )}
+        </TabsContent>
+
+        {/* Send Emails Tab */}
+        <TabsContent value="emails" className="space-y-4">
+          <Card className="p-6 space-y-6">
+            {/* Email Sending Section */}
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-bold mb-2">Send Transactional Emails</h2>
+                <p className="text-muted-foreground">
+                  Send personalized emails to all users. The system will automatically add their name and signature.
+                </p>
+              </div>
+
+              {/* Subject */}
+              <div className="space-y-2">
+                <Label htmlFor="batch-subject" className="text-base font-semibold">Email Subject *</Label>
+                <Input
+                  id="batch-subject"
+                  placeholder="Enter email subject (e.g., 'Important: Service Update')"
+                  value={batchEmailSubject}
+                  onChange={(e) => setBatchEmailSubject(e.target.value)}
+                  className="h-10"
+                />
+              </div>
+
+              {/* Message */}
+              <div className="space-y-2">
+                <Label htmlFor="batch-message" className="text-base font-semibold">Message *</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Note: Each recipient will receive a personalized email starting with "Dear [Name]," followed by your message.
+                </p>
+                <Textarea
+                  id="batch-message"
+                  placeholder="Enter your message here..."
+                  value={batchEmailMessage}
+                  onChange={(e) => setBatchEmailMessage(e.target.value)}
+                  className="h-40 resize-none"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Character count: {batchEmailMessage.length}
+                </p>
+              </div>
+
+              {/* Summary */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  📧 {users.length} email(s) will be sent immediately to all users
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 justify-end pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setBatchEmailSubject('');
+                    setBatchEmailMessage('');
+                  }}
+                  disabled={sendingBatchEmail}
+                >
+                  Clear
+                </Button>
+                <Button
+                  onClick={handleSendBatchEmail}
+                  disabled={sendingBatchEmail || !batchEmailSubject.trim() || !batchEmailMessage.trim()}
+                  className="flex items-center gap-2"
+                >
+                  {sendingBatchEmail ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={16} />
+                      Send Emails
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* User Details Modal */}
       <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
@@ -382,26 +543,58 @@ export default function UsersPage() {
               {/* Membership Information */}
               {selectedUser.hasMembership !== undefined && (
                 <div className="bg-muted/30 rounded-lg p-4 space-y-4">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Membership</h3>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Membership Information</h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-xs text-muted-foreground uppercase tracking-wide">Has Membership</Label>
+                      <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
                       <div className="mt-1">
                         <span className={`px-3 py-1 rounded text-sm font-semibold inline-block ${
                           selectedUser.hasMembership
-                            ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100'
+                            ? selectedUser.membershipStatus === 'active'
+                              ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100'
+                              : selectedUser.membershipStatus === 'expired'
+                              ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100'
+                              : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100'
                             : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100'
                         }`}>
-                          {selectedUser.hasMembership ? 'Yes' : 'No'}
+                          {selectedUser.hasMembership ? (selectedUser.membershipStatus ? selectedUser.membershipStatus.charAt(0).toUpperCase() + selectedUser.membershipStatus.slice(1) : 'Active') : 'No Membership'}
                         </span>
                       </div>
                     </div>
-                    {selectedUser.hasMembership && selectedUser.membershipExpiry && (
+                    
+                    {selectedUser.hasMembership && selectedUser.membershipType && (
                       <div>
-                        <Label className="text-xs text-muted-foreground uppercase tracking-wide">Membership Expires</Label>
+                        <Label className="text-xs text-muted-foreground uppercase tracking-wide">Membership Type</Label>
+                        <p className="text-sm font-semibold mt-1 capitalize">
+                          {selectedUser.membershipType}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {selectedUser.hasMembership && selectedUser.membershipActivatedAt && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground uppercase tracking-wide">Activated</Label>
                         <p className="text-sm font-semibold mt-1">
-                          {new Date(selectedUser.membershipExpiry).toLocaleDateString()}
+                          {new Date(selectedUser.membershipActivatedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {selectedUser.hasMembership && selectedUser.membershipExpiryDate && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground uppercase tracking-wide">Expiry Date</Label>
+                        <p className="text-sm font-semibold mt-1">
+                          {new Date(selectedUser.membershipExpiryDate).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {selectedUser.hasMembership && !selectedUser.membershipExpiryDate && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground uppercase tracking-wide">Duration</Label>
+                        <p className="text-sm font-semibold mt-1 text-green-600 dark:text-green-400">
+                          Lifetime
                         </p>
                       </div>
                     )}
@@ -464,45 +657,78 @@ export default function UsersPage() {
       <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Send Email</DialogTitle>
+            <DialogTitle>Send Email to User</DialogTitle>
             <DialogDescription>
-              Send a message to {selectedUser?.name}
+              Send a direct message to {selectedUser?.name} at {selectedUser?.email}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-5">
+            {/* Info Box */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <p className="text-sm text-blue-900 dark:text-blue-100">
+                <span className="font-semibold">ℹ️ Note:</span> This email will be sent from <span className="font-mono bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded">spaces@spaceoutworkstation.com</span>
+              </p>
+            </div>
+
+            {/* Recipient Info */}
+            <div className="bg-muted/50 rounded-lg p-3 border border-border">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold mb-2">Recipient</p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
+                  {selectedUser?.name?.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">{selectedUser?.name}</p>
+                  <p className="text-xs text-muted-foreground break-all">{selectedUser?.email}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Email Subject */}
             <div>
-              <Label htmlFor="email-subject">Subject</Label>
+              <Label htmlFor="email-subject" className="font-semibold">Email Subject</Label>
               <Input
                 id="email-subject"
-                placeholder="Email subject"
+                placeholder="e.g., Account Verification Required or Special Offer"
                 value={emailSubject}
                 onChange={(e) => setEmailSubject(e.target.value)}
                 className="mt-2"
               />
+              <p className="text-xs text-muted-foreground mt-1">Make it clear and descriptive</p>
             </div>
 
+            {/* Email Message */}
             <div>
-              <Label htmlFor="email-body">Message</Label>
+              <Label htmlFor="email-body" className="font-semibold">Message</Label>
               <Textarea
                 id="email-body"
-                placeholder="Type your message here..."
+                placeholder="Type your message here... You can include important information, instructions, or promotional content."
                 value={emailBody}
                 onChange={(e) => setEmailBody(e.target.value)}
-                className="mt-2 h-32"
+                className="mt-2 h-40 resize-none"
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Character count: {emailBody.length}
+              </p>
             </div>
 
-            <div className="flex gap-2 justify-end pt-4">
+            {/* Actions */}
+            <div className="flex gap-2 justify-end pt-4 border-t">
               <Button
                 variant="outline"
-                onClick={() => setShowEmailModal(false)}
+                onClick={() => {
+                  setShowEmailModal(false);
+                  setEmailSubject('');
+                  setEmailBody('');
+                }}
+                disabled={sendingEmail}
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSendEmail}
-                disabled={sendingEmail}
+                disabled={sendingEmail || !emailSubject.trim() || !emailBody.trim()}
                 className="flex items-center gap-2"
               >
                 {sendingEmail ? (

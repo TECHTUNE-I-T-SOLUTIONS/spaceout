@@ -9,26 +9,30 @@ import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
 import { useSession } from 'next-auth/react';
 import { FileUpload } from '@/components/file-upload';
-import { Save, AlertCircle, Loader2, Mail, Phone, MapPin, Shield } from 'lucide-react';
+import { Save, AlertCircle, Loader2, Mail, Shield, User, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AdminProfile {
-  _id: string;
+  id: string;
   email: string;
+  firstName: string;
+  lastName: string;
   name: string;
   role: string;
-  branch?: string;
-  phone?: string;
-  createdAt?: string;
+  // phone?: string | null;
+  profileImage?: string | null;
+  isActive: boolean;
+  isEmailVerified: boolean;
+  lastLogin?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-interface SettingsData {
-  businessName: string;
-  businessEmail: string;
-  businessPhone: string;
-  businessAddress: string;
-  logoUrl?: string;
-  faviconUrl?: string;
+interface AdminFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  // phone: string;
 }
 
 export default function SettingsPage() {
@@ -37,11 +41,12 @@ export default function SettingsPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [adminProfile, setAdminProfile] = useState<AdminProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
-  const [settings, setSettings] = useState<SettingsData>({
-    businessName: 'SpaceOut',
-    businessEmail: 'admin@spaceoutworkstation.com',
-    businessPhone: '+234 (0) 809 988 5454',
-    businessAddress: 'Tanke, Ilorin, Nigeria',
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState<AdminFormData>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    // phone: '',
   });
 
   const userRole = (session?.user as any)?.role;
@@ -55,55 +60,56 @@ export default function SettingsPage() {
   const fetchAdminProfile = async () => {
     try {
       setProfileLoading(true);
-      const response = await fetch('/api/admins');
+      const response = await fetch('/api/auth/admin/me');
       if (response.ok) {
-        const admins: AdminProfile[] = await response.json();
-        // Get the first admin (current admin)
-        if (admins.length > 0) {
-          setAdminProfile(admins[0]);
-        }
+        const adminData = await response.json();
+        setAdminProfile(adminData);
+        setFormData({
+          firstName: adminData.firstName,
+          lastName: adminData.lastName,
+          email: adminData.email,
+          // phone: adminData.phone || '',
+        });
       }
     } catch (error) {
       console.error('Error fetching admin profile:', error);
+      toast.error('Failed to load admin profile');
     } finally {
       setProfileLoading(false);
     }
   };
 
-  const handleInputChange = (field: keyof SettingsData, value: string) => {
-    setSettings((prev) => ({ ...prev, [field]: value }));
+  const handleInputChange = (field: keyof AdminFormData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSaveSettings = async () => {
+  const handleSaveProfile = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/admin/settings', {
+      const response = await fetch('/api/admin/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
+        body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save settings');
+        throw new Error('Failed to save profile');
       }
 
-      toast.success('Settings Updated', {
-        description: 'Your settings have been saved successfully.',
+      const updatedData = await response.json();
+      setAdminProfile(updatedData);
+      setIsEditing(false);
+
+      toast.success('Profile Updated', {
+        description: 'Your profile has been saved successfully.',
       });
     } catch (error: any) {
       toast.error('Save Failed', {
-        description: error.message || 'Failed to save settings.',
+        description: error.message || 'Failed to save profile.',
       });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleFileUpload = (field: 'logoUrl' | 'faviconUrl', file: any) => {
-    setSettings((prev) => ({ ...prev, [field]: file.url }));
-    toast.success('File Uploaded', {
-      description: `${file.fileName} uploaded successfully.`,
-    });
   };
 
   if (!isMounted) {
@@ -137,200 +143,221 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-3xl font-bold mb-2">Settings</h1>
         <p className="text-muted-foreground">
-          {isSuperAdmin ? 'Manage system-wide configuration' : 'Manage your branch settings'}
+          Manage your admin profile and account details
         </p>
       </div>
 
-      {/* Your Account / Admin Profile */}
-      <Card className="p-6 border-l-4 border-l-primary">
-        <h2 className="text-xl font-bold mb-6">Your Account</h2>
-
-        {profileLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      {/* Admin Profile - View Mode */}
+      {!isEditing && adminProfile && (
+        <Card className="p-6 border-l-4 border-l-primary">
+          <div className="flex items-start justify-between mb-6">
+            <h2 className="text-xl font-bold">Admin Profile</h2>
+            <Button
+              onClick={() => setIsEditing(true)}
+              variant="outline"
+              size="sm"
+            >
+              Edit Profile
+            </Button>
           </div>
-        ) : adminProfile ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Name</p>
-              <p className="font-semibold">{adminProfile.name}</p>
-            </div>
 
-            <div>
-              <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
-                <Mail className="w-3 h-3" /> Email
-              </p>
-              <p className="font-semibold">{adminProfile.email}</p>
+          {profileLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
-
-            <div>
-              <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
-                <Shield className="w-3 h-3" /> Role
-              </p>
-              <div className="flex items-center gap-2">
-                <p className="font-semibold">{adminProfile.role.charAt(0).toUpperCase() + adminProfile.role.slice(1)}</p>
-                <Badge className={adminProfile.role === 'superadmin' ? 'bg-purple-500' : 'bg-blue-500'}>
-                  {adminProfile.role === 'superadmin' ? 'Super Admin' : 'Admin'}
-                </Badge>
-              </div>
-            </div>
-
-            {adminProfile.phone && (
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
-                  <Phone className="w-3 h-3" /> Phone
+                  <User className="w-3 h-3" /> First Name
                 </p>
-                <p className="font-semibold">{adminProfile.phone}</p>
+                <p className="font-semibold text-lg">{adminProfile.firstName}</p>
               </div>
-            )}
 
-            {adminProfile.branch && (
               <div>
                 <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
-                  <MapPin className="w-3 h-3" /> Branch
+                  <User className="w-3 h-3" /> Last Name
                 </p>
-                <p className="font-semibold">{adminProfile.branch}</p>
+                <p className="font-semibold text-lg">{adminProfile.lastName}</p>
               </div>
-            )}
 
-            {adminProfile.createdAt && (
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Member Since</p>
-                <p className="font-semibold">{new Date(adminProfile.createdAt).toLocaleDateString()}</p>
+                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                  <Mail className="w-3 h-3" /> Email
+                </p>
+                <p className="font-semibold text-lg">{adminProfile.email}</p>
               </div>
-            )}
-          </div>
-        ) : (
-          <div className="text-center py-6 text-muted-foreground">
-            <p>Unable to load admin profile</p>
-          </div>
-        )}
-      </Card>
 
-      {/* Business Information */}
-      <Card className="p-6">
-        <h2 className="text-xl font-bold mb-6">
-          {isSuperAdmin ? 'System Settings' : 'Business Information'}
-        </h2>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                  <Shield className="w-3 h-3" /> Role
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="font-semibold text-lg capitalize">{adminProfile.role}</p>
+                  <Badge className={adminProfile.role === 'superadmin' ? 'bg-purple-500' : 'bg-blue-500'}>
+                    {adminProfile.role === 'superadmin' ? 'Super Admin' : 'Admin'}
+                  </Badge>
+                </div>
+              </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <Label htmlFor="businessName">Business Name</Label>
-            <Input
-              id="businessName"
-              value={settings.businessName}
-              onChange={(e) => handleInputChange('businessName', e.target.value)}
-              placeholder="Enter business name"
-              className="mt-1"
-            />
-          </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Status</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className={`w-2 h-2 rounded-full ${adminProfile.isActive ? 'bg-green-500' : 'bg-red-500'}`} />
+                  <p className="font-semibold text-lg">{adminProfile.isActive ? 'Active' : 'Inactive'}</p>
+                </div>
+              </div>
 
-          <div>
-            <Label htmlFor="businessEmail">Email Address</Label>
-            <Input
-              id="businessEmail"
-              type="email"
-              value={settings.businessEmail}
-              onChange={(e) => handleInputChange('businessEmail', e.target.value)}
-              placeholder="admin@example.com"
-              className="mt-1"
-            />
-          </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                  <Mail className="w-3 h-3" /> Email Verified
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className={`w-2 h-2 rounded-full ${adminProfile.isEmailVerified ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                  <p className="font-semibold text-lg">{adminProfile.isEmailVerified ? 'Verified' : 'Not Verified'}</p>
+                </div>
+              </div>
 
-          <div>
-            <Label htmlFor="businessPhone">Phone Number</Label>
-            <Input
-              id="businessPhone"
-              value={settings.businessPhone}
-              onChange={(e) => handleInputChange('businessPhone', e.target.value)}
-              placeholder="+234 (0) 809 988 5454"
-              className="mt-1"
-            />
-          </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                  <Calendar className="w-3 h-3" /> Member Since
+                </p>
+                <p className="font-semibold text-lg">
+                  {new Date(adminProfile.createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </p>
+              </div>
 
-          <div>
-            <Label htmlFor="businessAddress">Address</Label>
-            <Input
-              id="businessAddress"
-              value={settings.businessAddress}
-              onChange={(e) => handleInputChange('businessAddress', e.target.value)}
-              placeholder="123 Main Street"
-              className="mt-1"
-            />
-          </div>
-        </div>
-      </Card>
-
-      {/* Branding */}
-      {isSuperAdmin && (
-        <Card className="p-6">
-          <h2 className="text-xl font-bold mb-6">Branding</h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label className="mb-4 block">Logo</Label>
-              <FileUpload
-                accept="image/*"
-                maxSize={2 * 1024 * 1024}
-                onUploadSuccess={(file) => handleFileUpload('logoUrl', file)}
-              />
-              {settings.logoUrl && (
-                <div className="mt-4">
-                  <p className="text-sm font-medium mb-2">Current Logo:</p>
-                  <img
-                    src={settings.logoUrl}
-                    alt="Logo"
-                    className="h-16 object-contain border rounded"
-                  />
+              {adminProfile.lastLogin && (
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                    <Calendar className="w-3 h-3" /> Last Login
+                  </p>
+                  <p className="font-semibold text-lg">
+                    {new Date(adminProfile.lastLogin).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
                 </div>
               )}
             </div>
-
-            <div>
-              <Label className="mb-4 block">Favicon</Label>
-              <FileUpload
-                accept="image/*"
-                maxSize={1 * 1024 * 1024}
-                onUploadSuccess={(file) => handleFileUpload('faviconUrl', file)}
-              />
-              {settings.faviconUrl && (
-                <div className="mt-4">
-                  <p className="text-sm font-medium mb-2">Current Favicon:</p>
-                  <img
-                    src={settings.faviconUrl}
-                    alt="Favicon"
-                    className="h-8 w-8 border rounded"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
+          )}
         </Card>
       )}
 
+      {/* Admin Profile - Edit Mode */}
+      {isEditing && adminProfile && (
+        <Card className="p-6 border-l-4 border-l-primary">
+          <div className="flex items-start justify-between mb-6">
+            <h2 className="text-xl font-bold">Edit Admin Profile</h2>
+            <Button
+              onClick={() => {
+                setIsEditing(false);
+                setFormData({
+                  firstName: adminProfile.firstName,
+                  lastName: adminProfile.lastName,
+                  email: adminProfile.email,
+                  // phone: adminProfile.phone || '',
+                });
+              }}
+              variant="outline"
+              size="sm"
+            >
+              Cancel
+            </Button>
+          </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <Label htmlFor="firstName">First Name</Label>
+              <Input
+                id="firstName"
+                value={formData.firstName}
+                onChange={(e) => handleInputChange('firstName', e.target.value)}
+                placeholder="Enter first name"
+                className="mt-1"
+              />
+            </div>
 
-      {/* Save Button */}
-      <div className="flex justify-end pt-4">
-        <Button
-          onClick={handleSaveSettings}
-          disabled={isLoading}
-          size="lg"
-          className="gap-2"
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4" />
-              Save Settings
-            </>
-          )}
-        </Button>
-      </div>
+            <div>
+              <Label htmlFor="lastName">Last Name</Label>
+              <Input
+                id="lastName"
+                value={formData.lastName}
+                onChange={(e) => handleInputChange('lastName', e.target.value)}
+                placeholder="Enter last name"
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                placeholder="Enter email address"
+                className="mt-1"
+              />
+            </div>
+
+            {/* <div>
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                placeholder="Enter phone number"
+                className="mt-1"
+              />
+            </div> */}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-6">
+            <Button
+              onClick={() => {
+                setIsEditing(false);
+                setFormData({
+                  firstName: adminProfile.firstName,
+                  lastName: adminProfile.lastName,
+                  email: adminProfile.email,
+                  // phone: adminProfile.phone || '',
+                });
+              }}
+              variant="outline"
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveProfile}
+              disabled={isLoading}
+              size="lg"
+              className="gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Save Profile
+                </>
+              )}
+            </Button>
+          </div>
+        </Card>
+      )}
     </motion.div>
   );
 }

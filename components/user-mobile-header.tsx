@@ -17,6 +17,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { LogoutConfirmModal } from '@/components/logout-confirm-modal';
+import { ThemeSwitcher } from '@/components/theme-switcher';
 
 const menuItems = [
   { href: '/user/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -74,16 +75,17 @@ export function UserMobileHeader() {
                   ))}
                 </div>
 
-                {/* Logout Button */}
-                <div className="border-t border-border p-4">
+                {/* Logout and Theme Toggle */}
+                <div className="border-t border-border p-4 flex items-center justify-between gap-2">
                   <Button
                     onClick={() => setLogoutOpen(true)}
                     variant="ghost"
-                    className="w-full justify-start text-foreground hover:bg-muted"
+                    className="flex-1 justify-start text-foreground hover:bg-muted"
                   >
                     <LogOut className="w-5 h-5 flex-shrink-0 mr-3" />
                     <span className="text-sm font-medium">Sign Out</span>
                   </Button>
+                  <ThemeSwitcher />
                 </div>
               </div>
             </SheetContent>

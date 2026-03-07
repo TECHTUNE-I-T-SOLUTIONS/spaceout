@@ -101,64 +101,65 @@ export async function POST(request: NextRequest) {
 
     // Handle multiple files (passport and signature for signup)
     if (passport || signature) {
-      const uploadPromises: Promise<{ type: string; url: string } | null>[] = [];
-
-      if (passport) {
-        if (passport.size > MAX_FILE_SIZE) {
-          return NextResponse.json(
-            { message: 'Passport file size exceeds 10MB limit' },
-            { status: 400 }
-          );
-        }
-
-        if (!ALLOWED_TYPES.includes(passport.type)) {
-          return NextResponse.json(
-            { message: 'Passport file type not allowed. Only images and PDFs are accepted' },
-            { status: 400 }
-          );
-        }
-
-        uploadPromises.push(
-          uploadFileToCloudinary(passport, 'spaceout/passports')
-            .then((url) => ({ type: 'passportUrl', url }))
-            .catch(() => null)
-        );
-      }
-
-      if (signature) {
-        if (signature.size > MAX_FILE_SIZE) {
-          return NextResponse.json(
-            { message: 'Signature file size exceeds 10MB limit' },
-            { status: 400 }
-          );
-        }
-
-        if (!ALLOWED_TYPES.includes(signature.type)) {
-          return NextResponse.json(
-            { message: 'Signature file type not allowed. Only images and PDFs are accepted' },
-            { status: 400 }
-          );
-        }
-
-        uploadPromises.push(
-          uploadFileToCloudinary(signature, 'spaceout/signatures')
-            .then((url) => ({ type: 'signatureUrl', url }))
-            .catch(() => null)
-        );
-      }
-
       try {
-        const results = await Promise.all(uploadPromises);
-        const uploadedData: Record<string, string> = {
-          message: 'Files uploaded successfully',
-        };
+        const uploadedData: Record<string, string> = {};
 
-        results.forEach((result) => {
-          if (result) {
-            uploadedData[result.type] = result.url;
+        // Upload passport first if provided
+        if (passport) {
+          if (passport.size > MAX_FILE_SIZE) {
+            return NextResponse.json(
+              { message: 'Passport file size exceeds 10MB limit' },
+              { status: 400 }
+            );
           }
-        });
 
+          if (!ALLOWED_TYPES.includes(passport.type)) {
+            return NextResponse.json(
+              { message: 'Passport file type not allowed. Only images and PDFs are accepted' },
+              { status: 400 }
+            );
+          }
+
+          console.log('[Upload] Uploading passport...');
+          try {
+            const passportUrl = await uploadFileToCloudinary(passport, 'spaceout/passports');
+            uploadedData.passportUrl = passportUrl;
+            console.log('[Upload] Passport uploaded successfully:', passportUrl);
+          } catch (error: any) {
+            console.error('[Upload] Passport upload failed:', error);
+            throw new Error(`Passport upload failed: ${error.message}`);
+          }
+        }
+
+        // Then upload signature if provided
+        if (signature) {
+          if (signature.size > MAX_FILE_SIZE) {
+            return NextResponse.json(
+              { message: 'Signature file size exceeds 10MB limit' },
+              { status: 400 }
+            );
+          }
+
+          if (!ALLOWED_TYPES.includes(signature.type)) {
+            return NextResponse.json(
+              { message: 'Signature file type not allowed. Only images and PDFs are accepted' },
+              { status: 400 }
+            );
+          }
+
+          console.log('[Upload] Uploading signature...');
+          try {
+            const signatureUrl = await uploadFileToCloudinary(signature, 'spaceout/signatures');
+            uploadedData.signatureUrl = signatureUrl;
+            console.log('[Upload] Signature uploaded successfully:', signatureUrl);
+          } catch (error: any) {
+            console.error('[Upload] Signature upload failed:', error);
+            throw new Error(`Signature upload failed: ${error.message}`);
+          }
+        }
+
+        console.log('[Upload] All files uploaded successfully:', uploadedData);
+        uploadedData.message = 'Files uploaded successfully';
         return NextResponse.json(uploadedData, { status: 200 });
       } catch (uploadError: any) {
         await dbConnect().catch(() => {});

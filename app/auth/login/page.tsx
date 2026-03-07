@@ -58,7 +58,7 @@ export default function LoginPage() {
         toast.success('Login Successful', {
           description: 'Welcome back to SpaceOut! Redirecting to your dashboard...',
         });
-        router.push('/user/dashboard');
+        router.push('/auth/loading');
       }
     } catch (err) {
       const errorMsg = 'An error occurred. Please try again.';

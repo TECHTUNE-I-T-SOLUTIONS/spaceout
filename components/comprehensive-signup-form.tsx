@@ -941,14 +941,12 @@ export function ComprehensiveSignupForm() {
                     <SelectValue placeholder="Select relationship" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="mother">Mother</SelectItem>
-                    <SelectItem value="father">Father</SelectItem>
-                    <SelectItem value="sibling">Sibling</SelectItem>
-                    <SelectItem value="spouse">Spouse</SelectItem>
-                    <SelectItem value="child">Child</SelectItem>
-                    <SelectItem value="friend">Friend</SelectItem>
-                    <SelectItem value="colleague">Colleague</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="Parent">Parent</SelectItem>
+                    <SelectItem value="Sibling">Sibling</SelectItem>
+                    <SelectItem value="Spouse">Spouse</SelectItem>
+                    <SelectItem value="Child">Child</SelectItem>
+                    <SelectItem value="Friend">Friend</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

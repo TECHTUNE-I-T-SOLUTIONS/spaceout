@@ -83,6 +83,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate emergency contact
+    const validRelationships = ['Spouse', 'Parent', 'Child', 'Sibling', 'Friend', 'Other'];
+    if (emergencyContact && emergencyContact.relationship) {
+      if (!validRelationships.includes(emergencyContact.relationship)) {
+        return NextResponse.json(
+          {
+            message: 'Invalid relationship value',
+            details: `Relationship must be one of: ${validRelationships.join(', ')}`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Check if user exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
@@ -103,6 +117,15 @@ export async function POST(request: NextRequest) {
       branchId,
       hasBranchId: !!branchId,
       isStudent,
+    });
+
+    // Check if both documents are uploaded
+    const documentsUploaded = !!(passportPhotoUrl && signatureUrl);
+    
+    console.log('[Register] Documents uploaded check:', {
+      passportPhotoUrl: !!passportPhotoUrl,
+      signatureUrl: !!signatureUrl,
+      documentsUploaded,
     });
 
     // Create user with all new fields
@@ -127,12 +150,14 @@ export async function POST(request: NextRequest) {
       role: 'user',
       hasMembership: false,
       isActive: true,
+      documentsUploaded,
     });
 
     console.log('[Register] User created successfully:', {
       id: user._id,
       email: user.email,
       name: user.name,
+      documentsUploaded: user.documentsUploaded,
     });
 
     // Verify user was saved by finding it again

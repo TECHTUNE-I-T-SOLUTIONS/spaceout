@@ -86,7 +86,7 @@ export function FloatingContactWidget() {
         className={`flex items-center justify-center w-14 h-14 rounded-full shadow-xl transition-all duration-200 ${
           isOpen
             ? 'bg-red-500 hover:bg-red-600'
-            : 'bg-primary hover:opacity-90'
+            : 'bg-primary dark:bg-primary-foreground hover:opacity-90'
         } text-white`}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}

@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { LogoutConfirmModal } from '@/components/logout-confirm-modal';
 import { useSidebar } from '@/lib/sidebar-context';
+import { ThemeSwitcher } from '@/components/theme-switcher';
 
 const menuItems = [
   { href: '/user/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -80,11 +81,11 @@ export function UserSidebar() {
         ))}
       </div>
 
-      <div className="p-4 border-t border-border">
+      <div className={`p-4 border-t border-border flex ${!isOpen && !isMobile ? 'flex-col items-center' : 'items-center justify-between'} gap-2`}>
         <Button
           onClick={() => setLogoutOpen(true)}
           variant="ghost"
-          className={`w-full text-foreground hover:bg-muted ${!isOpen && !isMobile ? 'px-0' : 'justify-start'}`}
+          className={`${!isOpen && !isMobile ? 'w-full px-0' : 'flex-1 justify-start'} text-foreground hover:bg-muted`}
           title={!isOpen && !isMobile ? 'Sign Out' : undefined}
         >
           <LogOut className="w-5 h-5 flex-shrink-0 mr-3" />
@@ -92,6 +93,7 @@ export function UserSidebar() {
             <span className="text-sm font-medium">Sign Out</span>
           )}
         </Button>
+        <ThemeSwitcher />
       </div>
     </div>
   );

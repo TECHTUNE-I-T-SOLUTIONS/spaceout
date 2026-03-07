@@ -62,13 +62,16 @@ const handler = NextAuth({
           console.log('[Auth] Authentication successful for user:', normalizedEmail);
           
           // Return user object if authentication successful
-          return {
+          const returnedUser = {
             id: user._id.toString(),
             email: user.email,
             name: user.name,
             role: user.role,
             branchId: user.branchId?.toString(),
           };
+          
+          console.log('[Auth] Returning user object:', returnedUser);
+          return returnedUser;
         } catch (error: any) {
           console.error('[Auth] Authorization error:', error.message);
           console.error('[Auth] Error stack:', error.stack);
@@ -83,6 +86,9 @@ const handler = NextAuth({
   },
   callbacks: {
     async jwt({ token, user }) {
+      console.log('[JWT Callback] User:', user);
+      console.log('[JWT Callback] Token before:', token);
+      
       if (user) {
         token.id = user.id;
         token.email = user.email;
@@ -90,26 +96,75 @@ const handler = NextAuth({
         token.role = (user as any).role;
         token.branchId = (user as any).branchId;
       }
+      
+      console.log('[JWT Callback] Token after:', token);
       return token;
     },
     async session({ session, token }) {
+      console.log('[Session Callback] Token:', token);
+      console.log('[Session Callback] Session before:', session);
+      
       if (session.user) {
         (session.user as any).id = token.id;
+        (session.user as any).email = token.email;
+        (session.user as any).name = token.name;
         (session.user as any).role = token.role;
         (session.user as any).branchId = token.branchId;
       }
+      
+      console.log('[Session Callback] Session after:', session);
       return session;
     },
   },
   session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // Update every 24 hours
   },
   jwt: {
     secret: process.env.NEXTAUTH_SECRET || 'default-secret-for-development',
     maxAge: 30 * 24 * 60 * 60,
   },
+  secret: process.env.NEXTAUTH_SECRET || 'default-secret-for-development',
   trustHost: true,
+  cookies: {
+    sessionToken: {
+      name: `${process.env.NODE_ENV === 'production' ? '__Secure-' : ''}next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as const,
+        path: '/',
+      },
+    },
+    callbackUrl: {
+      name: `${process.env.NODE_ENV === 'production' ? '__Secure-' : ''}next-auth.callback-url`,
+      options: {
+        sameSite: 'lax' as const,
+        path: '/',
+        maxAge: 30 * 24 * 60 * 60,
+      },
+    },
+    csrfToken: {
+      name: `${process.env.NODE_ENV === 'production' ? '__Secure-' : ''}next-auth.csrf-token`,
+      options: {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as const,
+        path: '/',
+      },
+    },
+    pkceCodeVerifier: {
+      name: `${process.env.NODE_ENV === 'production' ? '__Secure-' : ''}next-auth.pkce.code_verifier`,
+      options: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as const,
+        path: '/',
+        maxAge: 15 * 60,
+      },
+    },
+  },
 });
 
 export { handler as GET, handler as POST };

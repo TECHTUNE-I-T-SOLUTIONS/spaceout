@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     await dbConnect();
 
-    const admin = await Admin.findById(adminId).select('-password');
+    const admin = await Admin.findById(adminId).select('-password -resetToken -resetTokenExpiry');
 
     if (!admin) {
       return NextResponse.json(
@@ -29,11 +29,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       id: admin._id.toString(),
       email: admin.email,
-      name: admin.name,
       firstName: admin.firstName,
       lastName: admin.lastName,
+      name: admin.name,
       role: admin.role,
+      phone: admin.phone || null,
+      profileImage: admin.profileImage || null,
       isActive: admin.isActive,
+      isEmailVerified: admin.isEmailVerified,
+      lastLogin: admin.lastLogin,
+      createdAt: admin.createdAt,
+      updatedAt: admin.updatedAt,
     });
   } catch (error) {
     console.error('Error fetching admin session:', error);

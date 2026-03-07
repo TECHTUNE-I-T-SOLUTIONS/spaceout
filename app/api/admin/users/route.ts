@@ -28,11 +28,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch all users excluding password field
-    const users = await User.find({})
-      .select('-password')
+    // Fetch all users excluding password field, including all membership fields
+    let users = await User.find({})
+      .select('-password -resetToken -resetTokenExpiry')
       .lean()
       .exec();
+
+    // Compute hasMembership based on membershipStatus
+    // If membershipStatus exists and is not null, user has/had membership
+    users = users.map((user: any) => ({
+      ...user,
+      hasMembership: !!(user.membershipStatus && user.membershipStatus !== 'none'),
+    }));
 
     return NextResponse.json(users);
   } catch (error: any) {
