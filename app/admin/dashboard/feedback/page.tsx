@@ -63,14 +63,14 @@ export default function FeedbackPage() {
   const fetchFeedback = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/feedback');
+      const response = await fetch('/api/admin/feedback');
       if (response.ok) {
         const data = await response.json();
         
         // Transform API response to match Feedback interface
         const transformedFeedbacks = data.map((item: any) => ({
           id: item._id?.toString() || item.id || '',
-          userId: item.userId?.name || item.userId || 'Unknown',
+          userId: item.userId?.firstName ? `${item.userId.firstName} ${item.userId.lastName || ''}` : 'Unknown',
           title: item.title || 'Feedback',
           message: item.message || '',
           category: item.category || 'general',
@@ -81,9 +81,13 @@ export default function FeedbackPage() {
         }));
         
         setFeedbacks(transformedFeedbacks);
-        toast.success('Feedback Loaded', {
-          description: `Found ${transformedFeedbacks.length} feedback messages.`,
-        });
+        if (transformedFeedbacks.length > 0) {
+          toast.success('Feedback Loaded', {
+            description: `Found ${transformedFeedbacks.length} feedback messages.`,
+          });
+        }
+      } else {
+        throw new Error(`API returned ${response.status}`);
       }
     } catch (error) {
       console.error('Error fetching feedback:', error);
@@ -107,7 +111,7 @@ export default function FeedbackPage() {
       setIsSubmittingReply(true);
       
       if (activeTab === 'feedback') {
-        const response = await fetch('/api/feedback', {
+        const response = await fetch('/api/admin/feedback', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -182,7 +186,7 @@ export default function FeedbackPage() {
 
   const deleteFeedback = async (feedbackId: string) => {
     try {
-      const response = await fetch('/api/feedback', {
+      const response = await fetch('/api/admin/feedback', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ feedbackId }),

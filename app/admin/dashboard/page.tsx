@@ -90,6 +90,15 @@ export default function AdminDashboard() {
 
   const userRole = admin?.role || 'admin';
 
+  const formatPrice = (value: number) => {
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -184,7 +193,7 @@ export default function AdminDashboard() {
           {
             icon: DollarSign,
             label: 'Total Revenue',
-            value: `₦${(stats.totalRevenue / 1000000).toFixed(1)}M`,
+            value: formatPrice(stats.totalRevenue),
             color: 'text-green-500',
           },
           {
