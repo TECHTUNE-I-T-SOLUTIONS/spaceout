@@ -19,7 +19,7 @@ export interface IPayment extends Document {
   paystackReference?: string;
   paystackAccessCode?: string;
   status: 'pending' | 'completed' | 'failed' | 'cancelled';
-  paymentMethod?: 'paystack' | 'card' | 'bank_transfer';
+  paymentMethod?: string;
   paidAt?: Date;
   verifiedAt?: Date;
   metadata?: Record<string, any>;
@@ -81,7 +81,6 @@ const PaymentSchema = new Schema<IPayment>(
     },
     paymentMethod: {
       type: String,
-      enum: ['paystack', 'card', 'bank_transfer'],
       default: 'paystack',
     },
     paidAt: Date,
