@@ -422,14 +422,12 @@ export default function ServicesPage() {
               ))}
             </div>
           )}
-
           {/* Service Modal */}
           <CreateServiceModal
             open={isModalOpen}
             onOpenChange={handleModalClose}
             editingService={editingService || undefined}
           />
-
           {/* Delete Confirmation Modal */}
           <DeleteConfirmModal
             isOpen={deleteConfirmOpen}
