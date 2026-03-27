@@ -425,26 +425,18 @@ export default function BookingsPage() {
   const handleCheckIn = async (booking: Booking) => {
     try {
       setIsProcessing(true);
-
       const response = await fetch('/api/checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          serviceId: booking.serviceId,
-          bookingId: booking.id,
-        }),
+        body: JSON.stringify({ bookingId: booking.id }),
       });
-
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to check in');
       }
-
-      // Update booking status locally
       setBookings(bookings.map(b =>
         b.id === booking.id ? { ...b, status: 'checked_in' as const } : b
       ));
-
       toast.success('Check-in Successful', {
         description: 'You have been checked in for your booking.',
       });

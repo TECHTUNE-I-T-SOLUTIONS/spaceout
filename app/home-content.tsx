@@ -1,5 +1,7 @@
 'use client';
 
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+
 import { useState, useEffect } from 'react';
 import { Footer } from '@/components/footer';
 import { Button } from '@/components/ui/button';
@@ -69,8 +71,83 @@ export function HomeContent() {
     return () => clearInterval(interval);
   }, []);
 
+    const [qrOpen, setQrOpen] = useState(false);
+
+  // Get app URL from environment
+  const appUrl = typeof window !== 'undefined'
+    ? process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+    : process.env.NEXT_PUBLIC_APP_URL;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(appUrl || '')}`;
+
   return (
     <>
+      {/* QR Code Sharing Modal */}
+      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
+        <DialogTrigger asChild>
+          <Button
+            variant="outline"
+            className="fixed bottom-6 right-6 z-50 bg-white/80 text-black shadow-lg hover:bg-white"
+            aria-label="Share SpaceOut via QR"
+            style={{ borderRadius: 999 }}
+          >
+            <span className="hidden md:inline">Share</span>
+            <svg xmlns="http://www.w3.org/2000/svg" className="inline-block md:ml-2" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M7 7h.01M17 7h.01M7 17h.01M14 14h2v2m-2-6V7m0 10v-2m6-2h-2m-6 0H7"/></svg>
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-xs w-full p-4 rounded-xl text-center">
+          <DialogHeader>
+            <DialogTitle>Share SpaceOut</DialogTitle>
+            <DialogDescription>Scan or share this QR code to invite others to SpaceOut!</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-2">
+            <img
+              src={qrCodeUrl}
+              alt="SpaceOut QR Code"
+              className="rounded-lg border bg-white mx-auto"
+              width={220}
+              height={220}
+            />
+            <div className="flex gap-2 w-full justify-center">
+              <Button
+                variant="outline"
+                className="w-1/2"
+                onClick={() => {
+                  // Download QR code image
+                  const link = document.createElement('a');
+                  link.href = qrCodeUrl;
+                  link.download = 'spaceout-qr.png';
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+              >
+                Download
+              </Button>
+              <Button
+                variant="default"
+                className="w-1/2"
+                onClick={async () => {
+                  if (navigator.share) {
+                    await navigator.share({
+                      title: 'SpaceOut - Premium Workspace Solutions',
+                      text: 'Check out SpaceOut for premium coworking and office spaces!',
+                      url: appUrl,
+                    });
+                  } else {
+                    await navigator.clipboard.writeText(appUrl || '');
+                    alert('Link copied to clipboard!');
+                  }
+                }}
+              >
+                Share
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <p className="text-xs text-muted-foreground mt-2">Or just copy the link: <span className="font-mono select-all">{appUrl}</span></p>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* Hero Section with Background Images (Space Particles are global) */}
       <section className="relative overflow-hidden py-20 md:py-32 min-h-[600px] flex items-center justify-center">
         {/* Background Image Carousel */}
@@ -127,6 +204,9 @@ export function HomeContent() {
                   View Pricing
                 </Button>
               </Link>
+              <Button size="lg" variant="outline" className="w-full sm:w-auto bg-white/10 border-white text-white hover:bg-white/20" onClick={() => setQrOpen(true)}>
+                Share
+              </Button>
             </motion.div>
           </motion.div>
         </div>
