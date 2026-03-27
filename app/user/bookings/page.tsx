@@ -3,15 +3,6 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import dynamic from 'next/dynamic';
-// Dynamically import jsPDF only when needed
-let jsPDF: any = null;
-async function getJsPDF() {
-  if (!jsPDF) {
-    const mod = await import('jspdf');
-    jsPDF = mod.jsPDF;
-  }
-  return jsPDF;
-}
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { Plus, Loader2, Trash2, MapPin, Clock, AlertCircle } from 'lucide-react';
@@ -200,6 +191,16 @@ export default function BookingsPage() {
     }
   };
 
+  // Dynamically import jsPDF only when needed
+  let jsPDF: any = null;
+  async function getJsPDF() {
+    if (!jsPDF) {
+      const mod = await import('jspdf');
+      jsPDF = mod.jsPDF;
+    }
+    return jsPDF;
+  }
+
   const fetchServices = async () => {
     try {
       const response = await fetch('/api/services');
@@ -223,6 +224,34 @@ export default function BookingsPage() {
       console.error('Error checking membership:', error);
     }
   };
+
+  interface BookingCheckinStats {
+    totalCheckinDays: number;
+    totalBookingDays: number;
+    daysRemaining: number;
+    exhausted: boolean;
+  }
+  const [checkinStats, setCheckinStats] = useState<Record<string, BookingCheckinStats>>({});
+  // Fetch check-in stats for all bookings
+  useEffect(() => {
+    const fetchStats = async () => {
+      const stats: Record<string, BookingCheckinStats> = {};
+      await Promise.all(
+        bookings.map(async (booking) => {
+          try {
+            const res = await fetch(`/api/booking-checkin?bookingId=${booking.id}`);
+            if (res.ok) {
+              const data = await res.json();
+              stats[booking.id] = data;
+            }
+          } catch {}
+        })
+      );
+      setCheckinStats(stats);
+    };
+    if (bookings.length > 0) fetchStats();
+  }, [bookings]);
+
 
   const verifyPaymentAndShowReceipt = async (reference: string) => {
     try {
@@ -425,7 +454,7 @@ export default function BookingsPage() {
   const handleCheckIn = async (booking: Booking) => {
     try {
       setIsProcessing(true);
-      const response = await fetch('/api/checkin', {
+      const response = await fetch('/api/booking-checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookingId: booking.id }),
@@ -443,6 +472,42 @@ export default function BookingsPage() {
     } catch (error: any) {
       toast.error('Check-in Failed', {
         description: error.message || 'Unable to check in.',
+      });
+    } finally {
+      setIsProcessing(false);
+          // Pass all booking details to the API for snapshot
+          const response = await fetch('/api/booking-checkin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              bookingId: booking.id,
+              bookingDetails: booking,
+            }),
+          });
+    }
+  };
+
+  const handleCheckOut = async (booking: Booking) => {
+    try {
+      setIsProcessing(true);
+      const response = await fetch('/api/booking-checkin', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to check out');
+      }
+      setBookings(bookings.map(b =>
+        b.id === booking.id ? { ...b, status: 'completed' as const } : b
+      ));
+      toast.success('Checked out successfully', {
+        description: 'You have checked out for this booking.',
+      });
+    } catch (error: any) {
+      toast.error('Check-out Failed', {
+        description: error.message || 'Unable to check out.',
       });
     } finally {
       setIsProcessing(false);
@@ -516,8 +581,31 @@ export default function BookingsPage() {
                         }
                         {booking.startTime && ` at ${booking.startTime}`}
                       </div>
+                      
                     </div>
                     <div className="flex items-center gap-4 pt-2">
+                        {/* Check-in stats UI */}
+                        {checkinStats[booking.id] && (
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-muted rounded-md text-xs">
+                              <div className="flex items-baseline gap-2">
+                                <span className="text-muted-foreground">Checked in</span>
+                                <span className="font-semibold">{checkinStats[booking.id].totalCheckinDays}/{checkinStats[booking.id].totalBookingDays}</span>
+                              </div>
+                              {!checkinStats[booking.id].exhausted ? (
+                                <div className="text-xs text-muted-foreground">Days remaining: <span className="font-semibold">{checkinStats[booking.id].daysRemaining}</span></div>
+                              ) : (
+                                <div className="text-xs text-green-700 font-semibold">Exhausted — Thank you for using SpaceOut!</div>
+                              )}
+                            </div>
+                            <div className="w-28 h-2 bg-gray-200 rounded overflow-hidden">
+                              <div
+                                className="h-full bg-green-500"
+                                style={{ width: `${Math.min(100, Math.round((checkinStats[booking.id].totalCheckinDays / (checkinStats[booking.id].totalBookingDays || 1)) * 100))}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
                       <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(booking.status)}`}>
                         {booking.status.toUpperCase()}
                       </span>
@@ -530,6 +618,7 @@ export default function BookingsPage() {
                       }`}>
                         {booking.paymentStatus?.toUpperCase() || 'UNPAID'}
                       </span>
+                      
                       <span className="font-semibold">₦{booking.price?.toLocaleString() || '0'}</span>
                             {/* Booking Details Dialog */}
                             <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
@@ -595,7 +684,7 @@ export default function BookingsPage() {
                         Pay Now
                       </Button>
                     )}
-                    {canCheckIn(booking) && (
+                    {canCheckIn(booking) && booking.status !== 'checked_in' && (
                       <Button
                         size="sm"
                         onClick={() => handleCheckIn(booking)}
@@ -603,6 +692,17 @@ export default function BookingsPage() {
                       >
                         {isProcessing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                         Check In
+                      </Button>
+                    )}
+                    {booking.status === 'checked_in' && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleCheckOut(booking)}
+                        disabled={isProcessing}
+                      >
+                        {isProcessing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Check Out
                       </Button>
                     )}
                     <Button

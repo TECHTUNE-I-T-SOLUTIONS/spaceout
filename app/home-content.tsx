@@ -154,6 +154,7 @@ export function HomeContent() {
         <AnimatePresence mode="wait">
           <motion.div
             key={currentImageIndex}
+            // @ts-ignore            
             className="absolute inset-0"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -182,6 +183,7 @@ export function HomeContent() {
         {/* Hero Content */}
         <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
           <motion.div
+            // @ts-ignore          
             className="max-w-full mx-auto text-center"
             variants={containerVariants}
             initial="hidden"
@@ -189,11 +191,15 @@ export function HomeContent() {
           >
             <AnimatedHeading text="Cool Spaces for Everyone" />
 
-            <motion.p variants={itemVariants} className="text-lg md:text-xl text-white mb-8 text-balance mt-8 drop-shadow-lg">
+            <motion.p variants={itemVariants} 
+            // @ts-ignore
+            className="text-lg md:text-xl text-white mb-8 text-balance mt-8 drop-shadow-lg">
               Spaces, Coworking and office solutions. Experience stable power, professional lighting, and environments designed for focus.
             </motion.p>
-
-            <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 justify-center">
+            
+            <motion.div variants={itemVariants} 
+            // @ts-ignore            
+            className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/auth/register">
                 <Button size="lg" className="w-full sm:w-auto">
                   Get Started
@@ -216,6 +222,7 @@ export function HomeContent() {
       <section id="services" className="py-20 bg-card border-t border-border">
         <div className="w-full px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
           <motion.div
+            // @ts-ignore
             className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -228,6 +235,7 @@ export function HomeContent() {
           </motion.div>
 
           <motion.div
+                // @ts-ignore          
             className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
             variants={containerVariants}
             initial="hidden"
@@ -272,6 +280,7 @@ export function HomeContent() {
       <section className="py-20">
         <div className="w-full px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
           <motion.div
+                // @ts-ignore          
             className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -284,6 +293,7 @@ export function HomeContent() {
           </motion.div>
 
           <motion.div
+                // @ts-ignore          
             className="grid md:grid-cols-2 lg:grid-cols-5 gap-6"
             variants={containerVariants}
             initial="hidden"
@@ -334,6 +344,7 @@ export function HomeContent() {
       <section className="py-20 bg-primary/5 border-t border-border">
         <div className="w-full px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
           <motion.div
+                // @ts-ignore
             className="text-center"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
