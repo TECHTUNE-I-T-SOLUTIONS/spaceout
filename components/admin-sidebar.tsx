@@ -53,6 +53,7 @@ export function AdminSidebar({ userRole }: AdminSidebarProps) {
     { href: '/admin/dashboard/reviews', icon: Star, label: 'Reviews' },
     { href: '/admin/dashboard/feedback', icon: MessageSquare, label: 'Feedback' },
     { href: '/admin/dashboard/questionnaires', icon: MessageSquare, label: 'Questionnaires' },
+    { href: '/admin/dashboard/contacts', icon: AlertTriangle, label: 'Contacts' },
   ];
 
   // Superadmin-only menu items
