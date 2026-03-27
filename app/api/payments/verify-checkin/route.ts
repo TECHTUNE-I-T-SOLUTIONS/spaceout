@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
     // Dynamically import models
     const Payment = (await import('@/lib/models/Payment')).default;
     const CheckIn = (await import('@/lib/models/CheckIn')).default;
+    const Subscription = (await import('@/lib/models/Subscription')).default;
 
     // Update payment record
     const payment = await Payment.findByIdAndUpdate(
@@ -59,24 +60,48 @@ export async function GET(request: NextRequest) {
       { new: true }
     );
 
-    // Update check-in record
-    const checkIn = await CheckIn.findByIdAndUpdate(
-      paymentData.metadata.checkInId,
-      {
-        paymentStatus: 'completed',
-        status: 'checked_in',
-        paymentVerifiedAt: new Date(),
-      },
-      { new: true }
-    );
+    // Handle subscription or single check-in
+    if (paymentData.metadata.isSubscription && paymentData.metadata.subscriptionId) {
+      // Update subscription status
+      await Subscription.findByIdAndUpdate(
+        paymentData.metadata.subscriptionId,
+        {
+          paymentStatus: 'paid',
+          status: 'active',
+        },
+        { new: true }
+      );
 
-    // Redirect to success page
-    return NextResponse.redirect(
-      new URL(
-        `/user/check-in?success=true&serviceId=${checkIn.serviceId}&checkInId=${checkIn._id}`,
-        process.env.NEXT_PUBLIC_APP_URL
-      )
-    );
+      // For subscriptions, no check-in records are created upfront
+      // Users will check in daily and records will be created then
+
+      // Redirect to success page with subscription info
+      return NextResponse.redirect(
+        new URL(
+          `/user/check-in?success=true&subscriptionId=${paymentData.metadata.subscriptionId}&selectedDays=${paymentData.metadata.selectedDays}`,
+          process.env.NEXT_PUBLIC_APP_URL
+        )
+      );
+    } else {
+      // Update single check-in record
+      const checkIn = await CheckIn.findByIdAndUpdate(
+        paymentData.metadata.checkInId,
+        {
+          paymentStatus: 'completed',
+          status: 'checked_in',
+          paymentVerifiedAt: new Date(),
+        },
+        { new: true }
+      );
+
+      // Redirect to success page
+      return NextResponse.redirect(
+        new URL(
+          `/user/check-in?success=true&serviceId=${checkIn.serviceId}&checkInId=${checkIn._id}`,
+          process.env.NEXT_PUBLIC_APP_URL
+        )
+      );
+    }
   } catch (error: any) {
     console.error('Payment verification error:', error);
     return NextResponse.redirect(
@@ -113,6 +138,7 @@ export async function POST(request: NextRequest) {
     // Dynamically import models
     const Payment = (await import('@/lib/models/Payment')).default;
     const CheckIn = (await import('@/lib/models/CheckIn')).default;
+    const Subscription = (await import('@/lib/models/Subscription')).default;
 
     // Update payment record
     await Payment.findByIdAndUpdate(
@@ -125,16 +151,31 @@ export async function POST(request: NextRequest) {
       { new: true }
     );
 
-    // Update check-in record
-    await CheckIn.findByIdAndUpdate(
-      paymentData.metadata.checkInId,
-      {
-        paymentStatus: 'completed',
-        status: 'checked_in',
-        paymentVerifiedAt: new Date(),
-      },
-      { new: true }
-    );
+    // Handle subscription or single check-in
+    if (paymentData.metadata.isSubscription && paymentData.metadata.subscriptionId) {
+      // Update subscription status
+      await Subscription.findByIdAndUpdate(
+        paymentData.metadata.subscriptionId,
+        {
+          paymentStatus: 'paid',
+          status: 'active',
+        },
+        { new: true }
+      );
+
+      // For subscriptions, no check-in records are created upfront
+    } else {
+      // Update single check-in record
+      await CheckIn.findByIdAndUpdate(
+        paymentData.metadata.checkInId,
+        {
+          paymentStatus: 'completed',
+          status: 'checked_in',
+          paymentVerifiedAt: new Date(),
+        },
+        { new: true }
+      );
+    }
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error: any) {

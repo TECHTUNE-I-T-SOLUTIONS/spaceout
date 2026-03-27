@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { Loader2, Search, LogOut, Calendar, Clock, History, Plus } from 'lucide-react';
+import { Loader2, Search, LogOut, Calendar, Clock, History, Plus, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CheckInRecord {
@@ -17,7 +18,7 @@ interface CheckInRecord {
     email: string;
     firstName: string;
     lastName: string;
-  };
+  } | null;
   serviceName: string;
   planName: string;
   planType: string;
@@ -46,7 +47,7 @@ interface UserOption {
   phone?: string;
   hasMembership?: boolean;
   membershipStatus?: string;
-  membershipEndDate?: string;
+  membershipExpiryDate?: string;
 }
 
 interface PricingPlan {
@@ -90,6 +91,11 @@ export default function CheckInsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
+  // Modal state
+  const [selectedCheckIn, setSelectedCheckIn] = useState<CheckInRecord | null>(null);
+  const [subscriptionDetails, setSubscriptionDetails] = useState<any>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+
   useEffect(() => {
     fetchCheckIns();
   }, [filters, pagination.page, activeTab]);
@@ -98,6 +104,24 @@ export default function CheckInsPage() {
     // Load services when component mounts
     fetchServices();
   }, []);
+
+  // Update rate and amount when user, service, or plan changes
+  useEffect(() => {
+    if (selectedUser && selectedService && selectedPlan) {
+      const isMembershipActive = selectedUser.hasMembership &&
+        selectedUser.membershipStatus === 'active' &&
+        (!selectedUser.membershipExpiryDate || new Date(selectedUser.membershipExpiryDate) > new Date());
+
+      const newRate = isMembershipActive ? 'member' : 'nonMember';
+      setSelectedRate(newRate);
+
+      // Auto-set amount based on plan pricing
+      const price = isMembershipActive ? selectedPlan.memberPrice : selectedPlan.nonMemberPrice;
+      if (price) {
+        setManualAmount(price.toString());
+      }
+    }
+  }, [selectedUser, selectedService, selectedPlan]);
 
   const fetchServices = async () => {
     try {
@@ -108,6 +132,24 @@ export default function CheckInsPage() {
       }
     } catch (error) {
       console.error('Error fetching services:', error);
+    }
+  };
+
+  const fetchCheckInDetails = async (checkIn: CheckInRecord) => {
+    try {
+      // Fetch detailed check-in information including subscription data
+      const response = await fetch(`/api/admin/checkin-details/${checkIn._id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSubscriptionDetails(data);
+        setSelectedCheckIn(checkIn);
+        setShowDetailsModal(true);
+      } else {
+        toast.error('Failed to load check-in details');
+      }
+    } catch (error) {
+      console.error('Error fetching check-in details:', error);
+      toast.error('Failed to load check-in details');
     }
   };
 
@@ -200,7 +242,11 @@ export default function CheckInsPage() {
 
       // Determine the rate based on user's membership status
       let finalRate = selectedRate;
-      if (selectedUser.hasMembership) {
+      const isMembershipActive = selectedUser.hasMembership &&
+        selectedUser.membershipStatus === 'active' &&
+        (!selectedUser.membershipExpiryDate || new Date(selectedUser.membershipExpiryDate) > new Date());
+
+      if (isMembershipActive) {
         finalRate = 'member';
       } else {
         finalRate = 'nonMember';
@@ -365,8 +411,14 @@ export default function CheckInsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">User</p>
-                        <p className="font-medium">{checkIn.userId.firstName} {checkIn.userId.lastName}</p>
-                        <p className="text-xs text-muted-foreground">{checkIn.userId.email}</p>
+                        {checkIn.userId ? (
+                          <>
+                            <p className="font-medium">{checkIn.userId.firstName} {checkIn.userId.lastName}</p>
+                            <p className="text-xs text-muted-foreground">{checkIn.userId.email}</p>
+                          </>
+                        ) : (
+                          <p className="font-medium text-muted-foreground">Unknown User</p>
+                        )}
                       </div>
 
                       <div>
@@ -390,7 +442,7 @@ export default function CheckInsPage() {
                         <p className="font-medium text-primary">₦{checkIn.amount?.toLocaleString()}</p>
                       </div>
 
-                      <div className="flex gap-2 flex-wrap">
+                      <div className="flex gap-2 flex-wrap items-center">
                         <Badge className={getStatusColor(checkIn.paymentStatus)}>
                           {checkIn.paymentStatus === 'completed' ? '✓ Paid' : 'Pending'}
                         </Badge>
@@ -401,6 +453,15 @@ export default function CheckInsPage() {
                             Checked Out
                           </Badge>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => fetchCheckInDetails(checkIn)}
+                          className="h-6 px-2 text-xs"
+                        >
+                          <Eye className="w-3 h-3 mr-1" />
+                          Details
+                        </Button>
                       </div>
                     </div>
                   </Card>
@@ -474,8 +535,14 @@ export default function CheckInsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">User</p>
-                        <p className="font-medium">{checkIn.userId.firstName} {checkIn.userId.lastName}</p>
-                        <p className="text-xs text-muted-foreground">{checkIn.userId.email}</p>
+                        {checkIn.userId ? (
+                          <>
+                            <p className="font-medium">{checkIn.userId.firstName} {checkIn.userId.lastName}</p>
+                            <p className="text-xs text-muted-foreground">{checkIn.userId.email}</p>
+                          </>
+                        ) : (
+                          <p className="font-medium text-muted-foreground">Unknown User</p>
+                        )}
                       </div>
 
                       <div>
@@ -583,8 +650,14 @@ export default function CheckInsPage() {
                       <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start">
                         <div>
                           <p className="text-xs text-muted-foreground mb-1">User</p>
-                          <p className="font-medium">{checkIn.userId.firstName} {checkIn.userId.lastName}</p>
-                          <p className="text-xs text-muted-foreground">{checkIn.userId.email}</p>
+                          {checkIn.userId ? (
+                            <>
+                              <p className="font-medium">{checkIn.userId.firstName} {checkIn.userId.lastName}</p>
+                              <p className="text-xs text-muted-foreground">{checkIn.userId.email}</p>
+                            </>
+                          ) : (
+                            <p className="font-medium text-muted-foreground">Unknown User</p>
+                          )}
                         </div>
 
                         <div>
@@ -709,12 +782,11 @@ export default function CheckInsPage() {
                             key={user._id}
                             onClick={() => {
                               setSelectedUser(user);
-                              // Auto-set rate based on membership
-                              if (user.hasMembership) {
-                                setSelectedRate('member');
-                              } else {
-                                setSelectedRate('nonMember');
-                              }
+                              // Auto-set rate based on active membership
+                              const isMembershipActive = user.hasMembership &&
+                                user.membershipStatus === 'active' &&
+                                (!user.membershipExpiryDate || new Date(user.membershipExpiryDate) > new Date());
+                              setSelectedRate(isMembershipActive ? 'member' : 'nonMember');
                               setShowUserDropdown(false);
                               setUserSearch('');
                               setUsers([]);
@@ -724,7 +796,9 @@ export default function CheckInsPage() {
                             <p className="font-medium">{user.firstName} {user.lastName}</p>
                             <p className="text-xs text-muted-foreground">{user.email}</p>
                             {user.hasMembership && (
-                              <p className="text-xs text-green-600">✓ Active membership</p>
+                              <p className={`text-xs ${user.membershipStatus === 'active' && (!user.membershipExpiryDate || new Date(user.membershipExpiryDate) > new Date()) ? 'text-green-600' : 'text-orange-600'}`}>
+                                {user.membershipStatus === 'active' && (!user.membershipExpiryDate || new Date(user.membershipExpiryDate) > new Date()) ? '✓ Active membership' : '⚠ Expired membership'}
+                              </p>
                             )}
                           </div>
                         ))}
@@ -735,7 +809,12 @@ export default function CheckInsPage() {
                     <div className="text-sm mt-2 space-y-1">
                       <p className="text-green-600">✓ {selectedUser.firstName} {selectedUser.lastName} selected</p>
                       <p className="text-xs text-muted-foreground">
-                        Rate: <span className="font-semibold">{selectedRate === 'member' ? 'Member' : 'Non-Member'}</span>
+                        Membership: <span className={`font-semibold ${selectedUser.hasMembership && selectedUser.membershipStatus === 'active' && (!selectedUser.membershipExpiryDate || new Date(selectedUser.membershipExpiryDate) > new Date()) ? 'text-green-600' : 'text-orange-600'}`}>
+                          {selectedUser.hasMembership && selectedUser.membershipStatus === 'active' && (!selectedUser.membershipExpiryDate || new Date(selectedUser.membershipExpiryDate) > new Date()) ? 'Active' : 'None/Inactive'}
+                        </span>
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Applied Rate: <span className="font-semibold">{selectedRate === 'member' ? 'Member' : 'Non-Member'}</span>
                       </p>
                     </div>
                   )}
@@ -772,9 +851,7 @@ export default function CheckInsPage() {
                       onChange={(e) => {
                         const plan = selectedService.pricingPlans.find(p => p._id === e.target.value);
                         setSelectedPlan(plan || null);
-                        if (plan?.flatPrice) {
-                          setManualAmount(plan.flatPrice.toString());
-                        }
+                        // Amount will be set by useEffect based on membership status
                       }}
                       className="w-full px-3 py-2 border rounded-lg bg-background"
                     >
@@ -806,7 +883,7 @@ export default function CheckInsPage() {
                 </div>
 
                 {/* Summary */}
-                {selectedUser && selectedService && manualAmount && (
+                {selectedUser && selectedService && (
                   <Card className="p-4 bg-muted">
                     <h4 className="font-semibold mb-3">Summary</h4>
                     <div className="space-y-2 text-sm">
@@ -815,17 +892,33 @@ export default function CheckInsPage() {
                         <span className="font-medium">{selectedUser.firstName} {selectedUser.lastName}</span>
                       </div>
                       <div className="flex justify-between">
+                        <span className="text-muted-foreground">Membership:</span>
+                        <span className={`font-medium ${selectedUser.hasMembership && selectedUser.membershipStatus === 'active' && (!selectedUser.membershipExpiryDate || new Date(selectedUser.membershipExpiryDate) > new Date()) ? 'text-green-600' : 'text-orange-600'}`}>
+                          {selectedUser.hasMembership && selectedUser.membershipStatus === 'active' && (!selectedUser.membershipExpiryDate || new Date(selectedUser.membershipExpiryDate) > new Date()) ? '✓ Active' : '✗ None/Inactive'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
                         <span className="text-muted-foreground">Service:</span>
                         <span className="font-medium">{selectedService.name}</span>
                       </div>
                       {selectedPlan && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Plan:</span>
-                          <span className="font-medium">{selectedPlan.planName}</span>
-                        </div>
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Plan:</span>
+                            <span className="font-medium">{selectedPlan.planName}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Member Price:</span>
+                            <span className="font-medium">₦{selectedPlan.memberPrice?.toLocaleString() || 'N/A'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Non-Member Price:</span>
+                            <span className="font-medium">₦{selectedPlan.nonMemberPrice?.toLocaleString() || 'N/A'}</span>
+                          </div>
+                        </>
                       )}
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Rate Type:</span>
+                        <span className="text-muted-foreground">Applied Rate:</span>
                         <span className="font-medium">{selectedRate === 'member' ? '👤 Member' : '👥 Non-Member'}</span>
                       </div>
                       <div className="flex justify-between pt-2 border-t">
@@ -860,6 +953,140 @@ export default function CheckInsPage() {
           </motion.div>
         </TabsContent>
       </Tabs>
+
+      {/* Check-In Details Modal */}
+      <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              Check-In Details
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedCheckIn && (
+            <div className="space-y-6">
+              {/* Basic Check-In Info */}
+              <Card className="p-4">
+                <h4 className="font-semibold mb-3">Check-In Information</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Check-In Time</p>
+                    <p className="font-medium">
+                      {new Date(selectedCheckIn.checkedInAt).toLocaleDateString()} at{' '}
+                      {new Date(selectedCheckIn.checkedInAt).toLocaleTimeString()}
+                    </p>
+                  </div>
+                  {selectedCheckIn.checkedOutAt && (
+                    <div>
+                      <p className="text-muted-foreground">Check-Out Time</p>
+                      <p className="font-medium">
+                        {new Date(selectedCheckIn.checkedOutAt).toLocaleDateString()} at{' '}
+                        {new Date(selectedCheckIn.checkedOutAt).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-muted-foreground">Service</p>
+                    <p className="font-medium">{selectedCheckIn.serviceName}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Plan</p>
+                    <p className="font-medium">{selectedCheckIn.planName}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Amount</p>
+                    <p className="font-medium text-primary">₦{selectedCheckIn.amount?.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Rate Type</p>
+                    <p className="font-medium">{selectedCheckIn.selectedRate}</p>
+                  </div>
+                </div>
+              </Card>
+
+              {/* User Information */}
+              {selectedCheckIn.userId && (
+                <Card className="p-4">
+                  <h4 className="font-semibold mb-3">User Information</h4>
+                  <div className="text-sm">
+                    <p className="font-medium">{selectedCheckIn.userId.firstName} {selectedCheckIn.userId.lastName}</p>
+                    <p className="text-muted-foreground">{selectedCheckIn.userId.email}</p>
+                  </div>
+                </Card>
+              )}
+
+              {/* Subscription Information */}
+              {subscriptionDetails?.subscription ? (
+                <Card className="p-4">
+                  <h4 className="font-semibold mb-3">Subscription Details</h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Total Days Purchased:</span>
+                      <span className="font-medium">{subscriptionDetails.subscription.durationInDays || 0} days</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Days Used:</span>
+                      <span className="font-medium">{subscriptionDetails.daysUsed || 0} days</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Days Remaining:</span>
+                      <span className="font-medium text-green-600">
+                        {Math.max(0, (subscriptionDetails.subscription.durationInDays || 0) - (subscriptionDetails.daysUsed || 0))} days
+                      </span>
+                    </div>
+
+                    {/* Check-In History */}
+                    <div className="mt-4">
+                      <h5 className="text-sm font-medium mb-2">Check-In History</h5>
+                      <div className="space-y-2">
+                        {subscriptionDetails.checkIns?.map((checkIn: any, index: number) => (
+                          <div key={checkIn._id} className="flex items-center justify-between p-2 bg-muted rounded text-sm">
+                            <div className="flex items-center gap-2">
+                              <Badge variant={checkIn._id === selectedCheckIn._id ? "default" : "secondary"} className="text-xs">
+                                Day {checkIn.subscriptionDay || index + 1}
+                              </Badge>
+                              <span>{new Date(checkIn.checkedInAt).toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className={getStatusColor(checkIn.paymentStatus)}>
+                                {checkIn.paymentStatus === 'completed' ? '✓ Paid' : 'Pending'}
+                              </Badge>
+                              {checkIn.checkedOutAt && (
+                                <Badge variant="outline" className="text-xs">
+                                  Checked Out
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ) : (
+                <Card className="p-4">
+                  <h4 className="font-semibold mb-3">Check-In Type</h4>
+                  <p className="text-sm text-muted-foreground">This is a single-day check-in, not part of a subscription.</p>
+                </Card>
+              )}
+
+              {/* Payment Status */}
+              <Card className="p-4">
+                <h4 className="font-semibold mb-3">Payment Status</h4>
+                <div className="flex items-center gap-2">
+                  <Badge className={getStatusColor(selectedCheckIn.paymentStatus)}>
+                    {selectedCheckIn.paymentStatus === 'completed' ? '✓ Paid' : 'Pending'}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">
+                    Status: {selectedCheckIn.paymentStatus}
+                  </span>
+                </div>
+              </Card>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

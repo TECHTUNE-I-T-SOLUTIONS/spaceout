@@ -3,31 +3,29 @@ import './User'; // Ensure User model is registered
 import './Service'; // Ensure Service model is registered
 import './Payment'; // Ensure Payment model is registered
 
-export interface ICheckIn extends Document {
+export interface ISubscription extends Document {
   userId: mongoose.Types.ObjectId | string;
   serviceId: mongoose.Types.ObjectId | string;
   serviceName: string;
   planName: string;
   planType: string;
   durationLabel: string;
-  durationInHours?: number;
-  durationInDays?: number;
+  durationInDays: number;
   selectedRate: string;
-  amount: number;
+  amountPerDay: number;
+  totalAmount: number;
   wifiIncluded: boolean;
-  status: 'pending' | 'pending_payment' | 'checked_in' | 'checked_out' | 'expired';
+  status: 'active' | 'completed' | 'cancelled' | 'expired';
   paymentStatus: 'pending' | 'completed' | 'failed';
-  checkedInAt: Date;
-  checkedOutAt?: Date;
-  paymentVerifiedAt?: Date;
+  startDate: Date;
+  endDate: Date;
   paymentId?: mongoose.Types.ObjectId;
-  subscriptionId?: mongoose.Types.ObjectId; // Reference to multi-day subscription
-  subscriptionDay?: number; // Day number in the subscription (1, 2, 3, etc.)
+  checkIns: mongoose.Types.ObjectId[]; // Array of CheckIn IDs for each day
   createdAt: Date;
   updatedAt: Date;
 }
 
-const CheckInSchema = new Schema<ICheckIn>(
+const SubscriptionSchema = new Schema<ISubscription>(
   {
     userId: {
       type: Schema.Types.ObjectId,
@@ -55,20 +53,23 @@ const CheckInSchema = new Schema<ICheckIn>(
       type: String,
       required: [true, 'Please provide duration label'],
     },
-    durationInHours: {
-      type: Number,
-    },
     durationInDays: {
       type: Number,
+      required: [true, 'Please provide duration in days'],
+      min: 1,
     },
     selectedRate: {
       type: String,
       required: [true, 'Please provide selected rate'],
       enum: ['flat', 'member', 'nonMember', 'nonWifi', 'nonWifiMember', 'nonWifiNonMember'],
     },
-    amount: {
+    amountPerDay: {
       type: Number,
-      required: [true, 'Please provide amount'],
+      required: [true, 'Please provide amount per day'],
+    },
+    totalAmount: {
+      type: Number,
+      required: [true, 'Please provide total amount'],
     },
     wifiIncluded: {
       type: Boolean,
@@ -76,39 +77,38 @@ const CheckInSchema = new Schema<ICheckIn>(
     },
     status: {
       type: String,
-      enum: ['pending', 'pending_payment', 'checked_in', 'checked_out', 'expired'],
-      default: 'pending_payment',
+      enum: ['active', 'completed', 'cancelled', 'expired'],
+      default: 'active',
     },
     paymentStatus: {
       type: String,
       enum: ['pending', 'completed', 'failed'],
       default: 'pending',
     },
-    checkedInAt: {
+    startDate: {
       type: Date,
-      default: Date.now,
+      required: [true, 'Please provide start date'],
     },
-    checkedOutAt: {
+    endDate: {
       type: Date,
-    },
-    paymentVerifiedAt: {
-      type: Date,
+      required: [true, 'Please provide end date'],
     },
     paymentId: {
       type: Schema.Types.ObjectId,
       ref: 'Payment',
     },
-    subscriptionId: {
+    checkIns: [{
       type: Schema.Types.ObjectId,
-      ref: 'Subscription',
-    },
-    subscriptionDay: {
-      type: Number,
-    },
+      ref: 'CheckIn',
+    }],
   },
   {
     timestamps: true,
   }
 );
 
-export default mongoose.models.CheckIn || mongoose.model<ICheckIn>('CheckIn', CheckInSchema);
+// Index for quick lookup
+SubscriptionSchema.index({ userId: 1, status: 1 });
+SubscriptionSchema.index({ startDate: 1, endDate: 1 });
+
+export default mongoose.models.Subscription || mongoose.model<ISubscription>('Subscription', SubscriptionSchema);

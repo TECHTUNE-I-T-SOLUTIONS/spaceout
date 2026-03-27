@@ -18,25 +18,41 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Return all fields from the User model if present
     return NextResponse.json({
       id: user._id.toString(),
-      firstName: user.firstName || '',
-      lastName: user.lastName || '',
-      name: user.name || '',
-      email: user.email || '',
-      phone: user.phone || '',
-      role: user.role || 'user',
-      profileImage: user.profileImage || null,
-      passportPhotoUrl: user.passportPhotoUrl || null,
-      passportUrl: user.passportPhotoUrl || null,
-      signatureUrl: user.signatureUrl || null,
-      emergencyContact: user.emergencyContact || { name: '', phone: '', relationship: '' },
-      hasMembership: user.hasMembership || false,
-      membershipExpiry: user.membershipExpiry || null,
-      prepaidUntil: user.prepaidUntil || null,
-      isEmailVerified: user.isEmailVerified || false,
-      documentsUploaded: user.documentsUploaded || false,
+      email: user.email,
+      password: user.password,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      name: user.name,
+      sex: user.sex,
+      dateOfBirth: user.dateOfBirth,
+      houseAddress: user.houseAddress,
+      phone: user.phone,
+      role: user.role,
+      branchId: user.branchId,
+      hasMembership: user.hasMembership,
+      membershipStatus: user.membershipStatus,
+      membershipType: user.membershipType,
+      membershipActivatedAt: user.membershipActivatedAt,
+      membershipExpiryDate: user.membershipExpiryDate,
+      membershipExpiry: user.membershipExpiry,
+      prepaidUntil: user.prepaidUntil,
+      passportUrl: user.passportUrl,
+      passportPhotoUrl: user.passportPhotoUrl,
+      signatureUrl: user.signatureUrl,
+      isStudent: user.isStudent,
+      educationalInfo: user.educationalInfo,
+      businessInfo: user.businessInfo,
+      servicePreferences: user.servicePreferences,
+      emergencyContact: user.emergencyContact,
+      profileImage: user.profileImage,
+      isActive: user.isActive,
+      isEmailVerified: user.isEmailVerified,
+      documentsUploaded: user.documentsUploaded,
       createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
     });
   } catch (error) {
     console.error('Error fetching profile:', error);
@@ -50,46 +66,82 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const session = await requireAuth();
-    
     await dbConnect();
-
     const body = await request.json();
-    const { firstName, lastName, phone, emergencyContact, passportUrl, signatureUrl } = body;
 
-    if (!firstName || !lastName) {
+    // Enforce all model fields in the collection
+    const allFields = {
+      firstName: body.firstName ?? '',
+      lastName: body.lastName ?? '',
+      name: body.name ?? (body.firstName && body.lastName ? `${body.firstName} ${body.lastName}` : ''),
+      sex: body.sex ?? null,
+      dateOfBirth: body.dateOfBirth ?? null,
+      houseAddress: body.houseAddress ?? '',
+      phone: body.phone ?? '',
+      passportUrl: body.passportUrl ?? '',
+      passportPhotoUrl: body.passportPhotoUrl ?? '',
+      signatureUrl: body.signatureUrl ?? '',
+      isStudent: body.isStudent ?? false,
+      educationalInfo: body.educationalInfo ?? {},
+      businessInfo: body.businessInfo ?? {},
+      servicePreferences: body.servicePreferences ?? {},
+      emergencyContact: body.emergencyContact ?? { name: '', phone: '', relationship: '' },
+      profileImage: body.profileImage ?? '',
+    };
+
+    if (!allFields.firstName || !allFields.lastName) {
       return NextResponse.json(
         { error: 'First name and last name are required' },
         { status: 400 }
       );
     }
 
+    // Update all fields, ensuring all are present in the document
     const updatedUser = await User.findByIdAndUpdate(
       session.user.id,
-      {
-        firstName,
-        lastName,
-        name: `${firstName} ${lastName}`,
-        phone: phone || '',
-        emergencyContact: emergencyContact || {},
-        passportUrl: passportUrl || undefined,
-        signatureUrl: signatureUrl || undefined,
-      },
-      { new: true, runValidators: true }
+      { $set: allFields },
+      { new: true, runValidators: true, upsert: false }
     ).lean();
+
+    // Populate any missing fields in the returned object for consistency
+    const populatedUser = {
+      id: updatedUser._id.toString(),
+      email: updatedUser.email,
+      firstName: updatedUser.firstName,
+      lastName: updatedUser.lastName,
+      name: updatedUser.name,
+      sex: updatedUser.sex,
+      dateOfBirth: updatedUser.dateOfBirth,
+      houseAddress: updatedUser.houseAddress,
+      phone: updatedUser.phone,
+      role: updatedUser.role,
+      branchId: updatedUser.branchId,
+      hasMembership: updatedUser.hasMembership,
+      membershipStatus: updatedUser.membershipStatus,
+      membershipType: updatedUser.membershipType,
+      membershipActivatedAt: updatedUser.membershipActivatedAt,
+      membershipExpiryDate: updatedUser.membershipExpiryDate,
+      membershipExpiry: updatedUser.membershipExpiry,
+      prepaidUntil: updatedUser.prepaidUntil,
+      passportUrl: updatedUser.passportUrl,
+      passportPhotoUrl: updatedUser.passportPhotoUrl,
+      signatureUrl: updatedUser.signatureUrl,
+      isStudent: updatedUser.isStudent,
+      educationalInfo: updatedUser.educationalInfo,
+      businessInfo: updatedUser.businessInfo,
+      servicePreferences: updatedUser.servicePreferences,
+      emergencyContact: updatedUser.emergencyContact,
+      profileImage: updatedUser.profileImage,
+      isActive: updatedUser.isActive,
+      isEmailVerified: updatedUser.isEmailVerified,
+      documentsUploaded: updatedUser.documentsUploaded,
+      createdAt: updatedUser.createdAt,
+      updatedAt: updatedUser.updatedAt,
+    };
 
     return NextResponse.json({
       message: 'Profile updated successfully',
-      profile: {
-        id: updatedUser._id.toString(),
-        firstName: updatedUser.firstName,
-        lastName: updatedUser.lastName,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        phone: updatedUser.phone,
-        emergencyContact: updatedUser.emergencyContact,
-        passportUrl: updatedUser.passportUrl,
-        signatureUrl: updatedUser.signatureUrl,
-      },
+      profile: populatedUser,
     });
   } catch (error) {
     console.error('Error updating profile:', error);

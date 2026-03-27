@@ -8,12 +8,34 @@ import { Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Booking {
+  _id: string;
   id: string;
-  userId: string;
-  serviceId: string;
-  status: 'completed' | 'pending' | 'cancelled';
-  date: string;
-  amount: number;
+  userId: {
+    name: string;
+    email: string;
+  };
+  serviceId: {
+    name: string;
+  };
+  branchId: {
+    name: string;
+    location: string;
+  };
+  startDate: string;
+  endDate: string;
+  startTime?: string;
+  endTime?: string;
+  durationInDays: number;
+  selectedPlan: {
+    planName: string;
+    planType: string;
+  };
+  isMember: boolean;
+  totalPrice: number;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'checked_in';
+  paymentStatus: 'pending' | 'paid' | 'failed';
+  notes?: string;
+  createdAt: string;
 }
 
 export default function BookingsPage() {
@@ -31,21 +53,14 @@ export default function BookingsPage() {
       if (response.ok) {
         const data = await response.json();
         setBookings(data);
-        toast.success('Bookings Loaded', {
-          description: `Found ${data.length} bookings.`,
-        });
+      } else {
+        throw new Error('Failed to fetch bookings');
       }
     } catch (error) {
       console.error('Error fetching bookings:', error);
       toast.error('Failed to Load Bookings', {
-        description: 'Unable to fetch bookings.',
+        description: 'Unable to fetch bookings from server.',
       });
-      // Mock data for demo
-      setBookings([
-        { id: '1', userId: 'user1', serviceId: 'service1', status: 'completed', date: '2026-03-01', amount: 50000 },
-        { id: '2', userId: 'user2', serviceId: 'service2', status: 'pending', date: '2026-03-02', amount: 75000 },
-        { id: '3', userId: 'user3', serviceId: 'service3', status: 'cancelled', date: '2026-02-28', amount: 30000 },
-      ]);
     } finally {
       setLoading(false);
     }
@@ -60,21 +75,21 @@ export default function BookingsPage() {
       });
 
       if (response.ok) {
-        setBookings(bookings.map(b => 
-          b.id === bookingId ? { ...b, status: newStatus as any } : b
+        const data = await response.json();
+        setBookings(bookings.map(b =>
+          (b._id || b.id) === bookingId ? { ...b, status: newStatus as any } : b
         ));
         toast.success('Booking Updated', {
           description: `Booking status changed to ${newStatus}.`,
         });
       } else {
-        toast.error('Failed to Update Booking', {
-          description: 'Unable to update booking status.',
-        });
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update booking');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating booking:', error);
-      toast.error('Error', {
-        description: 'Failed to update booking.',
+      toast.error('Failed to Update Booking', {
+        description: error.message || 'Unable to update booking status.',
       });
     }
   };
@@ -127,8 +142,9 @@ export default function BookingsPage() {
                 <tr>
                   <th className="p-4 text-left">Booking ID</th>
                   <th className="p-4 text-left">User</th>
+                  <th className="p-4 text-left">Service</th>
+                  <th className="p-4 text-left">Dates</th>
                   <th className="p-4 text-left">Amount</th>
-                  <th className="p-4 text-left">Date</th>
                   <th className="p-4 text-left">Status</th>
                   <th className="p-4 text-right">Actions</th>
                 </tr>
@@ -136,15 +152,41 @@ export default function BookingsPage() {
               <tbody className="divide-y">
                 {bookings.map((booking) => (
                   <tr key={booking.id} className="hover:bg-muted/50">
-                    <td className="p-4 font-mono text-xs">#{booking.id}</td>
-                    <td className="p-4">{booking.userId}</td>
-                    <td className="p-4 font-bold">₦{booking.amount.toLocaleString()}</td>
-                    <td className="p-4">{new Date(booking.date).toLocaleDateString()}</td>
+                    <td className="p-4 font-mono text-xs">#{booking._id?.slice(-8) || booking.id}</td>
                     <td className="p-4">
-                      <span className={`inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium ${getStatusColor(booking.status)}`}>
-                        {getStatusIcon(booking.status)}
-                        {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                      </span>
+                      <div>
+                        <div className="font-medium">{booking.userId?.name || 'Unknown'}</div>
+                        <div className="text-xs text-muted-foreground">{booking.userId?.email || ''}</div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div>
+                        <div className="font-medium">{booking.serviceId?.name || 'Unknown Service'}</div>
+                        <div className="text-xs text-muted-foreground">{booking.selectedPlan?.planName || ''}</div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="text-sm">
+                        {new Date(booking.startDate).toLocaleDateString()}
+                        {booking.endDate && new Date(booking.endDate).toLocaleDateString() !== new Date(booking.startDate).toLocaleDateString() &&
+                          ` - ${new Date(booking.endDate).toLocaleDateString()}`
+                        }
+                        {booking.startTime && <div className="text-xs text-muted-foreground">{booking.startTime}{booking.endTime && ` - ${booking.endTime}`}</div>}
+                      </div>
+                    </td>
+                    <td className="p-4 font-bold">₦{booking.totalPrice?.toLocaleString() || '0'}</td>
+                    <td className="p-4">
+                      <div className="space-y-1">
+                        <span className={`inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium ${getStatusColor(booking.status)}`}>
+                          {getStatusIcon(booking.status)}
+                          {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                        </span>
+                        {booking.paymentStatus && (
+                          <div className="text-xs text-muted-foreground">
+                            Payment: {booking.paymentStatus}
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="p-4 text-right">
                       {booking.status === 'pending' && (
@@ -153,19 +195,29 @@ export default function BookingsPage() {
                             size="sm"
                             variant="outline"
                             className="text-xs"
-                            onClick={() => updateBookingStatus(booking.id, 'completed')}
+                            onClick={() => updateBookingStatus(booking._id || booking.id, 'confirmed')}
                           >
-                            Approve
+                            Confirm
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
                             className="text-xs text-red-600"
-                            onClick={() => updateBookingStatus(booking.id, 'cancelled')}
+                            onClick={() => updateBookingStatus(booking._id || booking.id, 'cancelled')}
                           >
-                            Reject
+                            Cancel
                           </Button>
                         </div>
+                      )}
+                      {booking.status === 'confirmed' && booking.paymentStatus === 'paid' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs"
+                          onClick={() => updateBookingStatus(booking._id || booking.id, 'completed')}
+                        >
+                          Mark Complete
+                        </Button>
                       )}
                     </td>
                   </tr>

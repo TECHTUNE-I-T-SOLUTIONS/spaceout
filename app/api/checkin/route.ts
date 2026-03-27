@@ -3,12 +3,11 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/auth';
 import dbConnect from '@/lib/db';
 import CheckIn from '@/lib/models/CheckIn';
-import Branch from '@/lib/models/Branch';
+import Subscription from '@/lib/models/Subscription';
 import User from '@/lib/models/User';
 import Service from '@/lib/models/Service';
 import ErrorLog from '@/lib/models/ErrorLog';
 import PushSubscription from '@/lib/models/PushSubscription';
-import UserSubscription from '@/lib/models/UserSubscription';
 import { sendCheckInPushNotification, sendAdminNotificationOnCheckIn } from '@/lib/push-notification';
 
 export async function POST(request: NextRequest) {
@@ -24,11 +23,11 @@ export async function POST(request: NextRequest) {
 
     await dbConnect();
 
-    const { serviceId } = await request.json();
+    const { serviceId, subscriptionId, bookingId } = await request.json();
 
-    if (!serviceId) {
+    if (!serviceId && !subscriptionId && !bookingId) {
       return NextResponse.json(
-        { message: 'Service ID is required' },
+        { message: 'Either Service ID, Subscription ID, or Booking ID is required' },
         { status: 400 }
       );
     }
@@ -42,8 +41,143 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let serviceIdToUse = serviceId;
+    let service;
+
+    if (bookingId) {
+      // Handle booking check-in
+      const Booking = (await import('@/lib/models/Booking')).default;
+      const booking = await Booking.findById(bookingId);
+
+      if (!booking) {
+        return NextResponse.json(
+          { message: 'Booking not found' },
+          { status: 404 }
+        );
+      }
+
+      if (booking.userId.toString() !== userId) {
+        return NextResponse.json(
+          { message: 'Unauthorized access to booking' },
+          { status: 403 }
+        );
+      }
+
+      if (booking.status !== 'confirmed' || booking.paymentStatus !== 'paid') {
+        return NextResponse.json(
+          { message: 'Booking is not confirmed or payment not completed' },
+          { status: 400 }
+        );
+      }
+
+      // Check if booking is within date range
+      const now = new Date();
+      const startDate = new Date(booking.startDate);
+      const endDate = new Date(booking.endDate);
+
+      if (now < startDate || now > endDate) {
+        return NextResponse.json(
+          { message: 'Booking is not valid for today' },
+          { status: 400 }
+        );
+      }
+
+      // Check if user has already checked in for this booking today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const existingCheckIn = await CheckIn.findOne({
+        bookingId: bookingId,
+        userId: userId,
+        checkedInAt: {
+          $gte: today,
+          $lt: tomorrow
+        }
+      });
+
+      if (existingCheckIn) {
+        if (existingCheckIn.status === 'checked_in') {
+          return NextResponse.json(
+            { message: 'Already checked in for this booking today' },
+            { status: 400 }
+          );
+        }
+        // If it exists but not checked in, update it
+        checkIn = await CheckIn.findByIdAndUpdate(
+          existingCheckIn._id,
+          {
+            status: 'checked_in',
+            checkedInAt: new Date(),
+          },
+          { new: true }
+        ).populate('serviceId', 'name');
+      } else {
+        // Create new check-in record for today
+        checkIn = await CheckIn.create({
+          userId,
+          serviceId: booking.serviceId,
+          serviceName: booking.selectedPlan?.planName || 'Booked Service',
+          planName: booking.selectedPlan?.planName || 'Booking',
+          planType: booking.selectedPlan?.planType || 'booking',
+          durationLabel: `${booking.durationInDays} Day${booking.durationInDays > 1 ? 's' : ''} Booking`,
+          selectedRate: booking.isMember ? 'member' : 'nonMember',
+          amount: booking.totalPrice / booking.durationInDays, // Daily rate
+          wifiIncluded: false, // Bookings don't include wifi by default
+          status: 'checked_in',
+          paymentStatus: 'completed', // Already paid for booking
+          checkedInAt: new Date(),
+          bookingId: bookingId,
+        });
+
+        // Add this check-in to the booking's checkInRecords array
+        await Booking.findByIdAndUpdate(bookingId, {
+          $push: { checkInRecords: checkIn._id }
+        });
+      }
+    } else if (subscriptionId) {
+      // Handle subscription check-in
+      const subscription = await Subscription.findById(subscriptionId);
+      if (!subscription) {
+        return NextResponse.json(
+          { message: 'Subscription not found' },
+          { status: 404 }
+        );
+      }
+
+      if (subscription.userId.toString() !== userId) {
+        return NextResponse.json(
+          { message: 'Unauthorized access to subscription' },
+          { status: 403 }
+        );
+      }
+
+      if (subscription.status !== 'active' || subscription.paymentStatus !== 'paid') {
+        return NextResponse.json(
+          { message: 'Subscription is not active or payment not completed' },
+          { status: 400 }
+        );
+      }
+
+      // Check if subscription has expired
+      const now = new Date();
+      if (subscription.endDate < now) {
+        return NextResponse.json(
+          { message: 'Subscription has expired' },
+          { status: 400 }
+        );
+      }
+
+      // Use service from subscription
+      serviceIdToUse = subscription.serviceId;
+      service = await Service.findById(serviceIdToUse);
+    } else {
+      // Handle single service check-in
+      service = await Service.findById(serviceIdToUse);
+    }
+
     // Verify service exists
-    const service = await Service.findById(serviceId);
     if (!service || !service.isActive) {
       return NextResponse.json(
         { message: 'Service not found or inactive' },
@@ -51,18 +185,126 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check prepaid coverage
-    const now = new Date();
-    const prepaidAvailable = user.prepaidUntil && user.prepaidUntil > now;
+    let checkIn;
 
-    // Create check-in record
-    const checkIn = await CheckIn.create({
-      userId,
-      branchId,
-      serviceId,
-      checkInTime: new Date(),
-      prepaidUsed: prepaidAvailable,
-    });
+    if (subscriptionId) {
+      // Handle subscription check-in
+      const subscription = await Subscription.findById(subscriptionId);
+
+      // Check if user has already checked in today for this subscription
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const existingCheckIn = await CheckIn.findOne({
+        subscriptionId: subscriptionId,
+        userId: userId,
+        checkedInAt: {
+          $gte: today,
+          $lt: tomorrow
+        }
+      });
+
+      if (existingCheckIn) {
+        if (existingCheckIn.status === 'checked_in') {
+          return NextResponse.json(
+            { message: 'Already checked in for today' },
+            { status: 400 }
+          );
+        }
+        // If it exists but not checked in, update it
+        checkIn = await CheckIn.findByIdAndUpdate(
+          existingCheckIn._id,
+          {
+            status: 'checked_in',
+            checkedInAt: new Date(),
+          },
+          { new: true }
+        ).populate('serviceId', 'name');
+      } else {
+        // Check how many days have been used so far
+        const usedDays = await CheckIn.countDocuments({
+          subscriptionId: subscriptionId,
+          userId: userId,
+          status: 'checked_in'
+        });
+
+        // Check if subscription has remaining days
+        if (usedDays >= subscription.durationInDays) {
+          return NextResponse.json(
+            { message: 'All subscription days have been used' },
+            { status: 400 }
+          );
+        }
+
+        // Calculate which day this is in the subscription
+        const subscriptionDay = usedDays + 1;
+
+        // Create new check-in record for today
+        checkIn = await CheckIn.create({
+          userId,
+          serviceId: serviceIdToUse,
+          serviceName: subscription.serviceName,
+          planName: subscription.planName,
+          planType: subscription.planType,
+          durationLabel: '1 Day (Subscription)',
+          selectedRate: subscription.selectedRate,
+          amount: subscription.amountPerDay,
+          wifiIncluded: subscription.wifiIncluded,
+          status: 'checked_in',
+          paymentStatus: 'completed', // Already paid for subscription
+          checkedInAt: new Date(),
+          subscriptionId: subscriptionId,
+          subscriptionDay: subscriptionDay,
+        });
+
+        // Add this check-in to the subscription's checkIns array
+        await Subscription.findByIdAndUpdate(subscriptionId, {
+          $push: { checkIns: checkIn._id }
+        });
+      }
+    } else {
+      // Handle single service check-in (legacy support)
+      // Check if user already checked in today for this service
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const existingCheckIn = await CheckIn.findOne({
+        userId,
+        serviceId: serviceIdToUse,
+        checkedInAt: {
+          $gte: today,
+          $lt: tomorrow
+        },
+        status: 'checked_in'
+      });
+
+      if (existingCheckIn) {
+        return NextResponse.json(
+          { message: 'Already checked in for this service today' },
+          { status: 400 }
+        );
+      }
+
+      // Create new check-in record (this shouldn't happen in normal flow, but for legacy support)
+      checkIn = await CheckIn.create({
+        userId,
+        serviceId: serviceIdToUse,
+        serviceName: service.name,
+        planName: 'Walk-in',
+        planType: 'walk-in',
+        durationLabel: 'Walk-in',
+        selectedRate: 'nonMember',
+        amount: 0,
+        wifiIncluded: false,
+        status: 'checked_in',
+        paymentStatus: 'completed',
+        checkedInAt: new Date(),
+      });
+    }
 
     // Send check-in notification to user
     try {
@@ -103,59 +345,31 @@ export async function POST(request: NextRequest) {
       {
         message: 'Check-in successful',
         checkIn,
-        prepaidUsed: prepaidAvailable,
+        subscriptionId: subscriptionId || null,
+        isSubscriptionCheckIn: !!subscriptionId,
       },
       { status: 201 }
     );
   } catch (error: any) {
     console.error('Check-in error:', error);
 
-    const session = await getServerSession(authOptions) as any;
-    const userId = (session?.user as any)?.id;
-
-    await ErrorLog.create({
-      route: '/api/checkin',
-      error: error.message || 'Check-in failed',
-      statusCode: 500,
-      userId,
-    }).catch((err) => console.error('Error logging error:', err));
-
-    return NextResponse.json(
-      { message: 'Check-in failed' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    // Log error to database
+    try {
+      await ErrorLog.create({
+        message: 'Check-in API error',
+        error: error.message,
+        stack: error.stack,
+        userId: (await getServerSession(authOptions) as any)?.user?.id,
+        endpoint: '/api/checkin',
+        method: 'POST',
+        timestamp: new Date(),
+      });
+    } catch (logError) {
+      console.error('Failed to log error:', logError);
     }
 
-    const userId = (session.user as any)?.id;
-
-    await dbConnect();
-
-    const checkIns = await CheckIn.find({ userId })
-      .populate('serviceId', 'name category')
-      .populate('branchId', 'name location')
-      .sort({ checkInTime: -1 });
-
-    return NextResponse.json(checkIns, { status: 200 });
-  } catch (error: any) {
-    console.error('Error fetching check-ins:', error);
-
-    await ErrorLog.create({
-      route: '/api/checkin',
-      error: error.message || 'Failed to fetch check-ins',
-      statusCode: 500,
-    }).catch((err) => console.error('Error logging error:', err));
-
     return NextResponse.json(
-      { message: 'Failed to fetch check-ins' },
+      { message: 'Internal server error' },
       { status: 500 }
     );
   }

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { motion } from 'framer-motion';
 import { Clock, AlertCircle, Loader2, Zap, Wifi, WifiOff, CheckCircle, LogOut, List, History } from 'lucide-react';
 import { toast } from 'sonner';
@@ -45,6 +46,7 @@ interface SelectedPlan {
   requiresMembership: boolean;
   membershipFee?: number;
   totalPrice: number;
+  selectedDays?: number; // Number of days for multi-day subscription
 }
 
 interface CheckInRecord {
@@ -81,23 +83,39 @@ export default function CheckInPage() {
   const [checkoutConfirmDialog, setCheckoutConfirmDialog] = useState(false);
   const [pendingCheckoutId, setPendingCheckoutId] = useState<string | null>(null);
   const [checkoutRecord, setCheckoutRecord] = useState<CheckInRecord | null>(null);
+  const [activeSubscriptions, setActiveSubscriptions] = useState<any[]>([]);
+  const [subscriptionsLoading, setSubscriptionsLoading] = useState(false);
+  const [selectedDays, setSelectedDays] = useState<number>(1);
 
 
-  // Fetch server time on mount
+  // Handle success redirect from payment
   useEffect(() => {
-    const fetchServerTime = async () => {
-      try {
-        const response = await fetch('/api/server-time');
-        if (response.ok) {
-          const data = await response.json();
-          setServerTime(new Date(data.timestamp));
-        }
-      } catch (error) {
-        console.error('Error fetching server time:', error);
-      }
-    };
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const subscriptionId = urlParams.get('subscriptionId');
+    const selectedDays = urlParams.get('selectedDays');
 
-    fetchServerTime();
+    if (success === 'true') {
+      if (subscriptionId && selectedDays) {
+        toast.success(`Payment successful!`, {
+          description: `Your ${selectedDays}-day subscription is now active. You can check in each day individually.`,
+        });
+        // Refresh subscriptions
+        fetchActiveSubscriptions();
+      } else {
+        toast.success('Payment successful!', {
+          description: 'Your check-in has been confirmed.',
+        });
+      }
+
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (success === 'false') {
+      const message = urlParams.get('message') || 'Payment failed';
+      toast.error('Payment Failed', {
+        description: message,
+      });
+    }
   }, []);
 
   // Fetch check-in history
@@ -121,6 +139,24 @@ export default function CheckInPage() {
       toast.error('Failed to load check-in history');
     } finally {
       setHistoryLoading(false);
+    }
+  };
+
+  // Fetch active subscriptions
+  const fetchActiveSubscriptions = async () => {
+    if (!session?.user?.id) return;
+
+    try {
+      setSubscriptionsLoading(true);
+      const response = await fetch('/api/user/subscriptions/active');
+      if (response.ok) {
+        const data = await response.json();
+        setActiveSubscriptions(data.subscriptions);
+      }
+    } catch (error) {
+      console.error('Error fetching subscriptions:', error);
+    } finally {
+      setSubscriptionsLoading(false);
     }
   };
 
@@ -165,6 +201,7 @@ export default function CheckInPage() {
   useEffect(() => {
     if (session?.user?.id && activeTab === 'check-in') {
       fetchTodayCheckIns();
+      fetchActiveSubscriptions();
     }
   }, [session?.user?.id, activeTab]);
 
@@ -339,7 +376,7 @@ export default function CheckInPage() {
         finalRequiresMembership = requiresMembership && !userMembership?.hasMembership;
       }
 
-      const totalPrice = finalPrice + finalMembershipFee;
+      const totalPrice = (finalPrice * selectedDays) + finalMembershipFee;
 
       const newPlan: SelectedPlan = {
         service,
@@ -350,6 +387,7 @@ export default function CheckInPage() {
         requiresMembership: finalRequiresMembership,
         membershipFee: finalMembershipFee,
         totalPrice,
+        selectedDays,
       };
 
       // Check if they already paid for this service today
@@ -362,6 +400,40 @@ export default function CheckInPage() {
     } catch (error) {
       console.error('Error selecting plan:', error);
       toast.error('Error processing plan selection');
+    }
+  };
+
+  const handleSubscriptionCheckIn = async (subscriptionId: string) => {
+    try {
+      setIsProcessing(true);
+
+      const response = await fetch('/api/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscriptionId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Check-in failed');
+      }
+
+      const data = await response.json();
+
+      toast.success('Check-in successful!', {
+        description: `Welcome to ${data.checkIn.serviceName}`,
+      });
+
+      // Refresh data
+      await fetchTodayCheckIns();
+      await fetchActiveSubscriptions();
+      await fetchCheckInHistory(pagination.page);
+    } catch (error: any) {
+      toast.error('Check-in Failed', {
+        description: error.message || 'Failed to check in',
+      });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -395,6 +467,7 @@ export default function CheckInPage() {
           requiresMembership: selectedPlan.requiresMembership,
           membershipFee: selectedPlan.membershipFee,
           totalPrice: selectedPlan.totalPrice,
+          selectedDays: selectedPlan.selectedDays,
         }),
       });
 
@@ -550,6 +623,81 @@ export default function CheckInPage() {
               </div>
             </div>
           </Card>
+
+          {/* Active Subscriptions Section */}
+          {activeSubscriptions.length > 0 && (
+            <motion.div variants={itemVariants}>
+              <Card className="p-6">
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  <Clock className="w-6 h-6" />
+                  Your Active Subscriptions
+                </h2>
+                <div className="space-y-4">
+                  {activeSubscriptions.map((subscription) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+
+                    // Check if already checked in today
+                    const todayCheckIn = subscription.checkIns?.find((checkIn: any) => {
+                      const checkInDate = new Date(checkIn.checkedInAt);
+                      checkInDate.setHours(0, 0, 0, 0);
+                      return checkInDate.getTime() === today.getTime() && checkIn.status === 'checked_in';
+                    });
+
+                    // Count all check-in records (each represents a used day)
+                    const daysUsed = subscription.checkIns?.length || 0;
+                    const daysRemaining = subscription.durationInDays - daysUsed;
+
+                    return (
+                      <div key={subscription._id} className="border rounded-lg p-4 bg-muted/50">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <h3 className="font-semibold text-lg">{subscription.serviceName}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {subscription.durationInDays} Days • {subscription.planName} • {subscription.selectedRate}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold">{formatPrice(subscription.totalAmount)}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {daysUsed} used • {daysRemaining} remaining
+                            </p>
+                          </div>
+                        </div>
+
+                        {todayCheckIn ? (
+                          <div className="flex items-center gap-2 text-green-600">
+                            <CheckCircle className="w-4 h-4" />
+                            <span className="text-sm font-medium">Checked in today</span>
+                          </div>
+                        ) : (
+                          <Button
+                            onClick={() => handleSubscriptionCheckIn(subscription._id)}
+                            disabled={isProcessing}
+                            className="w-full"
+                          >
+                            {isProcessing ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Checking In...
+                              </>
+                            ) : (
+                              <>
+                                <LogOut className="w-4 h-4 mr-2" />
+                                Check In Today
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            </motion.div>
+          )}
 
       {services.length === 0 ? (
         <Card className="p-8 text-center">
@@ -836,7 +984,7 @@ export default function CheckInPage() {
         </TabsContent>
       </Tabs>
       <Dialog open={!!selectedPlan} onOpenChange={() => setSelectedPlan(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Check In Confirmation</DialogTitle>
             <DialogDescription>
@@ -879,8 +1027,68 @@ export default function CheckInPage() {
                 </div>
               </div>
 
+              {/* Days Selection for Multi-Day Subscription */}
+              <div className="bg-muted/50 p-4 rounded-lg space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Number of Days:</span>
+                  <Select
+                    value={selectedDays.toString()}
+                    onValueChange={(value) => {
+                      const days = parseInt(value);
+                      setSelectedDays(days);
+                      // Recalculate total price
+                      const newTotal = (selectedPlan.price * days) + (selectedPlan.membershipFee || 0);
+                      setSelectedPlan({
+                        ...selectedPlan,
+                        selectedDays: days,
+                        totalPrice: newTotal,
+                      });
+                    }}
+                  >
+                    <SelectTrigger className="w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 30 }, (_, i) => i + 1).map((day) => (
+                        <SelectItem key={day} value={day.toString()}>
+                          {day} {day === 1 ? 'Day' : 'Days'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedDays > 1 && (
+                  <div className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/50 p-2 rounded border">
+                    <p className="font-medium text-blue-700 dark:text-blue-300">Multi-Day Subscription</p>
+                    <p>You'll pay for {selectedDays} days upfront and can check in each day individually within your subscription period.</p>
+                  </div>
+                )}
+              </div>
+
               <div className="bg-primary/10 p-4 rounded-lg border border-primary/20 space-y-3">
-                {selectedPlan.requiresMembership && selectedPlan.membershipFee ? (
+                {selectedPlan.selectedDays && selectedPlan.selectedDays > 1 ? (
+                  <>
+                    <div className="flex justify-between">
+                      <p className="text-sm text-muted-foreground">Rate per Day</p>
+                      <p className="font-semibold">{formatPrice(selectedPlan.price)}</p>
+                    </div>
+                    <div className="flex justify-between">
+                      <p className="text-sm text-muted-foreground">Number of Days</p>
+                      <p className="font-semibold">{selectedPlan.selectedDays}</p>
+                    </div>
+                    {selectedPlan.membershipFee ? (
+                      <div className="flex justify-between border-t pt-2">
+                        <p className="text-sm text-amber-600 font-semibold">Membership Card Fee</p>
+                        <p className="font-semibold text-amber-600">{formatPrice(selectedPlan.membershipFee)}</p>
+                      </div>
+                    ) : null}
+                    <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
+                      <span>Total Amount</span>
+                      <span className="text-primary">{formatPrice(selectedPlan.totalPrice)}</span>
+                    </div>
+                  </>
+                ) : selectedPlan.requiresMembership && selectedPlan.membershipFee ? (
                   <>
                     <div className="flex justify-between">
                       <p className="text-sm text-muted-foreground">Check-In Rate</p>

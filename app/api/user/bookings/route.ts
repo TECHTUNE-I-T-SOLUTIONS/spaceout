@@ -20,15 +20,25 @@ export async function GET(req: NextRequest) {
     // Transform the response
     const formattedBookings = bookings.map((booking: any) => ({
       id: booking._id.toString(),
-      spaceName: booking.branchId?.name || 'Unknown Space',
+      spaceName: booking.serviceId?.name || 'Unknown Service',
       location: booking.branchId?.location || 'Unknown Location',
-      date: new Date(booking.bookingDate).toLocaleDateString(),
-      time: booking.startTime || 'N/A',
-      duration: booking.duration || 0,
+      date: new Date(booking.startDate).toLocaleDateString(),
+      time: booking.startTime || 'All Day',
+      duration: booking.durationInDays || 1,
+      durationLabel: `${booking.durationInDays || 1} day${booking.durationInDays > 1 ? 's' : ''}`,
       status: booking.status || 'pending',
       price: booking.totalPrice || 0,
+      selectedPlan: booking.selectedPlan,
+      isMember: booking.isMember,
+      startDate: booking.startDate,
+      endDate: booking.endDate,
+      startTime: booking.startTime,
+      endTime: booking.endTime,
       _id: booking._id,
-      ...booking,
+      serviceId: booking.serviceId,
+      branchId: booking.branchId,
+      paymentStatus: booking.paymentStatus,
+      notes: booking.notes,
     }));
 
     return NextResponse.json(formattedBookings, { status: 200 });

@@ -11,24 +11,62 @@ import { useSession } from 'next-auth/react';
 
 import { Loader2, AlertCircle, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
 
 interface UserProfile {
+  id?: string;
+  email: string;
   firstName: string;
   lastName: string;
-  email: string;
+  name?: string;
+  sex?: 'male' | 'female' | 'prefer-not-to-say';
+  dateOfBirth?: string;
+  houseAddress?: string;
   phone?: string;
-  profileImage?: string;
+  role?: string;
+  branchId?: string;
+  hasMembership?: boolean;
+  membershipStatus?: 'active' | 'inactive' | 'expired';
+  membershipType?: 'annual' | 'monthly' | 'lifetime';
+  membershipActivatedAt?: string;
+  membershipExpiryDate?: string;
+  membershipExpiry?: string;
+  prepaidUntil?: string;
   passportUrl?: string;
+  passportPhotoUrl?: string;
   signatureUrl?: string;
+  isStudent?: boolean;
+  educationalInfo?: {
+    institution?: string;
+    faculty?: string;
+    courseOfStudy?: string;
+    level?: string;
+  };
+  businessInfo?: {
+    firmName?: string;
+    businessDescription?: string;
+    officeAddress?: string;
+    officeHotline?: string;
+    officeEmail?: string;
+  };
+  servicePreferences?: {
+    loyaltyOption?: 'card' | 'no-card';
+    bookingPreferences?: string[];
+    usageDuration?: 'hourly' | 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'bi-annual' | 'annual';
+  };
   emergencyContact?: {
     name: string;
     phone: string;
     relationship: string;
   };
-  hasMembership?: boolean;
-  membershipExpiry?: string;
-  prepaidUntil?: string;
+  profileImage?: string;
+  isActive?: boolean;
   isEmailVerified?: boolean;
+  documentsUploaded?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export default function ProfilePage() {
@@ -39,22 +77,38 @@ export default function ProfilePage() {
   const [isUploadingPassport, setIsUploadingPassport] = useState(false);
   const [isUploadingSignature, setIsUploadingSignature] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({
+    id: '',
+    email: '',
     firstName: '',
     lastName: '',
-    email: '',
+    name: '',
+    sex: undefined,
+    dateOfBirth: '',
+    houseAddress: '',
     phone: '',
-    profileImage: '',
-    passportUrl: '',
-    signatureUrl: '',
-    emergencyContact: {
-      name: '',
-      phone: '',
-      relationship: '',
-    },
+    role: '',
+    branchId: '',
     hasMembership: false,
+    membershipStatus: undefined,
+    membershipType: undefined,
+    membershipActivatedAt: '',
+    membershipExpiryDate: '',
     membershipExpiry: '',
     prepaidUntil: '',
+    passportUrl: '',
+    passportPhotoUrl: '',
+    signatureUrl: '',
+    isStudent: false,
+    educationalInfo: {},
+    businessInfo: {},
+    servicePreferences: {},
+    emergencyContact: { name: '', phone: '', relationship: '' },
+    profileImage: '',
+    isActive: true,
     isEmailVerified: false,
+    documentsUploaded: false,
+    createdAt: '',
+    updatedAt: '',
   });
 
   useEffect(() => {
@@ -196,6 +250,7 @@ export default function ProfilePage() {
     try {
       setIsSaving(true);
 
+      // Send all fields from the profile state
       const response = await fetch('/api/user/profile', {
         method: 'PUT',
         headers: {
@@ -204,10 +259,20 @@ export default function ProfilePage() {
         body: JSON.stringify({
           firstName: profile.firstName,
           lastName: profile.lastName,
+          name: profile.name,
+          sex: profile.sex,
+          dateOfBirth: profile.dateOfBirth,
+          houseAddress: profile.houseAddress,
           phone: profile.phone,
           passportUrl: profile.passportUrl,
+          passportPhotoUrl: profile.passportPhotoUrl,
           signatureUrl: profile.signatureUrl,
+          isStudent: profile.isStudent,
+          educationalInfo: profile.educationalInfo,
+          businessInfo: profile.businessInfo,
+          servicePreferences: profile.servicePreferences,
           emergencyContact: profile.emergencyContact,
+          profileImage: profile.profileImage,
         }),
       });
 
@@ -303,62 +368,211 @@ export default function ProfilePage() {
         </div>
       </Card>
 
-      {/* Personal Information */}
+      {/* All User Fields */}
       <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-6">Personal Information</h2>
+        <h2 className="text-xl font-semibold mb-6">Personal & Account Information</h2>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div><Label>ID</Label><Input value={profile.id || ''} disabled className="mt-1 bg-muted" /></div>
+            <div><Label>Email</Label><Input value={profile.email || ''} disabled className="mt-1 bg-muted" /></div>
+            <div><Label>First Name</Label><Input value={profile.firstName || ''} onChange={e => handleInputChange('firstName', e.target.value)} disabled={!isEditing} className="mt-1" /></div>
+            <div><Label>Last Name</Label><Input value={profile.lastName || ''} onChange={e => handleInputChange('lastName', e.target.value)} disabled={!isEditing} className="mt-1" /></div>
+            <div><Label>Full Name</Label><Input value={profile.name || ''} disabled className="mt-1 bg-muted" /></div>
+            <div>
+              <Label>Sex</Label>
+              {isEditing ? (
+                <Select value={profile.sex || ''} onValueChange={val => handleInputChange('sex', val)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select sex" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={profile.sex || ''} disabled className="mt-1 bg-muted" />
+              )}
+            </div>
+            <div>
+              <Label>Date of Birth</Label>
+              {isEditing ? (
+                <Input
+                  type="date"
+                  value={profile.dateOfBirth || ''}
+                  onChange={e => handleInputChange('dateOfBirth', e.target.value)}
+                  className="mt-1"
+                />
+              ) : (
+                <Input value={profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : ''} disabled className="mt-1 bg-muted" />
+              )}
+            </div>
+            <div><Label>House Address</Label><Input value={profile.houseAddress || ''} onChange={e => handleInputChange('houseAddress', e.target.value)} disabled={!isEditing} className="mt-1" /></div>
+            <div><Label>Phone</Label><Input value={profile.phone || ''} onChange={e => handleInputChange('phone', e.target.value)} disabled={!isEditing} className="mt-1" /></div>
+            <div><Label>Role</Label><Input value={profile.role || ''} disabled className="mt-1 bg-muted" /></div>
+            <div><Label>Branch ID</Label><Input value={profile.branchId || ''} disabled className="mt-1 bg-muted" /></div>
+            <div><Label>Active</Label><Input value={profile.isActive ? 'Yes' : 'No'} disabled className="mt-1 bg-muted" /></div>
+            <div><Label>Email Verified</Label><Input value={profile.isEmailVerified ? 'Yes' : 'No'} disabled className="mt-1 bg-muted" /></div>
+            <div><Label>Documents Uploaded</Label><Input value={profile.documentsUploaded ? 'Yes' : 'No'} disabled className="mt-1 bg-muted" /></div>
+            <div><Label>Created At</Label><Input value={profile.createdAt ? new Date(profile.createdAt).toLocaleString() : ''} disabled className="mt-1 bg-muted" /></div>
+            <div><Label>Updated At</Label><Input value={profile.updatedAt ? new Date(profile.updatedAt).toLocaleString() : ''} disabled className="mt-1 bg-muted" /></div>
+          </div>
+        </div>
+      </Card>
 
+      {/* Membership & Access */}
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold mb-6">Membership & Access</h2>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div><Label>Has Membership</Label><Input value={profile.hasMembership ? 'Yes' : 'No'} disabled className="mt-1 bg-muted" /></div>
+            <div><Label>Membership Status</Label><Input value={profile.membershipStatus || ''} disabled className="mt-1 bg-muted" /></div>
+            <div><Label>Membership Type</Label><Input value={profile.membershipType || ''} disabled className="mt-1 bg-muted" /></div>
+            <div><Label>Membership Activated At</Label><Input value={profile.membershipActivatedAt ? new Date(profile.membershipActivatedAt).toLocaleString() : ''} disabled className="mt-1 bg-muted" /></div>
+            <div><Label>Membership Expiry Date</Label><Input value={profile.membershipExpiryDate ? new Date(profile.membershipExpiryDate).toLocaleDateString() : ''} disabled className="mt-1 bg-muted" /></div>
+            <div><Label>Membership Expiry</Label><Input value={profile.membershipExpiry ? new Date(profile.membershipExpiry).toLocaleDateString() : ''} disabled className="mt-1 bg-muted" /></div>
+            <div><Label>Prepaid Until</Label><Input value={profile.prepaidUntil ? new Date(profile.prepaidUntil).toLocaleDateString() : ''} disabled className="mt-1 bg-muted" /></div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Education, Business, Preferences */}
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold mb-6">Education, Business, Preferences</h2>
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <Label htmlFor="firstName">First Name</Label>
-              <Input
-                id="firstName"
-                type="text"
-                value={profile.firstName}
-                onChange={(e) => handleInputChange('firstName', e.target.value)}
-                disabled={!isEditing}
-                placeholder="Your first name"
-                className="mt-1"
-              />
+              <Label>Are you a student?</Label>
+              {isEditing ? (
+                <Select value={profile.isStudent ? 'yes' : 'no'} onValueChange={val => handleInputChange('isStudent', val === 'yes')}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">Yes</SelectItem>
+                    <SelectItem value="no">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={profile.isStudent ? 'Yes' : 'No'} disabled className="mt-1 bg-muted" />
+              )}
             </div>
-
+            {profile.isStudent ? (
+              <>
+                <div><Label>Institution</Label><Input value={profile.educationalInfo?.institution || ''} onChange={e => setProfile(prev => ({ ...prev, educationalInfo: { ...prev.educationalInfo, institution: e.target.value } }))} disabled={!isEditing} className="mt-1" /></div>
+                <div><Label>Faculty</Label><Input value={profile.educationalInfo?.faculty || ''} onChange={e => setProfile(prev => ({ ...prev, educationalInfo: { ...prev.educationalInfo, faculty: e.target.value } }))} disabled={!isEditing} className="mt-1" /></div>
+                <div><Label>Course of Study</Label><Input value={profile.educationalInfo?.courseOfStudy || ''} onChange={e => setProfile(prev => ({ ...prev, educationalInfo: { ...prev.educationalInfo, courseOfStudy: e.target.value } }))} disabled={!isEditing} className="mt-1" /></div>
+                <div>
+                  <Label>Level</Label>
+                  {isEditing ? (
+                    <Select value={profile.educationalInfo?.level || ''} onValueChange={val => setProfile(prev => ({ ...prev, educationalInfo: { ...prev.educationalInfo, level: val } }))}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[100,200,300,400,500,600].map(l => (
+                          <SelectItem key={l} value={l.toString()}>{l}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input value={profile.educationalInfo?.level || ''} disabled className="mt-1 bg-muted" />
+                  )}
+            </div>
+              
+              </>
+              
+            ) : (
+              <>
+                <div><Label>Firm Name</Label><Input value={profile.businessInfo?.firmName || ''} onChange={e => setProfile(prev => ({ ...prev, businessInfo: { ...prev.businessInfo, firmName: e.target.value } }))} disabled={!isEditing} className="mt-1" /></div>
+                <div><Label>Business Description</Label><Input value={profile.businessInfo?.businessDescription || ''} onChange={e => setProfile(prev => ({ ...prev, businessInfo: { ...prev.businessInfo, businessDescription: e.target.value } }))} disabled={!isEditing} className="mt-1" /></div>
+                <div><Label>Office Address</Label><Input value={profile.businessInfo?.officeAddress || ''} onChange={e => setProfile(prev => ({ ...prev, businessInfo: { ...prev.businessInfo, officeAddress: e.target.value } }))} disabled={!isEditing} className="mt-1" /></div>
+                <div><Label>Office Hotline</Label><Input value={profile.businessInfo?.officeHotline || ''} onChange={e => setProfile(prev => ({ ...prev, businessInfo: { ...prev.businessInfo, officeHotline: e.target.value } }))} disabled={!isEditing} className="mt-1" /></div>
+                <div><Label>Office Email</Label><Input value={profile.businessInfo?.officeEmail || ''} onChange={e => setProfile(prev => ({ ...prev, businessInfo: { ...prev.businessInfo, officeEmail: e.target.value } }))} disabled={!isEditing} className="mt-1" /></div>
+              </>
+            )}
             <div>
-              <Label htmlFor="lastName">Last Name</Label>
-              <Input
-                id="lastName"
-                type="text"
-                value={profile.lastName}
-                onChange={(e) => handleInputChange('lastName', e.target.value)}
-                disabled={!isEditing}
-                placeholder="Your last name"
-                className="mt-1"
-              />
+              <Label>Loyalty Option</Label>
+              {isEditing ? (
+                <Select value={profile.servicePreferences?.loyaltyOption || ''} onValueChange={val => setProfile(prev => ({ ...prev, servicePreferences: { ...prev.servicePreferences, loyaltyOption: val } }))}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select loyalty option" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="card">Card</SelectItem>
+                    <SelectItem value="no-card">No Card</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={profile.servicePreferences?.loyaltyOption || ''} disabled className="mt-1 bg-muted" />
+              )}
             </div>
-
             <div>
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                value={profile.email}
-                disabled
-                placeholder="Your email"
-                className="mt-1 bg-muted"
-              />
+              <Label>Usage Duration</Label>
+              {isEditing ? (
+                <Select value={profile.servicePreferences?.usageDuration || ''} onValueChange={val => setProfile(prev => ({ ...prev, servicePreferences: { ...prev.servicePreferences, usageDuration: val } }))}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {['hourly','daily','weekly','monthly','quarterly','bi-annual','annual'].map(opt => (
+                      <SelectItem key={opt} value={opt}>{opt.charAt(0).toUpperCase()+opt.slice(1)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={profile.servicePreferences?.usageDuration || ''} disabled className="mt-1 bg-muted" />
+              )}
             </div>
-
             <div>
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={profile.phone || ''}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-                disabled={!isEditing}
-                placeholder="+234 (0) 809 988 5454"
-                className="mt-1"
-              />
+              <Label>Booking Preferences</Label>
+              {isEditing ? (
+                <div className="flex flex-col gap-2 mt-1">
+                  {['General Workspace', 'Office Setup', 'Conference Room', 'Special Offer', 'Content Creation'].map(opt => (
+                    <label key={opt} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={profile.servicePreferences?.bookingPreferences?.includes(opt) || false}
+                        onCheckedChange={checked => {
+                          setProfile(prev => {
+                            const prevArr = prev.servicePreferences?.bookingPreferences || [];
+                            return {
+                              ...prev,
+                              servicePreferences: {
+                                ...prev.servicePreferences,
+                                bookingPreferences: checked
+                                  ? [...prevArr, opt]
+                                  : prevArr.filter(o => o !== opt),
+                              },
+                            };
+                          });
+                        }}
+                        disabled={!isEditing}
+                      />
+                      <span>{opt}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <Input value={profile.servicePreferences?.bookingPreferences?.join(', ') || ''} disabled className="mt-1 bg-muted" />
+              )}
             </div>
+            {/* <div>
+              <Label>Are you a student?</Label>
+              {isEditing ? (
+                <Select value={profile.isStudent ? 'yes' : 'no'} onValueChange={val => handleInputChange('isStudent', val === 'yes')}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">Yes</SelectItem>
+                    <SelectItem value="no">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={profile.isStudent ? 'Yes' : 'No'} disabled className="mt-1 bg-muted" />
+              )}
+            </div> */}
           </div>
         </div>
       </Card>
@@ -397,15 +611,26 @@ export default function ProfilePage() {
 
             <div>
               <Label htmlFor="emergencyRelationship">Relationship</Label>
-              <Input
-                id="emergencyRelationship"
-                type="text"
-                value={profile.emergencyContact?.relationship || ''}
-                onChange={(e) => handleInputChange('emergencyContact', { ...profile.emergencyContact || {}, name: profile.emergencyContact?.name || '', phone: profile.emergencyContact?.phone || '', relationship: e.target.value })}
-                disabled={!isEditing}
-                placeholder="e.g., Parent, Spouse"
-                className="mt-1"
-              />
+              {isEditing ? (
+                <Select
+                  value={profile.emergencyContact?.relationship || ''}
+                  onValueChange={val => handleInputChange('emergencyContact', { ...profile.emergencyContact || {}, name: profile.emergencyContact?.name || '', phone: profile.emergencyContact?.phone || '', relationship: val })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select relationship" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Spouse">Spouse</SelectItem>
+                    <SelectItem value="Parent">Parent</SelectItem>
+                    <SelectItem value="Child">Child</SelectItem>
+                    <SelectItem value="Sibling">Sibling</SelectItem>
+                    <SelectItem value="Friend">Friend</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={profile.emergencyContact?.relationship || ''} disabled className="mt-1 bg-muted" />
+              )}
             </div>
           </div>
         </div>
@@ -421,15 +646,16 @@ export default function ProfilePage() {
               <Label className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={profile.hasMembership || false}
+                  title="Active Membership"
+                  checked={profile.membershipStatus === 'active'|| false}
                   disabled
                   className="rounded"
                 />
                 Active Membership
               </Label>
-              {profile.hasMembership && (
+              {profile.membershipStatus === 'active' && (
                 <p className="text-xs text-muted-foreground mt-2">
-                  Expires: {profile.membershipExpiry ? new Date(profile.membershipExpiry).toLocaleDateString() : 'N/A'}
+                  Expires: {profile.membershipExpiryDate ? new Date(profile.membershipExpiryDate).toLocaleDateString() : 'N/A'}
                 </p>
               )}
             </div>

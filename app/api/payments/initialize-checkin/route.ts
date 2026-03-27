@@ -19,6 +19,7 @@ interface CheckInData {
   requiresMembership?: boolean;
   membershipFee?: number;
   totalPrice?: number;
+  selectedDays?: number;
 }
 
 export async function POST(request: NextRequest) {
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
     const CheckIn = (await import('@/lib/models/CheckIn')).default;
     const Payment = (await import('@/lib/models/Payment')).default;
     const User = (await import('@/lib/models/User')).default;
+    const Subscription = (await import('@/lib/models/Subscription')).default;
 
     // If user is getting membership, activate it first
     if (data.requiresMembership && data.membershipFee) {
@@ -56,28 +58,63 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create check-in record first
-    const checkInRecord = await CheckIn.create({
-      userId: data.userId,
-      serviceId: data.serviceId,
-      serviceName: data.serviceName,
-      planName: data.planName,
-      planType: data.planType,
-      durationLabel: data.durationLabel,
-      durationInHours: data.durationInHours,
-      durationInDays: data.durationInDays,
-      selectedRate: data.selectedRate,
-      amount: data.price,
-      wifiIncluded: data.wifiIncluded,
-      status: 'pending', // pending_payment, checked_in, checked_out, expired
-      checkedInAt: new Date(),
-      paymentStatus: 'pending',
-    });
+    // Handle single-day vs multi-day subscriptions
+    let checkInRecord;
+    let subscriptionRecord;
+    let checkInRecords = [];
+
+    if (data.selectedDays && data.selectedDays > 1) {
+      // Create subscription for multi-day booking
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + data.selectedDays);
+
+      subscriptionRecord = await Subscription.create({
+        userId: data.userId,
+        serviceId: data.serviceId,
+        serviceName: data.serviceName,
+        planName: data.planName,
+        planType: data.planType,
+        durationLabel: `${data.selectedDays} Days`,
+        durationInDays: data.selectedDays,
+        selectedRate: data.selectedRate,
+        amountPerDay: data.price,
+        totalAmount: data.totalPrice || data.price,
+        wifiIncluded: data.wifiIncluded,
+        status: 'active',
+        paymentStatus: 'pending',
+        startDate: new Date(),
+        endDate: endDate,
+        checkIns: [], // Will be populated as users check in daily
+      });
+
+      // For subscriptions, we don't create check-in records upfront
+      // Users will check in daily and records will be created then
+      checkInRecord = null; // No primary check-in for subscriptions
+
+    } else {
+      // Create single check-in record
+      checkInRecord = await CheckIn.create({
+        userId: data.userId,
+        serviceId: data.serviceId,
+        serviceName: data.serviceName,
+        planName: data.planName,
+        planType: data.planType,
+        durationLabel: data.durationLabel,
+        durationInHours: data.durationInHours,
+        durationInDays: data.durationInDays,
+        selectedRate: data.selectedRate,
+        amount: data.price,
+        wifiIncluded: data.wifiIncluded,
+        status: 'pending', // pending_payment, checked_in, checked_out, expired
+        checkedInAt: new Date(),
+        paymentStatus: 'pending',
+      });
+    }
 
     // Create payment record
     const paymentRecord = await Payment.create({
       userId: data.userId,
-      checkInId: checkInRecord._id,
+      checkInId: checkInRecord?._id || null, // May be null for subscriptions
       serviceId: data.serviceId,
       serviceName: data.serviceName,
       planName: data.planName,
@@ -95,6 +132,10 @@ export async function POST(request: NextRequest) {
         membershipFee: data.membershipFee || 0,
         totalAmount: data.totalPrice || data.price,
         requiresMembership: data.requiresMembership,
+        selectedDays: data.selectedDays || 1,
+        isSubscription: (data.selectedDays && data.selectedDays > 1) || false,
+        subscriptionId: subscriptionRecord?._id,
+        checkInIds: checkInRecords.map(c => c._id), // Will be empty for subscriptions
       },
     });
 
@@ -106,7 +147,7 @@ export async function POST(request: NextRequest) {
         amount: data.amount,
         reference: paymentRecord._id.toString(),
         metadata: {
-          checkInId: checkInRecord._id.toString(),
+          checkInId: checkInRecord?._id?.toString() || null,
           paymentId: paymentRecord._id.toString(),
           serviceName: data.serviceName,
           planName: data.planName,
@@ -116,6 +157,10 @@ export async function POST(request: NextRequest) {
           userId: data.userId,
           isMembershipPayment: data.requiresMembership,
           membershipFee: data.membershipFee,
+          selectedDays: data.selectedDays || 1,
+          isSubscription: (data.selectedDays && data.selectedDays > 1) || false,
+          subscriptionId: subscriptionRecord?._id?.toString(),
+          checkInIds: checkInRecords.map(c => c._id.toString()),
         },
         callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payments/verify-checkin`,
       },
@@ -133,8 +178,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        checkInId: checkInRecord._id,
+        checkInId: checkInRecord?._id || null,
         paymentId: paymentRecord._id,
+        subscriptionId: subscriptionRecord?._id,
+        checkInIds: checkInRecords.map(c => c._id),
+        selectedDays: data.selectedDays || 1,
+        isSubscription: (data.selectedDays && data.selectedDays > 1) || false,
         authorization_url: paystackResponse.data.data.authorization_url,
         access_code: paystackResponse.data.data.access_code,
         reference: paystackResponse.data.data.reference,

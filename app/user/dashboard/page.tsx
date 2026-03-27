@@ -44,7 +44,10 @@ interface UserSubscription {
 
 interface UserProfile {
   hasMembership: boolean;
-  membershipExpiry?: string;
+  membershipStatus?: 'active' | 'inactive';
+  membershipType?: string;
+  membershipActivatedAt?: string;
+  membershipExpiryDate?: string;
   passportUrl?: string;
   signatureUrl?: string;
 }
@@ -277,9 +280,9 @@ export default function UserDashboard() {
           {
             icon: CreditCard,
             label: 'Membership Status',
-            value: userProfile?.hasMembership ? 'Active' : 'Inactive',
-            color: userProfile?.hasMembership ? 'text-green-500' : 'text-amber-500',
-            badge: userProfile?.hasMembership ? 'Active' : null,
+            value: userProfile?.membershipStatus === 'active' ? 'Active' : 'Inactive',
+            color: userProfile?.membershipStatus === 'active' ? 'text-green-500' : 'text-amber-500',
+            badge: userProfile?.membershipStatus === 'active' ? 'Active' : 'inactive',
           },
           {
             icon: Shield,
@@ -351,7 +354,7 @@ export default function UserDashboard() {
                 <Button
                   size="sm"
                   variant="default"
-                  onClick={() => setShowDocumentModal(true)}
+                  onClick={() => router.push('/user/profile')}
                 >
                   Upload Documents
                 </Button>

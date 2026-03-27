@@ -6,7 +6,8 @@ export interface IPayment extends Document {
   userId: mongoose.Types.ObjectId | string;
   serviceId?: mongoose.Types.ObjectId | string;
   checkInId?: mongoose.Types.ObjectId | string;
-  type?: 'membership' | 'service' | 'prepaid' | 'checkin';
+  bookingId?: mongoose.Types.ObjectId | string;
+  type?: 'membership' | 'service' | 'prepaid' | 'checkin' | 'booking';
   email: string;
   serviceName: string;
   planName?: string;
@@ -42,9 +43,13 @@ const PaymentSchema = new Schema<IPayment>(
       type: Schema.Types.ObjectId,
       ref: 'CheckIn',
     },
+    bookingId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Booking',
+    },
     type: {
       type: String,
-      enum: ['membership', 'service', 'prepaid', 'checkin'],
+      enum: ['membership', 'service', 'prepaid', 'checkin', 'booking'],
       default: 'checkin',
     },
     email: {
