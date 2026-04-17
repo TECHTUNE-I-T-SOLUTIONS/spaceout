@@ -92,23 +92,9 @@ export async function POST(request: NextRequest) {
       checkInRecord = null; // No primary check-in for subscriptions
 
     } else {
-      // Create single check-in record
-      checkInRecord = await CheckIn.create({
-        userId: data.userId,
-        serviceId: data.serviceId,
-        serviceName: data.serviceName,
-        planName: data.planName,
-        planType: data.planType,
-        durationLabel: data.durationLabel,
-        durationInHours: data.durationInHours,
-        durationInDays: data.durationInDays,
-        selectedRate: data.selectedRate,
-        amount: data.price,
-        wifiIncluded: data.wifiIncluded,
-        status: 'pending', // pending_payment, checked_in, checked_out, expired
-        checkedInAt: new Date(),
-        paymentStatus: 'pending',
-      });
+      // For single check-ins, don't create the record yet
+      // It will be created only after successful payment verification
+      checkInRecord = null;
     }
 
     // Create payment record
@@ -174,6 +160,15 @@ export async function POST(request: NextRequest) {
     if (!paystackResponse.data.status) {
       throw new Error('Failed to initialize Paystack transaction');
     }
+
+    // Update payment record with Paystack reference
+    await Payment.findByIdAndUpdate(
+      paymentRecord._id,
+      {
+        paystackReference: paystackResponse.data.data.reference,
+      },
+      { new: true }
+    );
 
     return NextResponse.json(
       {

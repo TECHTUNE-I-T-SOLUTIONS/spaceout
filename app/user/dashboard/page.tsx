@@ -8,6 +8,7 @@ import { CreditCard, Calendar, CheckCircle, Clock, Wifi, WifiOff, Loader2, Trend
 import { Badge } from '@/components/ui/badge';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { MembershipModal } from '@/components/membership-modal';
 import { toast } from 'sonner';
 
@@ -54,6 +55,7 @@ interface UserProfile {
 
 export default function UserDashboard() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [showMembershipModal, setShowMembershipModal] = useState(false);
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
@@ -62,45 +64,10 @@ export default function UserDashboard() {
   const [loadingCheckIns, setLoadingCheckIns] = useState(true);
   const [loadingPayments, setLoadingPayments] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(true);
-  const [sessionChecked, setSessionChecked] = useState(false);
-
-  // Check authentication via API (more reliable than useSession hook)
-  useEffect(() => {
-    const checkAuthentication = async () => {
-      try {
-        const response = await fetch('/api/auth/session', {
-          credentials: 'include',
-        });
-        
-        if (!response.ok) {
-          console.log('[Dashboard] Session check failed, redirecting to login');
-          router.push('/auth/login');
-          return;
-        }
-
-        const sessionData = await response.json();
-        
-        if (!sessionData || !sessionData.user || !sessionData.user.email) {
-          console.log('[Dashboard] No valid session, redirecting to login');
-          console.log('[Dashboard] Session data:', sessionData);
-          router.push('/auth/login');
-          return;
-        }
-
-        console.log('[Dashboard] Valid session found:', sessionData.user.email);
-        setSessionChecked(true);
-      } catch (error) {
-        console.error('[Dashboard] Error checking session:', error);
-        router.push('/auth/login');
-      }
-    };
-
-    checkAuthentication();
-  }, [router]);
 
   // Fetch user profile only after session is confirmed
   useEffect(() => {
-    if (!sessionChecked) return;
+    if (!session?.user?.id) return;
 
     const fetchUserProfile = async () => {
       try {
@@ -139,11 +106,11 @@ export default function UserDashboard() {
     };
 
     fetchUserProfile();
-  }, [sessionChecked]);
+  }, [session?.user?.id]);
 
   // Fetch subscriptions
   useEffect(() => {
-    if (!sessionChecked) return;
+    if (!session?.user?.id) return;
 
     const fetchSubscriptions = async () => {
       try {
@@ -158,10 +125,10 @@ export default function UserDashboard() {
     };
 
     fetchSubscriptions();
-  }, [sessionChecked]);
+  }, [session?.user?.id]);
 
   useEffect(() => {
-    if (!sessionChecked) return;
+    if (!session?.user?.id) return;
 
     const fetchCheckIns = async () => {
       try {
@@ -179,11 +146,11 @@ export default function UserDashboard() {
     };
 
     fetchCheckIns();
-  }, [sessionChecked]);
+  }, [session?.user?.id]);
 
   // Fetch payments
   useEffect(() => {
-    if (!sessionChecked) return;
+    if (!session?.user?.id) return;
 
     const fetchPayments = async () => {
       try {
@@ -201,7 +168,7 @@ export default function UserDashboard() {
     };
 
     fetchPayments();
-  }, [sessionChecked]);
+  }, [session?.user?.id]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -216,8 +183,8 @@ export default function UserDashboard() {
     visible: { opacity: 1, y: 0 },
   };
 
-  // Show loading skeleton while authentication is being checked
-  if (!sessionChecked) {
+  // Show loading skeleton while session is loading
+  if (status === 'loading' || !session) {
     return (
       <motion.div
         className="max-w-6xl mx-auto"

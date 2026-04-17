@@ -51,3 +51,65 @@ export async function GET(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = (await getServerSession(authOptions)) as Session | null;
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const { id } = await params;
+
+    await dbConnect();
+
+    const CheckIn = (await import('@/lib/models/CheckIn')).default;
+
+    // Find the check-in first to verify ownership
+    const checkIn = await CheckIn.findById(id);
+
+    if (!checkIn) {
+      return NextResponse.json(
+        { error: 'Check-in not found' },
+        { status: 404 }
+      );
+    }
+
+    // Verify the check-in belongs to the current user
+    if (checkIn.userId.toString() !== session.user.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 403 }
+      );
+    }
+
+    // Only allow deletion of pending or failed check-ins
+    if (checkIn.status === 'checked_in' && checkIn.paymentStatus === 'completed') {
+      return NextResponse.json(
+        { error: 'Cannot delete completed check-ins' },
+        { status: 400 }
+      );
+    }
+
+    // Delete the check-in
+    await CheckIn.findByIdAndDelete(id);
+
+    return NextResponse.json(
+      { success: true, message: 'Check-in deleted successfully' },
+      { status: 200 }
+    );
+  } catch (error: any) {
+    console.error('Error deleting check-in:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete check-in', message: error.message },
+      { status: 500 }
+    );
+  }
+}

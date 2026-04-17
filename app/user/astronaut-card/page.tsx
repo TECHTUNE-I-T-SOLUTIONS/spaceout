@@ -33,6 +33,7 @@ export default function AstronautCardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [membershipData, setMembershipData] = useState<UserSubscription | null>(null);
+  const [allSubscriptions, setAllSubscriptions] = useState<UserSubscription[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,22 +82,24 @@ export default function AstronautCardPage() {
         const subscriptionsData = await subscriptionsResponse.json();
         const subscriptions = subscriptionsData.subscriptions || [];
 
-        // Find active membership (can be access card or regular membership)
-        // Prioritize non-access cards, but fall back to access cards
-        let activeMembership = subscriptions.find(
-          (sub: UserSubscription) =>
-            sub.status === 'active' && !sub.isAccessCard
+        // Store all active subscriptions
+        const activeSubscriptions = subscriptions.filter(
+          (sub: UserSubscription) => sub.status === 'active'
+        );
+        setAllSubscriptions(activeSubscriptions);
+
+        // Find primary membership for the card (prioritize non-access cards, but fall back to access cards)
+        let primaryMembership = activeSubscriptions.find(
+          (sub: UserSubscription) => !sub.isAccessCard
         );
 
         // If no regular membership, use the most recent active subscription (including access cards)
-        if (!activeMembership) {
-          activeMembership = subscriptions.find(
-            (sub: UserSubscription) => sub.status === 'active'
-          );
+        if (!primaryMembership && activeSubscriptions.length > 0) {
+          primaryMembership = activeSubscriptions[0];
         }
 
-        if (activeMembership) {
-          setMembershipData(activeMembership);
+        if (primaryMembership) {
+          setMembershipData(primaryMembership);
         } else {
           setError('No active membership found. Please purchase a membership to view your card.');
         }
@@ -191,28 +194,38 @@ export default function AstronautCardPage() {
             {/* Membership Info */}
             <Card className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-6 transition-colors">
               <h2 className="text-lg font-semibold text-foreground mb-4">Membership Details</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-muted-foreground text-sm mb-1">Service</p>
-                  <p className="text-foreground font-semibold">{membershipData.serviceName}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-sm mb-1">Plan Type</p>
-                  <p className="text-foreground font-semibold">{membershipData.planName}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-sm mb-1">Status</p>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-green-500" />
-                    <p className="text-foreground font-semibold capitalize">{membershipData.status}</p>
+              <div className="space-y-6">
+                {allSubscriptions.map((subscription, index) => (
+                  <div key={subscription._id} className={`pb-4 ${index < allSubscriptions.length - 1 ? 'border-b border-gray-200 dark:border-slate-700' : ''}`}>
+                    <h3 className="text-md font-medium text-foreground mb-3 flex items-center gap-2">
+                      {subscription.serviceName}
+                      {subscription.isAccessCard && (
+                        <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full">
+                          Access Card
+                        </span>
+                      )}
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-muted-foreground text-sm mb-1">Plan Type</p>
+                        <p className="text-foreground font-semibold">{subscription.planName}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground text-sm mb-1">Status</p>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-green-500" />
+                          <p className="text-foreground font-semibold capitalize">{subscription.status}</p>
+                        </div>
+                      </div>
+                      <div className="md:col-span-2">
+                        <p className="text-muted-foreground text-sm mb-1">Expires</p>
+                        <p className="text-foreground font-semibold">
+                          {new Date(subscription.expiryDate).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-sm mb-1">Expires</p>
-                  <p className="text-foreground font-semibold">
-                    {new Date(membershipData.expiryDate).toLocaleDateString()}
-                  </p>
-                </div>
+                ))}
               </div>
             </Card>
 

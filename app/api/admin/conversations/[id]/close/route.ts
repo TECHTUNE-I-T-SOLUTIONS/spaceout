@@ -25,7 +25,7 @@ export async function POST(
     const { id } = await params;
 
     const conversation = await ChatConversation.findByIdAndUpdate(
-      params.id,
+      id,
       {
         status: 'closed',
         updatedAt: new Date(),

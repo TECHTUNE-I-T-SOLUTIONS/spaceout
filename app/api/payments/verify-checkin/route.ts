@@ -49,8 +49,10 @@ export async function GET(request: NextRequest) {
       {
         status: 'completed',
         reference: paymentData.reference,
+        paystackReference: paymentData.reference,
         amount: paymentData.amount / 100, // Paystack returns amount in kobo
         paidAt: new Date(paymentData.paid_at),
+        verifiedAt: new Date(),
         metadata: {
           ...paymentData.metadata,
           paystackReference: paymentData.reference,
@@ -83,16 +85,55 @@ export async function GET(request: NextRequest) {
         )
       );
     } else {
-      // Update single check-in record
-      const checkIn = await CheckIn.findByIdAndUpdate(
-        paymentData.metadata.checkInId,
-        {
-          paymentStatus: 'completed',
-          status: 'checked_in',
-          paymentVerifiedAt: new Date(),
-        },
-        { new: true }
-      );
+      // For single check-ins, create the record now that payment is verified
+      // First check if check-in already exists
+      const existingCheckIn = await CheckIn.findOne({
+        userId: paymentData.metadata.userId,
+        serviceId: paymentData.metadata.serviceId,
+        checkedInAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Within last 24 hours
+      });
+
+      if (existingCheckIn) {
+        // Check-in already exists, just update its status if needed
+        if (existingCheckIn.paymentStatus !== 'completed') {
+          await CheckIn.findByIdAndUpdate(
+            existingCheckIn._id,
+            {
+              paymentStatus: 'completed',
+              status: 'checked_in',
+              paymentVerifiedAt: new Date(),
+            },
+            { new: true }
+          );
+        }
+
+        // Redirect to success page
+        return NextResponse.redirect(
+          new URL(
+            `/user/check-in?success=true&serviceId=${existingCheckIn.serviceId}&checkInId=${existingCheckIn._id}`,
+            process.env.NEXT_PUBLIC_APP_URL
+          )
+        );
+      }
+
+      // Create new check-in record
+      const checkIn = await CheckIn.create({
+        userId: paymentData.metadata.userId,
+        serviceId: paymentData.metadata.serviceId,
+        serviceName: paymentData.metadata.serviceName,
+        planName: paymentData.metadata.planName,
+        planType: paymentData.metadata.planType,
+        durationLabel: paymentData.metadata.durationLabel,
+        durationInHours: paymentData.metadata.durationInHours,
+        durationInDays: paymentData.metadata.durationInDays,
+        selectedRate: paymentData.metadata.selectedRate,
+        amount: paymentData.metadata.checkInAmount,
+        wifiIncluded: paymentData.metadata.wifiIncluded,
+        status: 'checked_in',
+        checkedInAt: new Date(),
+        paymentStatus: 'completed',
+        paymentVerifiedAt: new Date(),
+      });
 
       // Redirect to success page
       return NextResponse.redirect(

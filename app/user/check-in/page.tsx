@@ -83,9 +83,10 @@ export default function CheckInPage() {
   const [checkoutConfirmDialog, setCheckoutConfirmDialog] = useState(false);
   const [pendingCheckoutId, setPendingCheckoutId] = useState<string | null>(null);
   const [checkoutRecord, setCheckoutRecord] = useState<CheckInRecord | null>(null);
+  const [reverifyingIds, setReverifyingIds] = useState<Set<string>>(new Set());
   const [activeSubscriptions, setActiveSubscriptions] = useState<any[]>([]);
   const [subscriptionsLoading, setSubscriptionsLoading] = useState(false);
-  const [selectedDays, setSelectedDays] = useState<number>(1);
+  const [selectedDays, setSelectedDays] = useState(1);
 
 
   // Handle success redirect from payment
@@ -160,7 +161,7 @@ export default function CheckInPage() {
     }
   };
 
-  // Fetch today's check-ins to show paid badges
+  // Fetch today's check-ins to show paid badges and clean up old pending checkins
   const fetchTodayCheckIns = async () => {
     if (!session?.user?.id) return;
 
@@ -184,6 +185,122 @@ export default function CheckInPage() {
         });
         
         setTodayCheckIns(todayMap);
+
+        // Clean up ALL pending check-ins on page load by verifying with Paystack
+        const pendingCheckIns = data.checkIns.filter((checkIn: CheckInRecord) => 
+          checkIn.paymentStatus === 'pending'
+        );
+
+        if (pendingCheckIns.length > 0) {
+          console.log(`Found ${pendingCheckIns.length} pending check-ins, verifying with Paystack...`);
+          
+          // Verify payment status with Paystack for each pending check-in
+          await Promise.all(
+            pendingCheckIns.map(async (checkIn: CheckInRecord) => {
+              try {
+                // Find the associated payment record
+                const paymentResponse = await fetch(`/api/payments/checkin/${checkIn._id}`);
+                if (!paymentResponse.ok) {
+                  console.error(`Failed to find payment for check-in ${checkIn._id}`);
+                  return;
+                }
+                
+                const paymentData = await paymentResponse.json();
+                const payment = paymentData.payment;
+                
+                // Determine which reference to use for verification
+                let referenceToUse = payment.paystackReference;
+                let isLegacyPayment = false;
+                
+                if (!referenceToUse && payment.reference) {
+                  // Try using the internal reference for older payments
+                  referenceToUse = payment.reference;
+                  isLegacyPayment = true;
+                  console.log(`Using legacy reference for automatic verification: ${referenceToUse}`);
+                }
+                
+                if (!referenceToUse) {
+                  console.log(`Skipping verification for check-in ${checkIn._id} - no reference found`);
+                  return;
+                }
+
+                // Verify payment status with Paystack
+                const verifyResponse = await fetch(`/api/payments/verify-status?reference=${referenceToUse}`);
+                if (!verifyResponse.ok) {
+                  // If verification fails for legacy payment, treat as failed
+                  if (isLegacyPayment) {
+                    console.log(`Legacy payment verification failed for ${referenceToUse}, treating as failed`);
+                    // Payment failed, delete the check-in record
+                    await fetch(`/api/checkin/${checkIn._id}`, {
+                      method: 'DELETE',
+                    });
+                    // Also update payment record to failed
+                    await fetch(`/api/payments/${payment._id}/update-status`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                        status: 'failed'
+                      }),
+                    });
+                    console.log(`Deleted failed legacy check-in ${checkIn._id} and marked payment as failed`);
+                  } else {
+                    console.error(`Failed to verify payment ${referenceToUse}`);
+                  }
+                  return;
+                }
+
+                const verifyData = await verifyResponse.json();
+                
+                if (verifyData.status === 'success') {
+                  // Payment was successful, update check-in to completed
+                  await fetch(`/api/checkin/${checkIn._id}/update-status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                      status: 'checked_in',
+                      paymentStatus: 'completed'
+                    }),
+                  });
+                  // Also update payment record
+                  await fetch(`/api/payments/${payment._id}/update-status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                      status: 'completed',
+                      paidAt: verifyData.paidAt,
+                      amount: verifyData.amount
+                    }),
+                  });
+                  console.log(`Updated check-in ${checkIn._id} to completed after Paystack verification`);
+                } else if (verifyData.status === 'failed' || verifyData.status === 'error') {
+                  // Payment failed or verification error, delete the check-in record so user can retry
+                  await fetch(`/api/checkin/${checkIn._id}`, {
+                    method: 'DELETE',
+                  });
+                  // Also update payment record to failed
+                  await fetch(`/api/payments/${payment._id}/update-status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                      status: 'failed'
+                    }),
+                  });
+                  console.log(`Deleted failed check-in ${checkIn._id} and marked payment as failed`);
+                } else {
+                  // Still pending, leave as is for now
+                  console.log(`Check-in ${checkIn._id} still pending`);
+                }
+              } catch (error) {
+                console.error(`Failed to update check-in ${checkIn._id}:`, error);
+              }
+            })
+          );
+
+          // Refresh history after cleanup
+          if (activeTab === 'history') {
+            fetchCheckInHistory();
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching today check-ins:', error);
@@ -376,7 +493,7 @@ export default function CheckInPage() {
         finalRequiresMembership = requiresMembership && !userMembership?.hasMembership;
       }
 
-      const totalPrice = (finalPrice * selectedDays) + finalMembershipFee;
+      const totalPrice = (finalPrice * 1) + finalMembershipFee;
 
       const newPlan: SelectedPlan = {
         service,
@@ -387,7 +504,7 @@ export default function CheckInPage() {
         requiresMembership: finalRequiresMembership,
         membershipFee: finalMembershipFee,
         totalPrice,
-        selectedDays,
+        selectedDays: 1,
       };
 
       // Check if they already paid for this service today
@@ -490,10 +607,121 @@ export default function CheckInPage() {
     }
   };
 
-  const handleCheckout = (checkInId: string, record: CheckInRecord) => {
-    setPendingCheckoutId(checkInId);
-    setCheckoutRecord(record);
-    setCheckoutConfirmDialog(true);
+  const handleReverifyPayment = async (checkInId: string) => {
+    if (reverifyingIds.has(checkInId)) return;
+
+    setReverifyingIds(prev => new Set(prev).add(checkInId));
+
+    try {
+      // Find the associated payment record
+      const paymentResponse = await fetch(`/api/payments/checkin/${checkInId}`);
+      if (!paymentResponse.ok) {
+        toast.error('Failed to find payment record');
+        return;
+      }
+      
+      const paymentData = await paymentResponse.json();
+      const payment = paymentData.payment;
+      
+      // Determine which reference to use for verification
+      let referenceToUse = payment.paystackReference;
+      let isLegacyPayment = false;
+      
+      if (!referenceToUse && payment.reference) {
+        // Try using the internal reference for older payments
+        referenceToUse = payment.reference;
+        isLegacyPayment = true;
+        console.log(`Using legacy reference for payment verification: ${referenceToUse}`);
+      }
+      
+      if (!referenceToUse) {
+        toast.error('No payment reference found');
+        return;
+      }
+
+      // Verify payment status with Paystack
+      const verifyResponse = await fetch(`/api/payments/verify-status?reference=${referenceToUse}`);
+      if (!verifyResponse.ok) {
+        // If verification fails for legacy payment, treat as failed
+        if (isLegacyPayment) {
+          console.log(`Legacy payment verification failed for ${referenceToUse}, treating as failed`);
+          // Payment failed, delete the check-in record so user can retry
+          await fetch(`/api/checkin/${checkInId}`, {
+            method: 'DELETE',
+          });
+          // Also update payment record to failed
+          await fetch(`/api/payments/${payment._id}/update-status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              status: 'failed'
+            }),
+          });
+          toast.error('Payment verification failed. This payment has been marked as failed.');
+          // Refresh history
+          fetchCheckInHistory();
+          return;
+        } else {
+          toast.error('Failed to verify payment status');
+          return;
+        }
+      }
+
+      const verifyData = await verifyResponse.json();
+      
+      if (verifyData.status === 'success') {
+        // Payment was successful, update check-in to completed
+        await fetch(`/api/checkin/${checkInId}/update-status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            status: 'checked_in',
+            paymentStatus: 'completed'
+          }),
+        });
+        // Also update payment record
+        await fetch(`/api/payments/${payment._id}/update-status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            status: 'completed',
+            paidAt: verifyData.paidAt,
+            amount: verifyData.amount
+          }),
+        });
+        toast.success('Payment verified successfully!');
+        // Refresh history
+        fetchCheckInHistory();
+      } else if (verifyData.status === 'failed' || verifyData.status === 'error') {
+        // Payment failed or verification error, delete the check-in record so user can retry
+        await fetch(`/api/checkin/${checkInId}`, {
+          method: 'DELETE',
+        });
+        // Also update payment record to failed
+        await fetch(`/api/payments/${payment._id}/update-status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            status: 'failed'
+          }),
+        });
+        toast.error('Payment failed. Please try checking in again.');
+        // Refresh history
+        fetchCheckInHistory();
+      } else {
+        // Still pending
+        toast.info('Payment is still processing. Please try again later.');
+      }
+    } catch (error) {
+      console.error('Error reverifying payment:', error);
+      toast.error('Failed to reverify payment');
+    } finally {
+      setReverifyingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(checkInId);
+        return newSet;
+      });
+    }
   };
 
   const confirmCheckout = async () => {
@@ -535,6 +763,12 @@ export default function CheckInPage() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleCheckout = async (checkInId: string, checkIn: CheckInRecord) => {
+    setPendingCheckoutId(checkInId);
+    setCheckoutRecord(checkIn);
+    setCheckoutConfirmDialog(true);
   };
 
   const containerVariants = {
@@ -895,8 +1129,13 @@ export default function CheckInPage() {
                             )}
                             {checkIn.paymentStatus === 'completed' ? (
                               <Badge className="bg-gray-500 text-white">Paid</Badge>
+                            ) : checkIn.paymentStatus === 'pending' ? (
+                              <Badge variant="outline" className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                Pending
+                              </Badge>
                             ) : (
-                              <Badge variant="outline">Pending</Badge>
+                              <Badge variant="destructive">Failed</Badge>
                             )}
                             {checkIn.checkedOutAt && (
                               <Badge className="bg-blue-500 text-white flex items-center gap-1">
@@ -934,7 +1173,7 @@ export default function CheckInPage() {
                             </div>
                           )}
 
-                          {!checkIn.checkedOutAt && (
+                          {!checkIn.checkedOutAt && checkIn.paymentStatus === 'completed' && (
                             <div className="mt-3 pt-3 border-t flex items-center gap-2">
                               <Button
                                 size="sm"
@@ -947,6 +1186,28 @@ export default function CheckInPage() {
                               </Button>
                               <span className="text-xs text-muted-foreground">
                                 Checked in for {Math.floor((new Date().getTime() - checkedInDate.getTime()) / (1000 * 60))} minutes
+                              </span>
+                            </div>
+                          )}
+
+                          {checkIn.paymentStatus === 'pending' && (
+                            <div className="mt-3 pt-3 border-t flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleReverifyPayment(checkIn._id)}
+                                disabled={reverifyingIds.has(checkIn._id)}
+                                className="flex items-center gap-1"
+                              >
+                                {reverifyingIds.has(checkIn._id) ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <AlertCircle className="w-4 h-4" />
+                                )}
+                                {reverifyingIds.has(checkIn._id) ? 'Verifying...' : 'Reverify Payment'}
+                              </Button>
+                              <span className="text-xs text-muted-foreground">
+                                Payment is being processed
                               </span>
                             </div>
                           )}

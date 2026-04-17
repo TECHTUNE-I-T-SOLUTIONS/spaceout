@@ -4,7 +4,7 @@ import { authOptions } from '@/auth';
 import dbConnect from '@/lib/db';
 import Admin from '@/lib/models/Admin';
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
 
@@ -21,7 +21,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
 
     await dbConnect();
-    const { id } = params;
+    const { id } = await params;
 
     const admin = await Admin.findByIdAndDelete(id);
 
