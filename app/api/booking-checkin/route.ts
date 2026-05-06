@@ -8,10 +8,38 @@ import User from '@/lib/models/User';
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions) as any;
-    if (!session?.user) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    let userId: string | undefined = undefined;
+    if (session?.user) {
+      userId = (session.user as any)?.id;
+    } else {
+      // Try admin cookie fallback: allow admin to view booking check-in stats
+      try {
+        const adminId = request.cookies.get('admin_id')?.value;
+        const adminEmail = request.cookies.get('admin_email')?.value;
+        if (!adminId || !adminEmail) {
+          return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        }
+        // validate admin
+        const Admin = (await import('@/lib/models/Admin')).default;
+        const admin = await Admin.findById(adminId);
+        if (!admin || admin.email !== adminEmail) {
+          return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        }
+        // For admin, derive userId from booking being inspected
+        const { searchParams } = new URL(request.url);
+        const bookingId = searchParams.get('bookingId');
+        if (!bookingId) {
+          return NextResponse.json({ message: 'Booking ID is required' }, { status: 400 });
+        }
+        const Booking = (await import('@/lib/models/Booking')).default;
+        const booking = await Booking.findById(bookingId);
+        if (!booking) return NextResponse.json({ message: 'Booking not found' }, { status: 404 });
+        userId = booking.userId?.toString();
+      } catch (err) {
+        console.error('Admin fallback error:', err);
+        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      }
     }
-    const userId = (session.user as any)?.id;
     await dbConnect();
     const { searchParams } = new URL(request.url);
     const bookingId = searchParams.get('bookingId');
@@ -36,11 +64,23 @@ export async function GET(request: NextRequest) {
     const totalCheckinDays = checkins.length;
     const totalBookingDays = checkins[0]?.totalBookingDays || 0;
     const exhausted = totalCheckinDays >= totalBookingDays;
+    const entries = checkins.map((c: any) => ({
+      _id: c._id,
+      checkedInAt: c.checkedInAt,
+      checkedOut: c.checkedOut,
+      checkedOutAt: c.checkedOutAt,
+      checkinDay: c.checkinDay,
+      totalBookingDays: c.totalBookingDays,
+      totalCheckinDays: c.totalCheckinDays,
+      bookingDetails: c.bookingDetails || null,
+    }));
+
     return NextResponse.json({
       totalCheckinDays,
       totalBookingDays,
       daysRemaining: Math.max(0, totalBookingDays - totalCheckinDays),
       exhausted,
+      checkins: entries,
     });
   } catch (error) {
     console.error('Booking check-in GET error:', error);

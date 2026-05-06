@@ -123,3 +123,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* When maintenance banner is visible the component sets --maintenance-banner-height */
+.with-maintenance {
+  padding-top: var(--maintenance-banner-height, 0px);
+}
+
+.header-with-maintenance {
+  top: var(--maintenance-banner-height, 0px);
+  transition: top 160ms ease-in-out;
+}

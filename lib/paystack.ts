@@ -70,10 +70,27 @@ export async function verifyAndSyncPayment(reference: string): Promise<SyncedPay
   if (!response) {
     const status = lastError?.response?.status;
     const data = lastError?.response?.data;
+    const message = data?.message || lastError?.message || 'Paystack verification failed';
+
+    // If Paystack explicitly says transaction reference not found, mark payment as failed
+    if (message === 'Transaction reference not found.') {
+      payment.status = 'failed';
+      payment.verifiedAt = new Date();
+      await payment.save();
+
+      return {
+        success: false,
+        payment: payment.toObject(),
+        message,
+        paystackStatus: data?.status ? data?.data?.status : undefined,
+        status: 'failed',
+      };
+    }
+
     return {
       success: false,
       payment: payment.toObject(),
-      message: data?.message || lastError?.message || 'Paystack verification failed',
+      message,
       paystackStatus: data?.status ? data?.data?.status : undefined,
       status: status === 400 ? 'pending' : 'failed',
     };

@@ -305,13 +305,13 @@ export default function ServicesPage() {
 
           <CreateServiceModal open={isModalOpen} onOpenChange={() => { setIsModalOpen(false); setEditingService(null); fetchServices(); }} editingService={editingService || undefined} />
           <DeleteConfirmModal
-            isOpen={deleteConfirmOpen}
-            onOpenChange={setDeleteConfirmOpen}
+            open={deleteConfirmOpen}
+            onOpenChange={(v) => setDeleteConfirmOpen(v)}
             onConfirm={handleDeleteConfirm}
             title="Delete Service"
-            description={`Are you sure you want to delete "${serviceToDelete?.name}"? This action cannot be undone.`}
+            description="This action will permanently remove the service and its pricing."
+            itemName={serviceToDelete?.name}
             isLoading={isDeleting}
-            confirmText="Delete"
           />
         </TabsContent>
       </Tabs>

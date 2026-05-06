@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Search, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { DeleteConfirmModal } from '@/components/modals/delete-confirm-modal';
 
 type MembershipPlan = {
   _id: string;
@@ -35,6 +36,8 @@ export default function MembershipCardsPage() {
   const [servicePlans, setServicePlans] = useState<MembershipPlan[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loadingCards, setLoadingCards] = useState(true);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [cardToDelete, setCardToDelete] = useState<any | null>(null);
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [serviceSearch, setServiceSearch] = useState('');
@@ -60,6 +63,7 @@ export default function MembershipCardsPage() {
       const res = await fetch('/api/admin/membership-cards');
       if (!res.ok) throw new Error();
       const data = await res.json();
+      // API now returns only cards with completed payments
       setCards(data.cards || []);
     } finally {
       setLoadingCards(false);
@@ -284,7 +288,10 @@ export default function MembershipCardsPage() {
                       <div className="font-semibold">{card.userId?.firstName} {card.userId?.lastName}</div>
                       <div className="text-sm text-muted-foreground">{card.userId?.email}</div>
                     </div>
-                    <Badge>{card.status || 'active'}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="outline" onClick={() => { setCardToDelete(card); setDeleteConfirmOpen(true); }} className="text-red-600">Delete</Button>
+                      <Badge>{card.status || 'active'}</Badge>
+                    </div>
                   </div>
                   <div className="text-sm">
                     <div><span className="text-muted-foreground">Service:</span> {card.serviceName}</div>
@@ -297,6 +304,35 @@ export default function MembershipCardsPage() {
             </div>
           )}
         </TabsContent>
+
+        <DeleteConfirmModal
+          open={deleteConfirmOpen}
+          onOpenChange={(v) => { setDeleteConfirmOpen(v); if (!v) setCardToDelete(null); }}
+          onConfirm={async () => {
+            if (!cardToDelete) return;
+            try {
+              const res = await fetch('/api/admin/membership-cards', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subscriptionId: cardToDelete._id }),
+              });
+              if (!res.ok) {
+                const err = await res.json().catch(() => null);
+                toast.error(err?.message || 'Failed to delete membership');
+                return;
+              }
+              toast.success('Membership deleted');
+              setCardToDelete(null);
+              setDeleteConfirmOpen(false);
+              fetchCards();
+            } catch (error) {
+              toast.error('Failed to delete membership');
+            }
+          }}
+          title="Delete Membership"
+          description="Are you sure you want to delete this membership? This will remove the membership record and related payment records."
+          isLoading={false}
+        />
 
         <TabsContent value="create" className="space-y-4">
           <Card className="p-5 space-y-4 max-w-2xl">

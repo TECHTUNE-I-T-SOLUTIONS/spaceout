@@ -42,6 +42,7 @@ export function AdminMobileHeader({ userRole }: AdminMobileHeaderProps) {
     { href: '/admin/dashboard/analytics', icon: BarChart3, label: 'Analytics' },
     { href: '/admin/dashboard/users', icon: Users, label: 'Users' },
     { href: '/admin/dashboard/payments', icon: ShoppingCart, label: 'Payments' },
+    { href: '/admin/dashboard/membership-cards', icon: Users, label: 'Membership Cards' },
     { href: '/admin/dashboard/checkins', icon: LogIn, label: 'Check-Ins' },
     { href: '/admin/dashboard/bookings', icon: Calendar, label: 'Bookings' },
     { href: '/admin/dashboard/gallery', icon: Image, label: 'Gallery' },
@@ -63,11 +64,11 @@ export function AdminMobileHeader({ userRole }: AdminMobileHeaderProps) {
   const allMenuItems = isSuperAdmin ? [...adminMenuItems, ...superadminMenuItems] : adminMenuItems;
 
   return (
-    <motion.div 
+    <motion.header 
       className="md:hidden fixed top-0 left-0 right-0 bg-background border-b border-border z-50"
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      suppressHydrationWarning
+      {...({ suppressHydrationWarning: true } as any)}
     >
       <div className="flex items-center justify-between p-4">
         <h1 className="text-lg font-bold">Admin Panel</h1>
@@ -164,6 +165,6 @@ export function AdminMobileHeader({ userRole }: AdminMobileHeaderProps) {
         </Sheet>
       </div>
       <LogoutConfirmModal open={logoutOpen} onOpenChange={setLogoutOpen} />
-    </motion.div>
+    </motion.header>
   );
 }

@@ -8,6 +8,7 @@ import ChatWidget from '@/components/chat-widget'
 import { ClientOnlyWrapper } from '@/components/client-only-wrapper'
 import { SpaceParticles } from '@/components/space-particles'
 import { MobileBottomNav } from '@/components/mobile-bottom-nav'
+import MaintenanceBanner from '@/components/maintenance-banner'
 import './globals.css'
 
 const geist = Geist({ subsets: ["latin"], variable: '--font-geist-sans' });
@@ -54,7 +55,10 @@ export default function RootLayout({
             <SpaceParticles />
             <MobileBottomNav />
           </ClientOnlyWrapper>
-          <div className="relative z-20">
+          <div className="relative z-20 with-maintenance">
+            <ClientOnlyWrapper>
+              <MaintenanceBanner />
+            </ClientOnlyWrapper>
             {children}
             <ChatWidget />
             <ClientOnlyWrapper>

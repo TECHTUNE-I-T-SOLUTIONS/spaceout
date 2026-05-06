@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/auth';
+import { cookies } from 'next/headers';
 import mongoose, { Schema } from 'mongoose';
 import dbConnect from '@/lib/db';
-import { cookies } from 'next/headers';
 // Import the interface and schema directly
 import { IBooking, BookingSchema } from '@/lib/models/Booking';
 import Branch from '@/lib/models/Branch';
@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
       query.branchId = branchId;
     }
 
-    const bookings = await Booking.find(query)
+    const BookingModel = mongoose.models.Booking || mongoose.model<IBooking>('Booking', BookingSchema);
+    const bookings = await BookingModel.find(query)
       .populate('userId', 'name email')
       .populate('serviceId', 'name category')
       .populate('branchId', 'name location')
@@ -60,17 +61,37 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions) as any;
-    const cookieStore = await cookies();
-    const adminId = cookieStore.get('admin_id')?.value;
-    const adminRole = cookieStore.get('admin_role')?.value;
+    // Try next-auth session first
+    let session = await getServerSession(authOptions) as any;
+    let userId: string | undefined;
+    let userRole: string | undefined;
+    let branchId: string | undefined;
 
-    if (!session?.user && !adminId) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    if (session?.user) {
+      userId = (session.user as any)?.id;
+      userRole = (session.user as any)?.role;
+      branchId = (session.user as any)?.branchId;
+    } else {
+      // Fallback to admin cookie auth used by admin dashboard
+      const cookieStore = await cookies();
+      const adminId = cookieStore.get('admin_id')?.value;
+      const adminEmail = cookieStore.get('admin_email')?.value;
+
+      if (!adminId || !adminEmail) {
+        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      }
+
+      await dbConnect();
+      const Admin = (await import('@/lib/models/Admin')).default;
+      const admin = await Admin.findById(adminId).select('isActive role branchId');
+      if (!admin || !admin.isActive) {
+        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      }
+
+      userId = admin._id.toString();
+      userRole = admin.role;
+      branchId = admin.branchId?.toString();
     }
-
-    const userId = (session?.user as any)?.id || adminId;
-    const branchId = (session?.user as any)?.branchId;
 
     await dbConnect();
     console.log('Database connected successfully');
@@ -269,6 +290,7 @@ export async function PATCH(request: NextRequest) {
     await dbConnect();
 
     const { bookingId, status } = await request.json();
+    const BookingModel = mongoose.models.Booking || mongoose.model<IBooking>('Booking', BookingSchema);
 
     if (!bookingId || !['pending', 'confirmed', 'cancelled'].includes(status)) {
       return NextResponse.json(
@@ -277,7 +299,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const booking = await Booking.findByIdAndUpdate(
+    const booking = await BookingModel.findByIdAndUpdate(
       bookingId,
       { status },
       { new: true }
@@ -301,11 +323,11 @@ export async function PATCH(request: NextRequest) {
     const userId = (session?.user as any)?.id;
 
     await ErrorLog.create({
-      route: '/api/bookings',
+      route: '/api/bookings', 
       error: error.message || 'Failed to update booking',
       statusCode: 500,
       userId,
-    }).catch((err) => console.error('Error logging error:', err));
+    });
 
     return NextResponse.json(
       { message: 'Failed to update booking' },
