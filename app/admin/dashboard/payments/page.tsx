@@ -3,7 +3,7 @@
 import { Card } from '@/components/ui/card';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { Loader2, Download, Search, Eye, X } from 'lucide-react';
+import { Loader2, Download, Search, Eye, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 interface Payment {
   _id: string;
   reference: string;
+  paystackReference?: string;
   email: string;
   amount: number;
   status: 'completed' | 'pending' | 'failed';
@@ -78,9 +79,80 @@ export default function PaymentsPage() {
   };
 
   const handleExport = () => {
-    toast.success('Export Started', {
-      description: 'Payment records are being exported to CSV.',
-    });
+    const headers = ['Reference', 'Email', 'Service', 'Amount', 'Status', 'Created At', 'Verified At'];
+    const rows = payments.map((payment) => [
+      payment.reference,
+      payment.email,
+      payment.serviceName,
+      payment.amount.toString(),
+      payment.status,
+      new Date(payment.createdAt).toISOString(),
+      payment.paymentVerifiedAt ? new Date(payment.paymentVerifiedAt).toISOString() : '',
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `payments-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Export complete');
+  };
+
+  const handleReverify = async (payment: Payment) => {
+    try {
+      const reference = payment.paystackReference || payment.reference;
+      const response = await fetch(`/api/payments/verify?reference=${encodeURIComponent(reference)}`);
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const msg = data?.error || data?.message || 'Failed to reverify payment';
+        toast.error(msg);
+        return;
+      }
+
+      // If backend returned updated payment, update local state
+      if (data?.payment) {
+        setPayments((prev) => prev.map((p) => (p._id === data.payment._id ? { ...p, status: data.payment.status, paystackReference: data.payment.paystackReference || p.paystackReference, paymentVerifiedAt: data.payment.verifiedAt || p.paymentVerifiedAt } : p)));
+      }
+
+      toast.success(data?.message || 'Payment reverification completed');
+      fetchPayments();
+    } catch {
+      toast.error('Failed to reverify payment');
+    }
+  };
+
+  const handleRepairReference = async (payment: Payment) => {
+    try {
+      const response = await fetch('/api/admin/repair-payment-reference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentId: payment._id,
+          reference: payment.paystackReference || payment.reference,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        toast.error(data?.message || 'Repair failed');
+        return;
+      }
+
+      // update local payments list if returned
+      if (data?.payment) {
+        setPayments((prev) => prev.map((p) => (p._id === data.payment._id ? { ...p, ...data.payment } : p)));
+      }
+
+      toast.success(data?.message || 'Payment reference repaired');
+      fetchPayments();
+    } catch {
+      toast.error('Failed to repair payment reference');
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -235,6 +307,24 @@ export default function PaymentsPage() {
                     >
                       <Eye className="w-4 h-4" />
                     </Button>
+                    {payment.status === 'pending' && (
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => handleReverify(payment)}
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {payment.status === 'pending' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRepairReference(payment)}
+                      >
+                        Repair
+                      </Button>
+                    )}
                     <Badge className={getStatusColor(payment.status)}>
                       {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
                     </Badge>
@@ -315,6 +405,10 @@ export default function PaymentsPage() {
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Service</span>
                     <span className="text-sm font-medium">{selectedPayment.serviceName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Paystack Ref</span>
+                    <span className="text-sm font-mono">{selectedPayment.paystackReference || selectedPayment.reference}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Amount Paid</span>

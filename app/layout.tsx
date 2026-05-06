@@ -48,7 +48,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head />
-      <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
+      <body suppressHydrationWarning className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
         <Providers>
           <ClientOnlyWrapper>
             <SpaceParticles />

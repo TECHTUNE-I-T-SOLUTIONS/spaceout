@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     // Get payments with sorting
     const payments = await Payment.find(query)
-      .select('reference amount status email serviceName userId createdAt paymentVerifiedAt')
+      .select('reference paystackReference amount status email serviceName userId createdAt paymentVerifiedAt')
       .sort({ [sortBy]: parseInt(sortOrder) })
       .limit(limitNum)
       .skip(skip)

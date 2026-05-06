@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       {
         email: data.email,
         amount: data.amount,
-        reference: paymentRecord._id.toString(),
+        reference: paymentRecord.reference,
         metadata: {
           checkInId: checkInRecord?._id?.toString() || null,
           paymentId: paymentRecord._id.toString(),

@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Booking {
@@ -41,6 +41,7 @@ interface Booking {
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(false);
 
   useEffect(() => {
     fetchBookings();
@@ -52,8 +53,10 @@ export default function BookingsPage() {
       const response = await fetch('/api/bookings');
       if (response.ok) {
         const data = await response.json();
-        setBookings(data);
+        setBookings(Array.isArray(data) ? data : data.bookings || []);
+        setAuthError(false);
       } else {
+        if (response.status === 401 || response.status === 403) setAuthError(true);
         throw new Error('Failed to fetch bookings');
       }
     } catch (error) {
@@ -94,6 +97,30 @@ export default function BookingsPage() {
     }
   };
 
+  const handleReverifyPayments = async () => {
+    try {
+      const pending = bookings.filter(b => b.paymentStatus === 'pending');
+      if (pending.length === 0) {
+        toast.info('No pending payments to reverify');
+        return;
+      }
+
+      for (const booking of pending) {
+        const paymentResponse = await fetch(`/api/payments/checkin/${booking._id || booking.id}`);
+        if (!paymentResponse.ok) continue;
+        const paymentData = await paymentResponse.json();
+        const reference = paymentData?.payment?.paystackReference || paymentData?.payment?.reference;
+        if (!reference) continue;
+        await fetch(`/api/payments/verify?reference=${reference}`);
+      }
+
+      toast.success('Reverification completed');
+      fetchBookings();
+    } catch (error) {
+      toast.error('Failed to reverify pending payments');
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
@@ -121,13 +148,24 @@ export default function BookingsPage() {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-      <h1 className="text-3xl font-bold mb-8">Bookings</h1>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      <div className="flex items-center justify-between gap-4 mb-8">
+        <h1 className="text-3xl font-bold">Bookings</h1>
+        <Button variant="outline" onClick={handleReverifyPayments} className="gap-2">
+          <RefreshCw className="w-4 h-4" />
+          Reverify Pending
+        </Button>
+      </div>
 
       {loading ? (
         <Card className="p-8 text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">Loading bookings...</p>
+        </Card>
+      ) : authError ? (
+        <Card className="p-8 text-center">
+          <h2 className="text-2xl font-bold mb-4">Admin session required</h2>
+          <p className="text-muted-foreground">Please sign in again to load bookings.</p>
         </Card>
       ) : bookings.length === 0 ? (
         <Card className="p-8 text-center">

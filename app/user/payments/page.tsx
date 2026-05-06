@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Download, Filter } from 'lucide-react';
+import { Loader2, Download, Filter, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Payment {
@@ -23,6 +23,7 @@ interface Payment {
   currency: string;
   status: 'pending' | 'completed' | 'failed' | 'cancelled';
   reference: string;
+  paystackReference?: string;
   paidAt?: string;
   createdAt: string;
 }
@@ -40,6 +41,7 @@ export default function PaymentsPage() {
     total: 0,
     pages: 0,
   });
+  const [reverifyingIds, setReverifyingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchPayments();
@@ -108,6 +110,27 @@ export default function PaymentsPage() {
         return 'Service';
       default:
         return type;
+    }
+  };
+
+  const handleReverify = async (payment: Payment) => {
+    if (reverifyingIds.has(payment._id)) return;
+    setReverifyingIds(prev => new Set(prev).add(payment._id));
+
+    try {
+      const reference = payment.paystackReference || payment.reference;
+      const response = await fetch(`/api/payments/verify?reference=${encodeURIComponent(reference)}`);
+      if (!response.ok) throw new Error('Failed to reverify payment');
+      toast.success('Payment reverified');
+      fetchPayments();
+    } catch (error) {
+      toast.error('Failed to reverify payment');
+    } finally {
+      setReverifyingIds(prev => {
+        const next = new Set(prev);
+        next.delete(payment._id);
+        return next;
+      });
     }
   };
 
@@ -209,6 +232,9 @@ export default function PaymentsPage() {
                               minute: '2-digit',
                             })}
                           </p>
+                          <p className="text-xs text-muted-foreground mt-1 font-mono">
+                            Paystack ref: {payment.paystackReference || payment.reference}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -222,12 +248,24 @@ export default function PaymentsPage() {
                           Ref: {payment.reference.substring(0, 8)}...
                         </p>
                       </div>
-                      <div
-                        className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(
-                          payment.status
-                        )}`}
-                      >
-                        {payment.status.toUpperCase()}
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(
+                            payment.status
+                          )}`}
+                        >
+                          {payment.status.toUpperCase()}
+                        </div>
+                        {payment.status === 'pending' && (
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            onClick={() => handleReverify(payment)}
+                            disabled={reverifyingIds.has(payment._id)}
+                          >
+                            <RefreshCw className={`w-4 h-4 ${reverifyingIds.has(payment._id) ? 'animate-spin' : ''}`} />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -10,8 +10,9 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const branchId = searchParams.get('branchId');
+    const includeInactive = searchParams.get('includeInactive') === 'true';
 
-    let query: any = { isActive: true };
+    let query: any = includeInactive ? {} : { isActive: true };
 
     if (branchId) {
       query.branchId = branchId;

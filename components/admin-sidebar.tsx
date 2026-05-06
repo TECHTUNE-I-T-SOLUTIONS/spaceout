@@ -47,6 +47,7 @@ export function AdminSidebar({ userRole }: AdminSidebarProps) {
     { href: '/admin/dashboard/analytics', icon: BarChart3, label: 'Analytics' },
     { href: '/admin/dashboard/users', icon: Users, label: 'Users' },
     { href: '/admin/dashboard/payments', icon: ShoppingCart, label: 'Payments' },
+    { href: '/admin/dashboard/membership-cards', icon: Users, label: 'Membership Cards' },
     { href: '/admin/dashboard/checkins', icon: LogIn, label: 'Check-Ins' },
     { href: '/admin/dashboard/bookings', icon: Calendar, label: 'Bookings' },
     { href: '/admin/dashboard/gallery', icon: Image, label: 'Gallery' },

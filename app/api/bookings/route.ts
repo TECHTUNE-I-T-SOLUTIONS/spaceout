@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/auth';
 import mongoose, { Schema } from 'mongoose';
 import dbConnect from '@/lib/db';
+import { cookies } from 'next/headers';
 // Import the interface and schema directly
 import { IBooking, BookingSchema } from '@/lib/models/Booking';
 import Branch from '@/lib/models/Branch';
@@ -12,14 +13,17 @@ import ErrorLog from '@/lib/models/ErrorLog';
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions) as any;
+    const cookieStore = await cookies();
+    const adminId = cookieStore.get('admin_id')?.value;
+    const adminRole = cookieStore.get('admin_role')?.value;
 
-    if (!session?.user) {
+    if (!session?.user && !adminId) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = (session.user as any)?.id;
-    const userRole = (session.user as any)?.role;
-    const branchId = (session.user as any)?.branchId;
+    const userId = (session?.user as any)?.id || adminId;
+    const userRole = (session?.user as any)?.role || adminRole;
+    const branchId = (session?.user as any)?.branchId;
 
     await dbConnect();
 
@@ -57,13 +61,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions) as any;
+    const cookieStore = await cookies();
+    const adminId = cookieStore.get('admin_id')?.value;
+    const adminRole = cookieStore.get('admin_role')?.value;
 
-    if (!session?.user) {
+    if (!session?.user && !adminId) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = (session.user as any)?.id;
-    const branchId = (session.user as any)?.branchId;
+    const userId = (session?.user as any)?.id || adminId;
+    const branchId = (session?.user as any)?.branchId;
 
     await dbConnect();
     console.log('Database connected successfully');
@@ -243,12 +250,14 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions) as any;
+    const cookieStore = await cookies();
+    const adminId = cookieStore.get('admin_id')?.value;
 
-    if (!session?.user) {
+    if (!session?.user && !adminId) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const userRole = (session.user as any)?.role;
+    const userRole = (session?.user as any)?.role || cookieStore.get('admin_role')?.value;
 
     if (!['admin', 'superadmin'].includes(userRole)) {
       return NextResponse.json(

@@ -50,7 +50,7 @@ export default function AdminDashboard() {
       const adminResponse = await fetch('/api/auth/admin/me');
       if (!adminResponse.ok) {
         // Admin not authenticated, redirect to login
-        router.push('/admin/login');
+        router.push('/admin/auth/login');
         return;
       }
       
@@ -78,7 +78,7 @@ export default function AdminDashboard() {
         description: 'Unable to fetch dashboard data.',
       });
       // Redirect to login on error
-      router.push('/admin/login');
+      router.push('/admin/auth/login');
     } finally {
       setLoading(false);
     }
