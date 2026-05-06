@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { DeleteConfirmModal } from '@/components/modals/delete-confirm-modal';
+import EditMembershipModal from '@/components/modals/edit-membership-modal';
 
 type MembershipPlan = {
   _id: string;
@@ -38,6 +39,8 @@ export default function MembershipCardsPage() {
   const [loadingCards, setLoadingCards] = useState(true);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [cardToDelete, setCardToDelete] = useState<any | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [cardToEdit, setCardToEdit] = useState<any | null>(null);
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [serviceSearch, setServiceSearch] = useState('');
@@ -49,6 +52,7 @@ export default function MembershipCardsPage() {
     userId: '',
     serviceId: '',
     planId: '',
+    startDate: '',
   });
 
   useEffect(() => {
@@ -193,6 +197,8 @@ export default function MembershipCardsPage() {
           planName: selectedPlan.name,
           price: selectedPlan.price,
           duration: selectedPlan.duration,
+          // optional: admin-selected payment/purchase date (YYYY-MM-DD)
+          startDate: form.startDate || undefined,
         }),
       });
 
@@ -289,6 +295,7 @@ export default function MembershipCardsPage() {
                       <div className="text-sm text-muted-foreground">{card.userId?.email}</div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Button size="sm" variant="outline" onClick={() => { setCardToEdit(card); setEditOpen(true); }} className="">Edit</Button>
                       <Button size="sm" variant="outline" onClick={() => { setCardToDelete(card); setDeleteConfirmOpen(true); }} className="text-red-600">Delete</Button>
                       <Badge>{card.status || 'active'}</Badge>
                     </div>
@@ -440,6 +447,17 @@ export default function MembershipCardsPage() {
               </div>
             )}
 
+            <div>
+              <label className="text-sm font-medium mb-2 block">Membership Start Date (payment date)</label>
+              <Input
+                type="date"
+                value={form.startDate}
+                onChange={(e) => setForm((prev) => ({ ...prev, startDate: e.target.value }))}
+                placeholder="Select payment date"
+              />
+              <p className="text-xs text-muted-foreground mt-1">If set, the membership will be calculated from this date. Leave empty to use today.</p>
+            </div>
+
             <Button onClick={handleCreate} disabled={loadingCreate} className="w-full">
               {loadingCreate && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Create Paid Membership
@@ -447,6 +465,7 @@ export default function MembershipCardsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      <EditMembershipModal open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) setCardToEdit(null);} } card={cardToEdit} services={services} refresh={fetchCards} />
     </div>
   );
 }

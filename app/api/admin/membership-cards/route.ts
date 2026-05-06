@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
   await dbConnect();
   const body = await request.json();
-  const { userId, serviceId, planName, price, duration } = body;
+  const { userId, serviceId, planName, price, duration, startDate } = body;
 
   if (!userId || !serviceId || !planName || !price || !duration) {
     return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
@@ -70,8 +70,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'User or service not found' }, { status: 404 });
   }
 
-  const purchaseDate = new Date();
-  const expiryDate = new Date();
+  let purchaseDate = new Date();
+  if (startDate) {
+    const parsed = new Date(startDate);
+    if (!isNaN(parsed.getTime())) {
+      purchaseDate = parsed;
+    }
+  }
+  const expiryDate = new Date(purchaseDate);
   expiryDate.setDate(expiryDate.getDate() + Number(duration));
   const reference = `MANUAL-MEM-${Date.now()}`;
 
@@ -103,14 +109,16 @@ export async function POST(request: NextRequest) {
     paystackReference: reference,
     status: 'completed',
     paymentMethod: 'manual',
-    paidAt: new Date(),
-    verifiedAt: new Date(),
+    paidAt: purchaseDate,
+    verifiedAt: purchaseDate,
     metadata: { manual: true, createdByAdmin: true, subscriptionId: subscription._id },
   });
 
   await User.findByIdAndUpdate(userId, {
     hasMembership: true,
     membershipExpiry: expiryDate,
+    membershipActivatedAt: purchaseDate,
+    membershipExpiryDate: expiryDate,
   });
 
   return NextResponse.json({ message: 'Membership card created', subscription }, { status: 201 });
@@ -150,5 +158,83 @@ export async function DELETE(request: NextRequest) {
   } catch (error: any) {
     console.error('Error deleting subscription:', error);
     return NextResponse.json({ message: 'Failed to delete subscription' }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  if (!(await requireAdminCookie())) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+
+  await dbConnect();
+  try {
+    const body = await request.json();
+    const { subscriptionId, userId, serviceId, planName, price, duration, startDate, expiryDate, status } = body;
+    if (!subscriptionId) return NextResponse.json({ message: 'subscriptionId is required' }, { status: 400 });
+
+    const subscription = await UserSubscription.findById(subscriptionId);
+    if (!subscription) return NextResponse.json({ message: 'Subscription not found' }, { status: 404 });
+
+    // Update subscription fields
+    if (userId) subscription.userId = userId;
+    if (serviceId) {
+      subscription.serviceId = serviceId;
+      const svc = await Service.findById(serviceId);
+      if (svc) subscription.serviceName = svc.name;
+    }
+    if (planName) subscription.planName = planName;
+    if (price !== undefined) subscription.price = Number(price);
+    if (duration !== undefined) subscription.duration = Number(duration);
+
+    let purchase = subscription.purchaseDate ? new Date(subscription.purchaseDate) : new Date();
+    if (startDate) {
+      const p = new Date(startDate);
+      if (!isNaN(p.getTime())) purchase = p;
+    }
+
+    let expiry = subscription.expiryDate ? new Date(subscription.expiryDate) : new Date(purchase);
+    if (expiryDate) {
+      const ex = new Date(expiryDate);
+      if (!isNaN(ex.getTime())) expiry = ex;
+    } else if (duration) {
+      expiry = new Date(purchase);
+      expiry.setDate(expiry.getDate() + Number(duration));
+    }
+
+    subscription.purchaseDate = purchase;
+    subscription.expiryDate = expiry;
+    if (status) subscription.status = status;
+
+    await subscription.save();
+
+    // Update related payment(s)
+    await Payment.updateMany(
+      { 'metadata.subscriptionId': subscription._id.toString() },
+      {
+        $set: {
+          amount: Number(price || subscription.price || 0),
+          serviceName: subscription.serviceName,
+          planName: subscription.planName,
+          paidAt: purchase,
+          verifiedAt: purchase,
+          status: status === 'active' ? 'completed' : (status === 'inactive' ? 'failed' : 'completed'),
+        },
+      }
+    );
+
+    // Update user membership fields
+    if (subscription.userId) {
+      await User.findByIdAndUpdate(subscription.userId, {
+        hasMembership: true,
+        membershipActivatedAt: purchase,
+        membershipExpiryDate: expiry,
+        membershipExpiry: expiry,
+      });
+    }
+
+    return NextResponse.json({ message: 'Subscription updated', subscription }, { status: 200 });
+  } catch (error: any) {
+    console.error('Error updating subscription:', error);
+    return NextResponse.json({ message: 'Failed to update subscription' }, { status: 500 });
   }
 }
