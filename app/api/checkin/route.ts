@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (subscription.status !== 'active' || subscription.paymentStatus !== 'paid') {
+      if (subscription.status !== 'active' || subscription.paymentStatus !== 'completed') {
         return NextResponse.json(
           { message: 'Subscription is not active or payment not completed' },
           { status: 400 }

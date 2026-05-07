@@ -1,0 +1,73 @@
+General Space
+Day Plan (9 am - 5 pm)
+Access card(#) Members (#) Non-members (#)
+Hourly 2,500.00 1,700.00 2,000.00
+Daily 2,500.00 2,000.00 3,000.00
+Weekly 2,500.00 9,850.00 12,000.00
+Monthly 5,000.00 31,500.00 42,000.00
+Yearly 5,000.00 350,000.00 410,000.00
+Night Plan (9 pm - 7 am)
+Access card(#) Members (#) Non-members (#)
+Weekly 5,000.00 18,000.00 25,000.00
+Monthly 5,000.00 95,000.00 125,000.00
+Night plan (24hr)
+Access card(#) Members (#) Non-members (#)
+5 pm - 9 pm 5000.00 2,000.00 3,000.00
+Daily 5000.00 10,000.00 11,000.00
+Weekly 5000.00 50,000.00 65,000.00
+Monthly 5000.00 250,000.00 325,000.00
+Office/Meeting Rooms
+Day Plan (9 am - 5 pm)
+Access card(#) Members (#) Non-members (#)
+Hourly 5,000.00 2,000.00 4,000.00
+Daily 5,000.00 5,000.00 6,500.00
+Weekly 5,000.00 20,000.00 30,500.00
+Monthly 5,000.00 55,000.00 70,000.00
+Yearly 5,000.00 660,000.00 780,000.00
+Night Plan (9 pm - 7 am)
+Access card(#) Members (#) Non-members (#)
+Daily 5,000.00 8,500.00 10,500.00
+Weekly 5,000.00 45,000.00 60,000.00
+Monthly 5,000.00 220,000.00 285,000.00
+Night plan (24hr)
+Access card(#) Members (#) Non-members (#)
+5 pm - 9 pm 5000.00 4,000.00 7,000.00
+Daily 2,500.00 11,000.00 12,000.00
+Weekly 2,500.00 58,000.00 75,000.00
+Monthly 5000.00 290,000.00 375,000.00
+Conference Room
+Day Plan (9 am - 5 am)
+Access card(#) Members(#) Non members(#)
+Hourly 5,000.00 10,000.00 15,000.00
+Half Day 5,000.00 27,000.00 35,000.00
+Daily 5,000.00 60,000.00 65,000.00
+Weekly 5,000.00 360,000.00 420,000.00
+Night Plan (24hr)
+Access card(#) Members(#) Non members(#)
+5 pm - 9 pm 5,000.00 10,000.00
+Half Day 5,000.00 110,000.00 130,000.00
+Daily 5,000.00 630,000.00 750,000.00
+Content Space
+Content Creators (Photo/Video shoot)
+Non-professional #
+General workspace (Per head per hour) 2,000.00
+General Workspace (Per head per 2 hours) 3,500.00
+Private Office (Per head Per hour) 4,000.00
+Private Office (Per head Per 2hours) 7,000.00
+General workspace + private office(per head per hour) 5,000.00
+General workspace + private office(per head per 2
+hours)
+9,000.00
+Hofaccs 15,000.00
+Content Creators(Photo/Video shoot)
+Professional #
+General workspace (Per head per hour) 15,000.00
+General Workspace (Per head per 2 hours) 25,000.00
+Private Office (Per head Per hour) 25,000.00
+Private Office (Per head Per 2hours) 45,000.00
+General workspace + private office(per head per hour) 30,000.00
+General workspace + private office(per head per 2
+hours)
+50,000.00
+Hofaccs Space(Per hour) 35,000.00
+Family Pack (Max 7/2 hours) Hofaccs Space 50,000.00

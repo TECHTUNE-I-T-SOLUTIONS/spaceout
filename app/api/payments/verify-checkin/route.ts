@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
       await Subscription.findByIdAndUpdate(
         paymentData.metadata.subscriptionId,
         {
-          paymentStatus: 'paid',
+          paymentStatus: 'completed',
           status: 'active',
         },
         { new: true }
@@ -85,6 +85,85 @@ export async function GET(request: NextRequest) {
         )
       );
     } else {
+        // Handle explicit membership purchases for monthly/yearly plans
+        const meta: any = paymentData.metadata || {};
+        if (meta.isMembershipPayment && meta.membershipFee) {
+          // If a subscription record exists, update it; otherwise create one
+          let subscriptionId = meta.subscriptionId || null;
+
+            if (subscriptionId) {
+            await Subscription.findByIdAndUpdate(
+              subscriptionId,
+              { paymentStatus: 'completed', status: 'active' },
+              { new: true }
+            );
+          } else {
+            // Create subscription for membership plan
+            const start = new Date();
+            // Determine duration: prefer explicit days; if hours present, treat as 1-day hourly subscription
+            const durationDays = meta.durationInDays || (meta.selectedDays && meta.selectedDays > 1 ? meta.selectedDays : (meta.durationInHours ? 1 : 30));
+            const end = new Date(start.getTime());
+            end.setDate(end.getDate() + durationDays);
+
+            const newSub = await Subscription.create({
+              userId: meta.userId,
+              serviceId: meta.serviceId,
+              serviceName: meta.serviceName,
+              planName: meta.planName,
+              planType: meta.planType,
+              durationLabel: meta.durationLabel,
+              durationInDays: durationDays,
+              durationInHours: meta.durationInHours || meta.selectedHours || undefined,
+              selectedRate: meta.selectedRate,
+              amountPerDay: meta.checkInAmount || 0,
+              totalAmount: meta.membershipFee || meta.totalAmount || 0,
+              wifiIncluded: meta.wifiIncluded,
+              status: 'active',
+              paymentStatus: 'completed',
+              startDate: start,
+              endDate: end,
+              checkIns: [],
+            });
+
+            subscriptionId = newSub._id.toString();
+          }
+
+          // If user also paid for an immediate check-in (checkInAmount), create check-in record
+          if (meta.checkInAmount && meta.checkInAmount > 0) {
+            const checkIn = await CheckIn.create({
+              userId: meta.userId,
+              serviceId: meta.serviceId,
+              serviceName: meta.serviceName,
+              planName: meta.planName,
+              planType: meta.planType,
+              durationLabel: meta.durationLabel,
+              durationInHours: meta.durationInHours,
+              durationInDays: meta.durationInDays,
+              selectedRate: meta.selectedRate,
+              amount: meta.checkInAmount,
+              wifiIncluded: meta.wifiIncluded,
+              status: 'checked_in',
+              checkedInAt: new Date(),
+              paymentStatus: 'completed',
+              paymentVerifiedAt: new Date(),
+              subscriptionId: subscriptionId,
+            });
+
+            return NextResponse.redirect(
+              new URL(
+                `/user/check-in?success=true&subscriptionId=${subscriptionId}&checkInId=${checkIn._id}`,
+                process.env.NEXT_PUBLIC_APP_URL
+              )
+            );
+          }
+
+          return NextResponse.redirect(
+            new URL(
+              `/user/check-in?success=true&subscriptionId=${subscriptionId}`,
+              process.env.NEXT_PUBLIC_APP_URL
+            )
+          );
+        }
       // For single check-ins, create the record now that payment is verified
       // First check if check-in already exists
       const existingCheckIn = await CheckIn.findOne({
@@ -195,16 +274,78 @@ export async function POST(request: NextRequest) {
     // Handle subscription or single check-in
     if (paymentData.metadata.isSubscription && paymentData.metadata.subscriptionId) {
       // Update subscription status
-      await Subscription.findByIdAndUpdate(
+          await Subscription.findByIdAndUpdate(
         paymentData.metadata.subscriptionId,
         {
-          paymentStatus: 'paid',
+          paymentStatus: 'completed',
           status: 'active',
         },
         { new: true }
       );
 
       // For subscriptions, no check-in records are created upfront
+    } else if (paymentData.metadata.isMembershipPayment && paymentData.metadata.membershipFee) {
+      // Handle membership purchases (monthly/yearly)
+      const meta: any = paymentData.metadata || {};
+      let subscriptionId = meta.subscriptionId || null;
+
+      if (subscriptionId) {
+        await Subscription.findByIdAndUpdate(
+          subscriptionId,
+          { paymentStatus: 'completed', status: 'active' },
+          { new: true }
+        );
+      } else {
+        const start = new Date();
+        // Determine duration: prefer explicit days; if hours present, treat as 1-day hourly subscription
+        const durationDays = meta.durationInDays || (meta.selectedDays && meta.selectedDays > 1 ? meta.selectedDays : (meta.durationInHours ? 1 : 30));
+        const end = new Date(start.getTime());
+        end.setDate(end.getDate() + durationDays);
+
+        const newSub = await Subscription.create({
+          userId: meta.userId,
+          serviceId: meta.serviceId,
+          serviceName: meta.serviceName,
+          planName: meta.planName,
+          planType: meta.planType,
+          durationLabel: meta.durationLabel,
+          durationInDays: durationDays,
+          durationInHours: meta.durationInHours || meta.selectedHours || undefined,
+          selectedRate: meta.selectedRate,
+          amountPerDay: meta.checkInAmount || 0,
+          totalAmount: meta.membershipFee || meta.totalAmount || 0,
+          wifiIncluded: meta.wifiIncluded,
+          status: 'active',
+          paymentStatus: 'completed',
+          startDate: start,
+          endDate: end,
+          checkIns: [],
+        });
+
+        subscriptionId = newSub._id.toString();
+      }
+
+      // If user also paid for an immediate check-in, create it
+      if (meta.checkInAmount && meta.checkInAmount > 0) {
+        await CheckIn.create({
+          userId: meta.userId,
+          serviceId: meta.serviceId,
+          serviceName: meta.serviceName,
+          planName: meta.planName,
+          planType: meta.planType,
+          durationLabel: meta.durationLabel,
+          durationInHours: meta.durationInHours,
+          durationInDays: meta.durationInDays,
+          selectedRate: meta.selectedRate,
+          amount: meta.checkInAmount,
+          wifiIncluded: meta.wifiIncluded,
+          status: 'checked_in',
+          checkedInAt: new Date(),
+          paymentStatus: 'completed',
+          paymentVerifiedAt: new Date(),
+          subscriptionId: subscriptionId,
+        });
+      }
     } else {
       // Update single check-in record
       await CheckIn.findByIdAndUpdate(

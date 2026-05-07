@@ -8,10 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { motion } from 'framer-motion';
-import { Clock, AlertCircle, Loader2, Zap, Wifi, WifiOff, CheckCircle, LogOut, List, History, Sparkles } from 'lucide-react';
+import { Clock, AlertCircle, Loader2, Zap, Wifi, WifiOff, CheckCircle, LogOut, List, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSession } from 'next-auth/react';
-import CheckinDurationMonitor from '@/components/checkin-duration-monitor';
 
 interface PricingPlan {
   planName: string;
@@ -47,13 +46,7 @@ interface SelectedPlan {
   requiresMembership: boolean;
   membershipFee?: number;
   totalPrice: number;
-  quantity: number; // Hours for hourly plans, Days for daily/weekly/etc.
-  isHourly: boolean;
-  isDaily: boolean;
-  appliedPlanName: string; // To track if we switched from Hourly to Daily or Daily to Weekly
-  subscriptionInfo?: any; // Subscription info from API
-  subscriptionCovered?: boolean; // whether the active subscription covers this selected plan
-  membershipPlanName?: string; // name of the membership/access-card plan when bundled or applied
+  selectedDays?: number; // Number of days for multi-day subscription
 }
 
 interface CheckInRecord {
@@ -454,61 +447,6 @@ export default function CheckInPage() {
     return rates;
   };
 
-  const [selectedQuantity, setSelectedQuantity] = useState(1);
-
-  const getPlanMetrics = (plan: PricingPlan) => {
-    const name = plan.planName.toLowerCase();
-    const isHourly = name.includes('hourly') || (plan.durationInHours === 1 && plan.durationInDays === 1);
-    const isDaily = name.includes('daily') || (plan.durationInHours === 9 && plan.durationInDays === 1);
-    const isWeekly = name.includes('weekly') || plan.durationInDays === 6;
-    const isMonthly = name.includes('monthly') || plan.durationInDays === 30;
-    const isYearly = name.includes('yearly') || plan.durationInDays === 365;
-
-    return { isHourly, isDaily, isWeekly, isMonthly, isYearly };
-  };
-
-  const calculateBestPrice = (
-    service: Service,
-    basePlan: PricingPlan,
-    rateType: string,
-    quantity: number
-  ) => {
-    const { isHourly, isDaily } = getPlanMetrics(basePlan);
-    let finalPlan = basePlan;
-    let finalQuantity = quantity;
-    let finalPrice = 0;
-
-    if (isHourly && quantity >= 9) {
-      // Switch to Daily Plan if available
-      const dailyPlan = service.pricingPlans.find(p => getPlanMetrics(p).isDaily);
-      if (dailyPlan) {
-        finalPlan = dailyPlan;
-        finalQuantity = 1; // 9 hours becomes 1 day
-      }
-    } else if (isDaily && quantity >= 6) {
-      // Switch to Weekly Plan if available
-      const weeklyPlan = service.pricingPlans.find(p => getPlanMetrics(p).isWeekly);
-      if (weeklyPlan) {
-        finalPlan = weeklyPlan;
-        finalQuantity = 1; // 6 days becomes 1 week
-      }
-    }
-
-    // Determine the price based on the rate type from the (possibly switched) plan
-    const ratePrices: any = {
-      flat: finalPlan.flatPrice || finalPlan.nonMemberPrice,
-      member: finalPlan.memberPrice,
-      nonMember: finalPlan.nonMemberPrice,
-      nonWifi: finalPlan.nonWifiPrice,
-      nonWifiMember: finalPlan.nonWifiPriceMember,
-      nonWifiNonMember: finalPlan.nonWifiPriceNonMember
-    };
-
-    finalPrice = ratePrices[rateType] || finalPlan.flatPrice || 0;
-
-    return { finalPlan, finalQuantity, finalPrice };
-  };
-
   const handlePlanSelection = async (
     service: Service,
     plan: PricingPlan,
@@ -518,102 +456,58 @@ export default function CheckInPage() {
     requiresMembership: boolean = false
   ) => {
     try {
-      setIsProcessing(true);
-      let subscriptionInfo = null;
+      // Check if user has active subscription for this specific service
+      let hasServiceSubscription = false;
+      let subscriptionData = null;
 
-      // Per-service membership check (service-specific)
       if (session?.user?.id) {
         const response = await fetch(`/api/users/check-service-subscription?serviceId=${service._id}`);
         if (response.ok) {
           const data = await response.json();
-          subscriptionInfo = {
-            hasActiveSubscription: data.hasActiveSubscription,
-            subscription: data.subscription
-          };
+          hasServiceSubscription = data.hasActiveSubscription;
+          subscriptionData = data.subscription;
         }
       }
 
-      const { isHourly, isDaily } = getPlanMetrics(plan);
-      const initialQuantity = 1;
-      const { finalPlan, finalQuantity, finalPrice } = calculateBestPrice(service, plan, rateType, initialQuantity);
-
-      // Determine if member rates are already paid for via subscription AND if the subscription actually covers this plan
-      const hasMembership = subscriptionInfo?.hasActiveSubscription;
-      let subscriptionCovered = false;
-
-      if (hasMembership && subscriptionInfo.subscription) {
-        const sub = subscriptionInfo.subscription;
-        // Must match the service name and be an access card
-        if (sub.serviceName === service.name && sub.isAccessCard) {
-          // For office and conference categories, the access card usually covers all plans
-          if (service.category === 'office' || service.category === 'conference') {
-            subscriptionCovered = true;
-          } else if (service.category === 'workspace') {
-            // For workspace (General Workspace) the common access card covers hourly, daily and weekly plans
-            const pname = plan.planName?.toLowerCase() || '';
-            const isHourlyDailyWeekly = pname.includes('hour') || pname.includes('daily') || pname.includes('weekly') || plan.durationInDays === 1 || plan.durationInDays === 6;
-            if (isHourlyDailyWeekly) subscriptionCovered = true;
-            // Also if the subscription price equals the plan's access card fee, treat as covered
-            if (plan.accessCardFee && sub.price === plan.accessCardFee) subscriptionCovered = true;
-          } else {
-            // Fallback: if subscription price equals plan accessCardFee
-            if (plan.accessCardFee && sub.price === plan.accessCardFee) subscriptionCovered = true;
-          }
-        }
-      }
-
+      // If user has active subscription, use member pricing automatically
+      let finalPrice = price;
+      let finalWifiIncluded = wifiIncluded;
       let finalMembershipFee = 0;
       let finalRequiresMembership = false;
       let appliedRate = rateType;
-      let membershipPlanName: string | undefined = undefined;
-      // start with the price calculated for the originally selected rate
-      let appliedPrice = finalPrice;
 
-      if (subscriptionCovered && plan.memberPrice) {
-        // If subscription for this service covers this plan, auto-apply member rate
+      if (hasServiceSubscription && plan.memberPrice) {
+        // User has active subscription - use member price automatically
+        finalPrice = plan.memberPrice;
+        finalWifiIncluded = true;
         appliedRate = 'member';
-        const best = calculateBestPrice(service, plan, 'member', initialQuantity);
-        appliedPrice = best.finalPrice;
-        finalMembershipFee = 0;
-        membershipPlanName = subscriptionInfo?.subscription?.planName || `${service.name} Card Access`;
-      } else if (rateType === 'member' && !subscriptionCovered) {
-        // User selected member rate but there's no covering subscription for this plan
-        // Bundle the plan's access card fee so user can buy the monthly/yearly membership now
-        finalMembershipFee = plan.accessCardFee || 0;
-        finalRequiresMembership = finalMembershipFee > 0;
-        if (finalRequiresMembership) {
-          // Use explicit membership plan name for monthly/yearly plans
-          const pname = (plan.planName || '').toLowerCase();
-          if (pname.includes('month') || pname.includes('year') || pname.includes('membership')) {
-            membershipPlanName = plan.planName;
-          } else {
-            membershipPlanName = `${service.name} Card Access - ${plan.planName}`;
-          }
+        finalMembershipFee = 0; // No card fee for active subscribers
+        finalRequiresMembership = false;
+      } else {
+        // Original logic for non-subscribers
+        let membershipFee = 0;
+        if (requiresMembership && !userMembership?.hasMembership) {
+          membershipFee = plan.accessCardFee || 0;
         }
+        finalMembershipFee = membershipFee;
+        finalRequiresMembership = requiresMembership && !userMembership?.hasMembership;
       }
 
-      const totalPrice = (appliedPrice * finalQuantity) + finalMembershipFee;
+      const totalPrice = (finalPrice * 1) + finalMembershipFee;
 
       const newPlan: SelectedPlan = {
         service,
         plan,
         selectedRate: appliedRate as any,
-        price: appliedPrice,
-        wifiIncluded,
+        price: finalPrice,
+        wifiIncluded: finalWifiIncluded,
         requiresMembership: finalRequiresMembership,
         membershipFee: finalMembershipFee,
         totalPrice,
-        quantity: finalQuantity,
-        isHourly,
-        isDaily,
-        appliedPlanName: finalPlan.planName,
-        subscriptionInfo,
-        subscriptionCovered
-        ,membershipPlanName
+        selectedDays: 1,
       };
 
-      setSelectedQuantity(finalQuantity);
-      
+      // Check if they already paid for this service today
       if (todayCheckIns[service._id]) {
         setPendingPlan(newPlan);
         setDuplicateCheckInDialog(true);
@@ -623,8 +517,6 @@ export default function CheckInPage() {
     } catch (error) {
       console.error('Error selecting plan:', error);
       toast.error('Error processing plan selection');
-    } finally {
-      setIsProcessing(false);
     }
   };
 
@@ -691,12 +583,8 @@ export default function CheckInPage() {
           wifiIncluded: selectedPlan.wifiIncluded,
           requiresMembership: selectedPlan.requiresMembership,
           membershipFee: selectedPlan.membershipFee,
-          membershipPlanName: selectedPlan.membershipPlanName,
           totalPrice: selectedPlan.totalPrice,
-          // Clarify quantity semantics: send hours for hourly plans and days for day/week/month plans
-          selectedHours: selectedPlan.isHourly ? selectedPlan.quantity : undefined,
-          selectedDays: !selectedPlan.isHourly ? selectedPlan.quantity : undefined,
-          isAccessCardBundled: selectedPlan.requiresMembership
+          selectedDays: selectedPlan.selectedDays,
         }),
       });
 
@@ -954,8 +842,6 @@ export default function CheckInPage() {
         </TabsList>
 
         <TabsContent value="check-in" className="mt-6">
-          {/* Background monitor for durations */}
-          <CheckinDurationMonitor />
           {/* Timezone Note */}
           <Card className="mb-6 p-4 bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-800">
             <div className="flex gap-3">
@@ -975,7 +861,7 @@ export default function CheckInPage() {
           {/* Active Subscriptions Section */}
           {activeSubscriptions.length > 0 && (
             <motion.div variants={itemVariants}>
-              <Card className="p-6 mb-6">
+              <Card className="p-6">
                 <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
                   <Clock className="w-6 h-6" />
                   Your Active Subscriptions
@@ -994,13 +880,9 @@ export default function CheckInPage() {
                       return checkInDate.getTime() === today.getTime() && checkIn.status === 'checked_in';
                     });
 
-                    // Count all check-in records (each represents a used unit)
-                    const usedCount = subscription.checkIns?.length || 0;
-                    // If this is an hourly subscription, compute hours remaining
-                    const isHourlySub = !!subscription.durationInHours;
-                    const remaining = isHourlySub
-                      ? Math.max((subscription.durationInHours || 0) - usedCount, 0)
-                      : (subscription.durationInDays ? Math.max(subscription.durationInDays - usedCount, 0) : undefined);
+                    // Count all check-in records (each represents a used day)
+                    const daysUsed = subscription.checkIns?.length || 0;
+                    const daysRemaining = subscription.durationInDays - daysUsed;
 
                     return (
                       <div key={subscription._id} className="border rounded-lg p-4 bg-muted/50">
@@ -1008,14 +890,13 @@ export default function CheckInPage() {
                           <div>
                             <h3 className="font-semibold text-lg">{subscription.serviceName}</h3>
                             <p className="text-sm text-muted-foreground">
-                              {(subscription.durationLabel || (subscription.durationInDays ? `${subscription.durationInDays} Days` : ''))} • {subscription.planName} • {subscription.selectedRate}
+                              {subscription.durationInDays} Days • {subscription.planName} • {subscription.selectedRate}
                             </p>
                           </div>
                           <div className="text-right">
-                            {/* Prefer totalAmount, fall back to amountPerDay for hourly-like subscriptions */}
-                            <p className="font-semibold">{formatPrice(subscription.totalAmount || subscription.amountPerDay)}</p>
+                            <p className="font-semibold">{formatPrice(subscription.totalAmount)}</p>
                             <p className="text-xs text-muted-foreground">
-                              {isHourlySub ? `${usedCount} used • ${remaining} hrs remaining` : `${usedCount} used${typeof remaining !== 'undefined' ? ` • ${remaining} remaining` : ''}`}
+                              {daysUsed} used • {daysRemaining} remaining
                             </p>
                           </div>
                         </div>
@@ -1373,173 +1254,179 @@ export default function CheckInPage() {
           </DialogHeader>
 
           {selectedPlan && (
-            <div className="space-y-4 pt-4 text-white">
-              {/* Service & Plan Details Card */}
-              <div className="bg-[#1a1a1a] p-5 rounded-2xl border border-white/5 space-y-4">
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Service</p>
-                  <p className="text-lg font-bold leading-tight">{selectedPlan.service.name}</p>
+            <div className="space-y-4">
+              <div className="bg-muted p-4 rounded-lg space-y-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Service</p>
+                  <p className="font-semibold text-base">{selectedPlan.service.name}</p>
                 </div>
 
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Plan</p>
-                  <p className="text-lg font-bold leading-tight">{selectedPlan.appliedPlanName}</p>
+                <div>
+                  <p className="text-sm text-muted-foreground">Plan</p>
+                  <p className="font-semibold text-base">{selectedPlan.plan.planName}</p>
                 </div>
 
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Duration</p>
-                  <p className="text-lg font-bold leading-tight">
-                    {selectedPlan.isHourly ? `${selectedPlan.quantity} Hour${selectedPlan.quantity > 1 ? 's' : ''}` : selectedPlan.plan.durationLabel}
-                  </p>
+                <div>
+                  <p className="text-sm text-muted-foreground">Duration</p>
+                  <p className="font-semibold text-base">{selectedPlan.plan.durationLabel}</p>
                 </div>
 
-                <div className="flex items-center gap-3 pt-3 border-t border-white/5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm text-zinc-400">Plan Type:</span>
-                    <span className="text-sm font-bold capitalize">{selectedPlan.selectedRate}</span>
-                  </div>
-                  <div className="h-3 w-px bg-white/10" />
-                  <div className="text-xs">
+                <div className="flex items-center gap-2 pt-2 border-t">
+                  <span className="text-sm text-muted-foreground">Plan Type:</span>
+                  <span className="font-semibold capitalize">{selectedPlan.selectedRate}</span>
+                  <span className="text-xs">
                     {selectedPlan.wifiIncluded ? (
-                      <span className="text-green-500 flex items-center gap-1">
-                        <Wifi className="w-3.5 h-3.5" /> WiFi Included
+                      <span className="text-green-600 flex items-center gap-1">
+                        <Wifi className="w-3 h-3" /> WiFi Included
                       </span>
                     ) : (
-                      <span className="text-amber-500 flex items-center gap-1">
-                        <WifiOff className="w-3.5 h-3.5" /> No WiFi
+                      <span className="text-amber-600 flex items-center gap-1">
+                        <WifiOff className="w-3 h-3" /> No WiFi
                       </span>
                     )}
-                  </div>
+                  </span>
                 </div>
               </div>
 
-              {/* Quantity Selection */}
-              {(selectedPlan.isHourly || selectedPlan.isDaily) && (
-                <div className="bg-[#1a1a1a] p-4 rounded-2xl border border-white/5 flex items-center justify-between">
-                  <span className="text-sm font-bold">
-                    {selectedPlan.isHourly ? 'Number of Hours:' : 'Number of Days:'}
-                  </span>
+              {/* Days Selection for Multi-Day Subscription */}
+              <div className="bg-muted/50 p-4 rounded-lg space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Number of Days:</span>
                   <Select
-                    value={selectedQuantity.toString()}
+                    value={selectedDays.toString()}
                     onValueChange={(value) => {
-                      const qty = parseInt(value);
-                      setSelectedQuantity(qty);
-                      
-                      const { finalPlan, finalQuantity, finalPrice } = calculateBestPrice(
-                        selectedPlan.service,
-                        selectedPlan.plan,
-                        selectedPlan.selectedRate,
-                        qty
-                      );
-
-                      const newTotal = (finalPrice * finalQuantity) + (selectedPlan.membershipFee || 0);
-                      
+                      const days = parseInt(value);
+                      setSelectedDays(days);
+                      // Recalculate total price
+                      const newTotal = (selectedPlan.price * days) + (selectedPlan.membershipFee || 0);
                       setSelectedPlan({
                         ...selectedPlan,
-                        quantity: finalQuantity,
+                        selectedDays: days,
                         totalPrice: newTotal,
-                        price: finalPrice,
-                        appliedPlanName: finalPlan.planName
                       });
                     }}
                   >
-                    <SelectTrigger className="w-[120px] bg-[#222] border-white/10 text-white rounded-xl h-10">
+                    <SelectTrigger className="w-24">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#222] border-white/10 text-white">
-                      {Array.from({ length: selectedPlan.isHourly ? 9 : 6 }, (_, i) => i + 1).map((val) => (
-                        <SelectItem key={val} value={val.toString()}>
-                          {val} {selectedPlan.isHourly ? (val === 1 ? 'Hour' : 'Hours') : (val === 1 ? 'Day' : 'Days')}
+                    <SelectContent>
+                      {Array.from({ length: 30 }, (_, i) => i + 1).map((day) => (
+                        <SelectItem key={day} value={day.toString()}>
+                          {day} {day === 1 ? 'Day' : 'Days'}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
 
-              {selectedPlan.appliedPlanName !== selectedPlan.plan.planName && (
-                <div className="text-xs text-amber-300/80 bg-amber-500/5 p-3 rounded-xl border border-amber-500/10 flex items-center gap-2">
-                  <Zap className="w-3.5 h-3.5 shrink-0" />
-                  <p>
-                    <span className="font-bold">Plan Upgrade!</span> Switched to <span className="font-bold">{selectedPlan.appliedPlanName}</span> for better value.
+                {selectedDays > 1 && (
+                  <div className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/50 p-2 rounded border">
+                    <p className="font-medium text-blue-700 dark:text-blue-300">Multi-Day Subscription</p>
+                    <p>You'll pay for {selectedDays} days upfront and can check in each day individually within your subscription period.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-primary/10 p-4 rounded-lg border border-primary/20 space-y-3">
+                {selectedPlan.selectedDays && selectedPlan.selectedDays > 1 ? (
+                  <>
+                    <div className="flex justify-between">
+                      <p className="text-sm text-muted-foreground">Rate per Day</p>
+                      <p className="font-semibold">{formatPrice(selectedPlan.price)}</p>
+                    </div>
+                    <div className="flex justify-between">
+                      <p className="text-sm text-muted-foreground">Number of Days</p>
+                      <p className="font-semibold">{selectedPlan.selectedDays}</p>
+                    </div>
+                    {selectedPlan.membershipFee ? (
+                      <div className="flex justify-between border-t pt-2">
+                        <p className="text-sm text-amber-600 font-semibold">Membership Card Fee</p>
+                        <p className="font-semibold text-amber-600">{formatPrice(selectedPlan.membershipFee)}</p>
+                      </div>
+                    ) : null}
+                    <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
+                      <span>Total Amount</span>
+                      <span className="text-primary">{formatPrice(selectedPlan.totalPrice)}</span>
+                    </div>
+                  </>
+                ) : selectedPlan.requiresMembership && selectedPlan.membershipFee ? (
+                  <>
+                    <div className="flex justify-between">
+                      <p className="text-sm text-muted-foreground">Check-In Rate</p>
+                      <p className="font-semibold">{formatPrice(selectedPlan.price)}</p>
+                    </div>
+                    <div className="flex justify-between border-t pt-2">
+                      <p className="text-sm text-amber-600 font-semibold">Membership Card Fee</p>
+                      <p className="font-semibold text-amber-600">{formatPrice(selectedPlan.membershipFee)}</p>
+                    </div>
+                    <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
+                      <span>Total Amount</span>
+                      <span className="text-primary">{formatPrice(selectedPlan.totalPrice)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground">Total Amount</p>
+                    <p className="text-3xl font-bold text-primary">
+                      {formatPrice(selectedPlan.totalPrice)}
+                    </p>
+                  </>
+                )}
+              </div>
+
+              {!userMembership?.hasMembership &&
+                selectedPlan.selectedRate.includes('Member') && (
+                  <div className="bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 p-3 rounded-lg">
+                    <p className="text-sm text-gray-800 dark:text-gray-200 font-semibold">
+                      ✨ You'll get membership benefits!
+                    </p>
+                    <p className="text-xs text-gray-700 dark:text-gray-300 mt-1">
+                      Your membership card fee is included in the total. After payment, you'll be able to use member rates on future check-ins.
+                    </p>
+                  </div>
+                )}
+
+              {selectedPlan.selectedRate === 'member' && !selectedPlan.requiresMembership && !selectedPlan.membershipFee && (
+                <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-3 rounded-lg">
+                  <p className="text-sm text-green-800 dark:text-green-200 font-semibold">
+                    ✅ Active Membership
+                  </p>
+                  <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                    You're getting member rates because you have an active membership for this service. No additional card fees!
                   </p>
                 </div>
               )}
 
-              {/* Total Amount Box */}
-              {selectedPlan.membershipFee ? (
-                <div className="bg-transparent p-4 rounded-2xl border border-white/10 space-y-3">
-                  <div className="flex items-center justify-between text-sm text-zinc-400">
-                    <span>Base Price ({selectedPlan.quantity}x)</span>
-                    <span className="font-semibold">{formatPrice((selectedPlan.price || 0) * selectedPlan.quantity)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-zinc-400">
-                    <span>{selectedPlan.membershipPlanName || 'Access Card Fee'}</span>
-                    <span className="font-semibold">{formatPrice(selectedPlan.membershipFee)}</span>
-                  </div>
-                  <div className="h-px bg-white/5 my-2" />
-                  <div>
-                    <p className="text-sm text-zinc-500 font-medium">Total Amount</p>
-                    <p className="text-4xl font-black tracking-tight text-white leading-none">{formatPrice(selectedPlan.totalPrice)}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-transparent p-5 rounded-2xl border border-white/10 space-y-1">
-                  <p className="text-sm text-zinc-500 font-medium">Total Amount</p>
-                  <p className="text-4xl font-black tracking-tight text-white leading-none">{formatPrice(selectedPlan.totalPrice)}</p>
+              {selectedPlan.plan.accessCardFee && selectedPlan.requiresMembership && (
+                <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 p-3 rounded-lg">
+                  <p className="text-xs text-amber-800 dark:text-amber-200">
+                    * Membership card fee ({formatPrice(selectedPlan.membershipFee)}) is one-time only and grants you permanent access to member rates
+                  </p>
                 </div>
               )}
 
-              {/* Membership Benefits Alert */}
-              {selectedPlan.membershipFee ? (
-                <div className="bg-[#0f172a] border border-blue-500/20 p-4 rounded-2xl flex gap-3 shadow-2xl">
-                  <Sparkles className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-bold text-white">You'll get membership benefits!</p>
-                    <p className="text-xs text-zinc-400 leading-normal">
-                      {selectedPlan.membershipPlanName ? (
-                        <>Your <span className="font-semibold">{selectedPlan.membershipPlanName}</span> ({formatPrice(selectedPlan.membershipFee)}) is included in the total.</>
-                      ) : (
-                        <>Your membership card fee ({formatPrice(selectedPlan.membershipFee)}) is included in the total.</>
-                      )} After payment, you'll be able to use member rates on future check-ins.
-                    </p>
-                  </div>
-                </div>
-              ) : selectedPlan.subscriptionCovered === true && selectedPlan.selectedRate === 'member' && (
-                <div className="bg-[#064e3b]/20 border border-green-500/20 p-4 rounded-2xl flex gap-3">
-                  <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-bold text-white">Active Membership Applied</p>
-                    <p className="text-xs text-zinc-400 leading-normal">
-                      You're getting member rates because you have an active membership for this service. No additional card fees!
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-4">
                 <Button
                   variant="outline"
                   onClick={() => setSelectedPlan(null)}
                   disabled={isProcessing}
-                  className="flex-1 h-12 rounded-xl border-white/10 bg-transparent text-white hover:bg-white/5 font-bold"
+                  className="flex-1"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleCheckIn}
                   disabled={isProcessing}
-                  className="flex-1 h-12 rounded-xl bg-white text-black hover:bg-zinc-200 font-bold flex items-center justify-center gap-2"
+                  className="flex-1"
                 >
                   {isProcessing ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Processing...
                     </>
                   ) : (
                     <>
-                      <Zap className="w-4 h-4 fill-current" />
+                      <Zap className="w-4 h-4 mr-2" />
                       Pay & Check In
                     </>
                   )}

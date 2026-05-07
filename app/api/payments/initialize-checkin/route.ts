@@ -20,6 +20,7 @@ interface CheckInData {
   membershipFee?: number;
   totalPrice?: number;
   selectedDays?: number;
+  selectedHours?: number;
 }
 
 export async function POST(request: NextRequest) {
@@ -43,20 +44,7 @@ export async function POST(request: NextRequest) {
     const User = (await import('@/lib/models/User')).default;
     const Subscription = (await import('@/lib/models/Subscription')).default;
 
-    // If user is getting membership, activate it first
-    if (data.requiresMembership && data.membershipFee) {
-      await User.findByIdAndUpdate(
-        data.userId,
-        {
-          membershipStatus: 'active',
-          membershipType: 'annual',
-          membershipActivatedAt: new Date(),
-          // Set expiry to 1 year from now
-          membershipExpiryDate: new Date(new Date().getTime() + 365 * 24 * 60 * 60 * 1000),
-        },
-        { new: true }
-      );
-    }
+    // Do NOT activate membership yet — activation should occur after successful payment verification
 
     // Handle single-day vs multi-day subscriptions
     let checkInRecord;
@@ -119,6 +107,7 @@ export async function POST(request: NextRequest) {
         totalAmount: data.totalPrice || data.price,
         requiresMembership: data.requiresMembership,
         selectedDays: data.selectedDays || 1,
+        selectedHours: (data as any).selectedHours || null,
         isSubscription: (data.selectedDays && data.selectedDays > 1) || false,
         subscriptionId: subscriptionRecord?._id,
         checkInIds: checkInRecords.map(c => c._id), // Will be empty for subscriptions
@@ -135,11 +124,15 @@ export async function POST(request: NextRequest) {
         metadata: {
           checkInId: checkInRecord?._id?.toString() || null,
           paymentId: paymentRecord._id.toString(),
+          serviceId: data.serviceId,
           serviceName: data.serviceName,
           planName: data.planName,
           planType: data.planType,
           selectedRate: data.selectedRate,
           durationLabel: data.durationLabel,
+          durationInHours: data.durationInHours,
+          durationInDays: data.durationInDays,
+          selectedHours: (data as any).selectedHours || null,
           userId: data.userId,
           isMembershipPayment: data.requiresMembership,
           membershipFee: data.membershipFee,
@@ -147,6 +140,7 @@ export async function POST(request: NextRequest) {
           isSubscription: (data.selectedDays && data.selectedDays > 1) || false,
           subscriptionId: subscriptionRecord?._id?.toString(),
           checkInIds: checkInRecords.map(c => c._id.toString()),
+          checkInAmount: data.totalPrice || data.price,
         },
         callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payments/verify-checkin`,
       },

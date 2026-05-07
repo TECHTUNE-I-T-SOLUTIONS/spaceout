@@ -58,6 +58,11 @@ const SubscriptionSchema = new Schema<ISubscription>(
       required: [true, 'Please provide duration in days'],
       min: 1,
     },
+    // Optional: for hourly-based subscriptions store hours
+    durationInHours: {
+      type: Number,
+      required: false,
+    },
     selectedRate: {
       type: String,
       required: [true, 'Please provide selected rate'],

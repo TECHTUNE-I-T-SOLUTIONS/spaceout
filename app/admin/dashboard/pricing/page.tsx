@@ -141,10 +141,11 @@ export default function PricingPage() {
     try {
       // Delete pricing plan from service
       const response = await fetch(
-        `/api/services/${planToDelete.serviceId}/pricing/${planToDelete.planIndex}`,
+        `/api/services/${planToDelete.serviceId}/pricing`,
         {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ planIndex: planToDelete.planIndex }),
         }
       );
 

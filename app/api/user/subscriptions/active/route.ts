@@ -23,7 +23,8 @@ export async function GET(request: NextRequest) {
     const subscriptions = await Subscription.find({
       userId: session.user.id,
       status: 'active',
-      paymentStatus: 'paid',
+      // include both legacy 'paid' and current 'completed' values for robustness
+      paymentStatus: { $in: ['completed', 'paid'] },
       endDate: { $gte: new Date() }
     })
     .populate('serviceId', 'name')
