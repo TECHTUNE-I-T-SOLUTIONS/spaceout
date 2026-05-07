@@ -36,21 +36,39 @@ export async function GET(request: NextRequest) {
       subscriptionId: { $in: subscriptionIds }
     }).sort({ checkedInAt: 1 });
 
-    // Attach check-ins to subscriptions
+    // Attach check-ins to subscriptions and compute remaining units
     const subscriptionsWithCheckIns = subscriptions.map(subscription => {
       const subscriptionCheckIns = checkIns.filter(
         checkIn => checkIn.subscriptionId.toString() === subscription._id.toString()
       );
 
+      // Compute used and remaining counts. Count all checkIns (including checked_out)
+      const isHourly = !!subscription.durationInHours;
+      let usedCount = subscriptionCheckIns.length;
+      let remaining = 0;
+      let unit = 'days';
+
+      if (isHourly) {
+        unit = 'hours';
+        const allowed = subscription.durationInHours || 0;
+        remaining = Math.max(0, allowed - usedCount);
+      } else {
+        const allowed = subscription.durationInDays || 0;
+        remaining = Math.max(0, allowed - usedCount);
+      }
+
       return {
         ...subscription.toObject(),
-        checkIns: subscriptionCheckIns
+        checkIns: subscriptionCheckIns,
+        usage: {
+          unit,
+          usedCount,
+          remaining,
+        }
       };
     });
 
-    return NextResponse.json({
-      subscriptions: subscriptionsWithCheckIns
-    }, { status: 200 });
+    return NextResponse.json({ subscriptions: subscriptionsWithCheckIns }, { status: 200 });
 
   } catch (error: any) {
     console.error('Error fetching active subscriptions:', error);

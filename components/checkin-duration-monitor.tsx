@@ -99,9 +99,9 @@ export default function CheckinDurationMonitor() {
             <DialogTitle>Check-in near expiry</DialogTitle>
             <DialogDescription>
               {warning && (
-                <div>
-                  You're almost out of time for <strong>{warning.serviceName}</strong> — {warning.planName}. Your session will expire soon.
-                </div>
+                <>
+                  You're almost out of time for <strong>{warning.serviceName}</strong> — <span>{warning.planName}</span>. Your session will expire soon.
+                </>
               )}
             </DialogDescription>
           </DialogHeader>
@@ -119,9 +119,9 @@ export default function CheckinDurationMonitor() {
             <DialogTitle>Check-in expired</DialogTitle>
             <DialogDescription>
               {expired && (
-                <div>
-                  Your session for <strong>{expired.serviceName}</strong> — {expired.planName} has expired.
-                </div>
+                <>
+                  Your session for <strong>{expired.serviceName}</strong> — <span>{expired.planName}</span> has expired.
+                </>
               )}
             </DialogDescription>
           </DialogHeader>

@@ -3,6 +3,7 @@ import dbConnect from '@/lib/db';
 import Payment from '@/lib/models/Payment';
 import User from '@/lib/models/User';
 import UserSubscription from '@/lib/models/UserSubscription';
+import Subscription from '@/lib/models/Subscription';
 import PushSubscription from '@/lib/models/PushSubscription';
 import { sendPaymentPushNotification } from '@/lib/push-notification';
 
@@ -86,50 +87,110 @@ export async function GET(request: NextRequest) {
     payment.verifiedAt = new Date();
     await payment.save();
 
-    // Create subscription record
+    // Create subscription and user-subscription records
     let subscriptionId = '';
     if (payment.metadata) {
-      const { serviceName, serviceId: metadataServiceId, planName, duration, isAccessCard, planId } = payment.metadata as any;
-      // Use metadata serviceId, fallback to payment.serviceId
+      const { serviceName, serviceId: metadataServiceId, planName, duration, isAccessCard, planId, durationLabel } = payment.metadata as any;
       const serviceId = metadataServiceId || payment.serviceId;
-      
+
       if (!serviceId) {
         throw new Error('Missing serviceId for subscription creation');
       }
 
       const purchaseDate = new Date();
+
+      // Normalize duration into days. Metadata `duration` is expected to be days,
+      // but some callers may provide months/years (e.g. 1 for 1 year). Detect and
+      // convert conservatively using planName/durationLabel hints.
+      const normalizeDurationToDays = (d: any, planName?: string, durationLabel?: string) => {
+        let days = Number(d) || 0;
+        const name = (planName || '') + ' ' + (durationLabel || '');
+        const lower = name.toLowerCase();
+
+        if (days > 0 && days < 31) {
+          // Could be days, or could be months/years. Heuristics:
+          if (lower.includes('year') || lower.includes('annual') || lower.includes('yr')) {
+            return days * 365;
+          }
+          if (lower.includes('month') || lower.includes('mo')) {
+            return days * 30;
+          }
+          // If small (<31) and no hint, assume days.
+          return days;
+        }
+
+        // If days looks like months expressed (<=12) treat as months
+        if (days > 0 && days <= 12 && (lower.includes('month') || lower.includes('mo'))) return days * 30;
+
+        // If days is already large (>=31 and reasonable), assume days
+        if (days >= 31 && days <= 365 * 20) return days;
+
+        // Fallback: if value is tiny (1) but name suggests year, treat as 1 year
+        if (days === 1 && (lower.includes('year') || lower.includes('annual') || lower.includes('yr'))) return 365;
+
+        // As a last resort, default to 365 days for unknown large-length subscriptions
+        return 365;
+      };
+
+      const durationDays = normalizeDurationToDays(duration, planName, durationLabel);
       const expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + duration);
+      expiryDate.setDate(expiryDate.getDate() + durationDays);
 
-      const subscription = new UserSubscription({
-        userId: payment.userId,
-        serviceId,
-        planId,
-        planName,
-        serviceName,
-        price: payment.amount,
-        duration,
-        purchaseDate,
-        expiryDate,
-        status: 'active',
-        paymentReference: reference,
-        isAccessCard,
-        autoRenew: false,
-      });
-
-      await subscription.save();
-      subscriptionId = subscription._id.toString();
-
-      // Update user hasMembership if not an access card
-      if (!isAccessCard) {
-        await User.findByIdAndUpdate(payment.userId, {
-          hasMembership: true,
-          membershipStatus: 'active',
-          membershipType: 'annual',
-          membershipActivatedAt: purchaseDate,
-          membershipExpiryDate: expiryDate,
-          membershipExpiry: expiryDate,
+      // Create a Subscription document (used by check-in gating/history)
+      try {
+        const sub = await Subscription.create({
+          userId: payment.userId,
+          serviceId,
+          serviceName,
+          planName,
+          planId,
+          durationLabel,
+          durationInDays: durationDays,
+          status: 'active',
+          paymentStatus: 'completed',
+          startDate: purchaseDate,
+          endDate: expiryDate,
+          checkIns: [],
         });
+
+        subscriptionId = sub._id.toString();
+      } catch (err) {
+        console.error('Failed to create Subscription record:', err);
+      }
+
+      // Create UserSubscription record for membership UI
+      try {
+        const userSub = new UserSubscription({
+          userId: payment.userId,
+          serviceId,
+          planId,
+          planName,
+          serviceName,
+          price: payment.amount,
+          duration: durationDays,
+          purchaseDate,
+          expiryDate,
+          status: 'active',
+          paymentReference: reference,
+          isAccessCard,
+          autoRenew: false,
+        });
+
+        await userSub.save();
+
+        // Update user membership flags if not an access card
+        if (!isAccessCard) {
+          await User.findByIdAndUpdate(payment.userId, {
+            hasMembership: true,
+            membershipStatus: 'active',
+            membershipType: 'annual',
+            membershipActivatedAt: purchaseDate,
+            membershipExpiryDate: expiryDate,
+            membershipExpiry: expiryDate,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to create UserSubscription:', err);
       }
     } else {
       throw new Error('Payment metadata is missing');

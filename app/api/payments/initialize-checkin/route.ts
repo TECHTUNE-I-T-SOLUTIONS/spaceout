@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
           durationInDays: data.durationInDays,
           selectedHours: (data as any).selectedHours || null,
           userId: data.userId,
-          isMembershipPayment: data.requiresMembership,
+          isMembershipPayment: !!data.requiresMembership || (!!data.membershipFee && data.membershipFee > 0),
           membershipFee: data.membershipFee,
           selectedDays: data.selectedDays || 1,
           isSubscription: (data.selectedDays && data.selectedDays > 1) || false,

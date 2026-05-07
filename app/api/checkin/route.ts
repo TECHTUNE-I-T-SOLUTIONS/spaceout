@@ -197,72 +197,115 @@ export async function POST(request: NextRequest) {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      const existingCheckIn = await CheckIn.findOne({
-        subscriptionId: subscriptionId,
-        userId: userId,
-        checkedInAt: {
-          $gte: today,
-          $lt: tomorrow
-        }
-      });
+      const isHourlySub = !!subscription.durationInHours;
 
-      if (existingCheckIn) {
-        if (existingCheckIn.status === 'checked_in') {
-          return NextResponse.json(
-            { message: 'Already checked in for today' },
-            { status: 400 }
-          );
-        }
-        // If it exists but not checked in, update it
-        checkIn = await CheckIn.findByIdAndUpdate(
-          existingCheckIn._id,
-          {
-            status: 'checked_in',
-            checkedInAt: new Date(),
-          },
-          { new: true }
-        ).populate('serviceId', 'name');
-      } else {
-        // Check how many days have been used so far
-        const usedDays = await CheckIn.countDocuments({
+      if (isHourlySub) {
+        // For hourly subscriptions allow multiple check-ins per day up to durationInHours
+        const usedHoursToday = await CheckIn.countDocuments({
           subscriptionId: subscriptionId,
           userId: userId,
-          status: 'checked_in'
+          checkedInAt: { $gte: today, $lt: tomorrow }
         });
 
-        // Check if subscription has remaining days
-        if (usedDays >= subscription.durationInDays) {
+        if (usedHoursToday >= (subscription.durationInHours || 0)) {
           return NextResponse.json(
-            { message: 'All subscription days have been used' },
+            { message: 'All subscription hours have been used for today' },
             { status: 400 }
           );
         }
 
-        // Calculate which day this is in the subscription
-        const subscriptionDay = usedDays + 1;
-
-        // Create new check-in record for today
+        // Create a new hourly check-in record for today
+        const hourIndex = usedHoursToday + 1;
         checkIn = await CheckIn.create({
           userId,
           serviceId: serviceIdToUse,
           serviceName: subscription.serviceName,
           planName: subscription.planName,
           planType: subscription.planType,
-          durationLabel: '1 Day (Subscription)',
+          durationLabel: `${subscription.durationInHours} Hour${(subscription.durationInHours || 0) > 1 ? 's' : ''} (Subscription)`,
+          durationInHours: 1,
           selectedRate: subscription.selectedRate,
-          amount: subscription.amountPerDay,
+          amount: subscription.amountPerDay || 0,
           wifiIncluded: subscription.wifiIncluded,
           status: 'checked_in',
-          paymentStatus: 'completed', // Already paid for subscription
+          paymentStatus: 'completed',
           checkedInAt: new Date(),
           subscriptionId: subscriptionId,
-          subscriptionDay: subscriptionDay,
+          subscriptionDay: hourIndex,
         });
 
         // Add this check-in to the subscription's checkIns array
         await Subscription.findByIdAndUpdate(subscriptionId, {
           $push: { checkIns: checkIn._id }
         });
+      } else {
+        const existingCheckIn = await CheckIn.findOne({
+          subscriptionId: subscriptionId,
+          userId: userId,
+          checkedInAt: {
+            $gte: today,
+            $lt: tomorrow
+          }
+        });
+
+        if (existingCheckIn) {
+          if (existingCheckIn.status === 'checked_in') {
+            return NextResponse.json(
+              { message: 'Already checked in for today' },
+              { status: 400 }
+            );
+          }
+          // If it exists but not checked in, update it
+          checkIn = await CheckIn.findByIdAndUpdate(
+            existingCheckIn._id,
+            {
+              status: 'checked_in',
+              checkedInAt: new Date(),
+            },
+            { new: true }
+          ).populate('serviceId', 'name');
+        } else {
+          // Count all used days (include checked_out as used)
+          const usedDays = await CheckIn.countDocuments({
+            subscriptionId: subscriptionId,
+            userId: userId,
+            checkedInAt: { $lt: tomorrow }
+          });
+
+          // Check if subscription has remaining days
+          if (usedDays >= subscription.durationInDays) {
+            return NextResponse.json(
+              { message: 'All subscription days have been used' },
+              { status: 400 }
+            );
+          }
+
+          // Calculate which day this is in the subscription
+          const subscriptionDay = usedDays + 1;
+
+          // Create new check-in record for today
+          checkIn = await CheckIn.create({
+            userId,
+            serviceId: serviceIdToUse,
+            serviceName: subscription.serviceName,
+            planName: subscription.planName,
+            planType: subscription.planType,
+            durationLabel: '1 Day (Subscription)',
+            selectedRate: subscription.selectedRate,
+            amount: subscription.amountPerDay,
+            wifiIncluded: subscription.wifiIncluded,
+            status: 'checked_in',
+            paymentStatus: 'completed', // Already paid for subscription
+            checkedInAt: new Date(),
+            subscriptionId: subscriptionId,
+            subscriptionDay: subscriptionDay,
+          });
+
+          // Add this check-in to the subscription's checkIns array
+          await Subscription.findByIdAndUpdate(subscriptionId, {
+            $push: { checkIns: checkIn._id }
+          });
+        }
       }
     } else {
       // Handle single service check-in (legacy support)

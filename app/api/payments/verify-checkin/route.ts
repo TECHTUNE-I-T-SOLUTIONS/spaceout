@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     } else {
         // Handle explicit membership purchases for monthly/yearly plans
         const meta: any = paymentData.metadata || {};
-        if (meta.isMembershipPayment && meta.membershipFee) {
+        if (meta.membershipFee && meta.membershipFee > 0) {
           // If a subscription record exists, update it; otherwise create one
           let subscriptionId = meta.subscriptionId || null;
 
@@ -100,8 +100,22 @@ export async function GET(request: NextRequest) {
           } else {
             // Create subscription for membership plan
             const start = new Date();
-            // Determine duration: prefer explicit days; if hours present, treat as 1-day hourly subscription
-            const durationDays = meta.durationInDays || (meta.selectedDays && meta.selectedDays > 1 ? meta.selectedDays : (meta.durationInHours ? 1 : 30));
+            // Normalize duration into days (metadata may be days, months, or years in some callers)
+            const normalize = (d: any, planName?: string, durationLabel?: string) => {
+              let days = Number(d) || 0;
+              const name = ((planName || '') + ' ' + (durationLabel || '')).toLowerCase();
+              if (days > 0 && days < 31) {
+                if (name.includes('year') || name.includes('annual') || name.includes('yr')) return days * 365;
+                if (name.includes('month') || name.includes('mo')) return days * 30;
+                return days;
+              }
+              if (days > 0 && days <= 12 && (name.includes('month') || name.includes('mo'))) return days * 30;
+              if (days >= 31 && days <= 365 * 20) return days;
+              if (days === 1 && (name.includes('year') || name.includes('annual') || name.includes('yr'))) return 365;
+              return 365;
+            };
+
+            const durationDays = normalize(meta.durationInDays || meta.duration || meta.selectedDays, meta.planName, meta.durationLabel);
             const end = new Date(start.getTime());
             end.setDate(end.getDate() + durationDays);
 
@@ -126,6 +140,71 @@ export async function GET(request: NextRequest) {
             });
 
             subscriptionId = newSub._id.toString();
+            // Also create UserSubscription record for membership UI
+            try {
+              const UserSubscription = (await import('@/lib/models/UserSubscription')).default;
+              const User = (await import('@/lib/models/User')).default;
+
+              const userSub = new UserSubscription({
+                userId: meta.userId,
+                serviceId: meta.serviceId,
+                planName: meta.planName || meta.durationLabel || 'Membership',
+                serviceName: meta.serviceName,
+                price: meta.membershipFee || meta.totalAmount || 0,
+                duration: durationDays,
+                purchaseDate: start,
+                expiryDate: end,
+                status: 'active',
+                paymentReference: paymentData.reference,
+                isAccessCard: true,
+                autoRenew: false,
+              });
+
+              await userSub.save();
+
+              await User.findByIdAndUpdate(meta.userId, {
+                hasMembership: true,
+                membershipStatus: 'active',
+                membershipActivatedAt: start,
+                membershipExpiryDate: end,
+                membershipExpiry: end,
+              });
+            } catch (err) {
+              console.error('Failed to create UserSubscription for membership (webhook):', err);
+            }
+            // Also create a UserSubscription record so membership UI/controllers find it
+            try {
+              const UserSubscription = (await import('@/lib/models/UserSubscription')).default;
+              const User = (await import('@/lib/models/User')).default;
+
+              const userSub = new UserSubscription({
+                userId: meta.userId,
+                serviceId: meta.serviceId,
+                planName: meta.planName || meta.durationLabel || 'Membership',
+                serviceName: meta.serviceName,
+                price: meta.membershipFee || meta.totalAmount || 0,
+                duration: durationDays,
+                purchaseDate: start,
+                expiryDate: end,
+                status: 'active',
+                paymentReference: paymentData.reference,
+                isAccessCard: true,
+                autoRenew: false,
+              });
+
+              await userSub.save();
+
+              // Update user's membership flags
+              await User.findByIdAndUpdate(meta.userId, {
+                hasMembership: true,
+                membershipStatus: 'active',
+                membershipActivatedAt: start,
+                membershipExpiryDate: end,
+                membershipExpiry: end,
+              });
+            } catch (err) {
+              console.error('Failed to create UserSubscription for membership:', err);
+            }
           }
 
           // If user also paid for an immediate check-in (checkInAmount), create check-in record
@@ -284,7 +363,7 @@ export async function POST(request: NextRequest) {
       );
 
       // For subscriptions, no check-in records are created upfront
-    } else if (paymentData.metadata.isMembershipPayment && paymentData.metadata.membershipFee) {
+    } else if (paymentData.metadata.membershipFee && paymentData.metadata.membershipFee > 0) {
       // Handle membership purchases (monthly/yearly)
       const meta: any = paymentData.metadata || {};
       let subscriptionId = meta.subscriptionId || null;

@@ -104,11 +104,10 @@ export default function CheckInPage() {
     const selectedDays = urlParams.get('selectedDays');
 
     if (success === 'true') {
-      if (subscriptionId && selectedDays) {
-        toast.success(`Payment successful!`, {
-          description: `Your ${selectedDays}-day subscription is now active. You can check in each day individually.`,
-        });
-        // Refresh subscriptions
+      if (subscriptionId) {
+        const desc = selectedDays ? `Your ${selectedDays}-day subscription is now active. You can check in each day individually.` : 'Your membership/subscription is now active.';
+        toast.success('Payment successful!', { description: desc });
+        // Refresh subscriptions so membership card appears
         fetchActiveSubscriptions();
       } else {
         toast.success('Payment successful!', {
@@ -994,13 +993,12 @@ export default function CheckInPage() {
                       return checkInDate.getTime() === today.getTime() && checkIn.status === 'checked_in';
                     });
 
-                    // Count all check-in records (each represents a used unit)
-                    const usedCount = subscription.checkIns?.length || 0;
-                    // If this is an hourly subscription, compute hours remaining
-                    const isHourlySub = !!subscription.durationInHours;
-                    const remaining = isHourlySub
-                      ? Math.max((subscription.durationInHours || 0) - usedCount, 0)
-                      : (subscription.durationInDays ? Math.max(subscription.durationInDays - usedCount, 0) : undefined);
+                    // Prefer server-provided usage (usedCount/remaining/unit)
+                    const usedCount = subscription.usage?.usedCount ?? (subscription.checkIns?.length || 0);
+                    const isHourlySub = subscription.usage?.unit === 'hours' || !!subscription.durationInHours;
+                    const remaining = typeof subscription.usage?.remaining !== 'undefined'
+                      ? subscription.usage.remaining
+                      : (isHourlySub ? Math.max((subscription.durationInHours || 0) - usedCount, 0) : (subscription.durationInDays ? Math.max(subscription.durationInDays - usedCount, 0) : undefined));
 
                     return (
                       <div key={subscription._id} className="border rounded-lg p-4 bg-muted/50">
@@ -1028,7 +1026,7 @@ export default function CheckInPage() {
                         ) : (
                           <Button
                             onClick={() => handleSubscriptionCheckIn(subscription._id)}
-                            disabled={isProcessing}
+                            disabled={isProcessing || (typeof remaining === 'number' && remaining <= 0)}
                             className="w-full"
                           >
                             {isProcessing ? (
