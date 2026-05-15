@@ -2,16 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendBirthdayEmails } from '@/lib/birthday-email-service';
 
 function verifyCronSecret(request: NextRequest) {
-  const configuredSecret = process.env.CRON_SECRET || process.env.SPECIAL_DAY_EMAIL_CRON_SECRET;
-  if (!configuredSecret) return null;
+  const acceptedSecrets = [
+    process.env.CRON_SECRET,
+    process.env.SPECIAL_DAY_EMAIL_CRON_SECRET,
+    process.env.VERCEL_PROTECTION_BYPASS_SECRET,
+  ].filter(Boolean);
+
+  if (acceptedSecrets.length === 0) return null;
 
   const authorizationHeader = request.headers.get('authorization');
-  const providedSecret =
+  const providedSecrets = [
     request.headers.get('x-cron-secret') ||
     request.nextUrl.searchParams.get('secret') ||
-    (authorizationHeader?.startsWith('Bearer ') ? authorizationHeader.slice(7) : null);
+    (authorizationHeader?.startsWith('Bearer ') ? authorizationHeader.slice(7) : null),
+    request.headers.get('x-vercel-protection-bypass') || request.nextUrl.searchParams.get('bypass'),
+  ].filter(Boolean) as string[];
 
-  if (providedSecret !== configuredSecret) {
+  const isAuthorized = providedSecrets.some((secret) => acceptedSecrets.includes(secret));
+
+  if (!isAuthorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

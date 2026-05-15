@@ -1,249 +1,59 @@
 # Email Scheduling Setup Guide
 
 ## Overview
-The SpaceOut admin dashboard now supports sending transactional emails to all users with automatic personalization and optional scheduling.
 
-## Features
-- **Batch Emails**: Send personalized emails to all users with a single submission
-- **Auto-Personalization**: The system automatically adds "Dear [FirstName]," to each email
-- **Immediate Sending**: Send emails right away to all users
-- **Scheduled Sending**: Schedule emails to be sent at a specific date and time
-- **Email Queue**: Scheduled emails are stored in MongoDB and processed via API endpoint
-- **Retry Logic**: Failed emails automatically retry up to 3 times
+SpaceOut supports two email automation paths:
 
-## How It Works
+1. Admin-triggered batch emails from the dashboard.
+2. Scheduled birthday emails from the public cron endpoint.
 
-### Immediate Email Sending
-1. Admin goes to Admin Dashboard → Users → "Send Emails" tab
-2. Fills in Subject and Message
-3. Clicks "Send Emails"
-4. Emails are sent immediately to all users with personalization
+## Birthday Emails On cron-job.org
 
-### Scheduled Email Sending
-1. Admin goes to Admin Dashboard → Users → "Send Emails" tab
-2. Fills in Subject and Message
-3. Checks "Schedule Email for Later"
-4. Selects a future date and time
-5. Clicks "Schedule Emails"
-6. Emails are queued in the database for processing at the scheduled time
+Use cron-job.org to hit the birthday endpoint once per day.
 
-## Setting Up Email Queue Processing
+1. Create a job in [cron-job.org](https://cron-job.org).
+2. Set the request URL to `https://yourdomain.com/api/public/birthday-emails?secret=YOUR_CRON_SECRET`.
+3. Use the `GET` method.
+4. Schedule it once per day at a time that matches your business timezone.
+5. If Vercel protection is enabled for the route, add this header as well:
 
-### Option 1: Using Vercel Cron Jobs (Recommended for Vercel deployments)
-
-Create a file: `public/crons/process-emails.json`
-```json
-{
-  "cronExpression": "*/5 * * * *",
-  "description": "Process scheduled emails from queue every 5 minutes"
-}
+```http
+x-vercel-protection-bypass: YOUR_VERCEL_PROTECTION_BYPASS_SECRET
 ```
 
-Then in your codebase, add a cron job configuration to `vercel.json`:
-```json
-{
-  "crons": [
-    {
-      "path": "/api/admin/process-email-queue",
-      "schedule": "*/5 * * * *"
-    }
-  ]
-}
-```
+The birthday endpoint automatically sends:
 
-### Option 2: Using External Services (e.g., EasyCron or similar)
+- a reminder email 7 days before the birthday
+- a birthday email on the birthday itself
 
-1. Go to https://www.easycron.com or similar service
-2. Create a new cron job with:
-   - **URL**: `https://yourdomain.com/api/admin/process-email-queue`
-   - **Method**: POST
-   - **Headers**: 
-     ```
-     Authorization: Bearer YOUR_INTERNAL_API_TOKEN
-     Content-Type: application/json
-     ```
-   - **Schedule**: Every 5 minutes (or your preferred interval)
+## Environment Variables
 
-### Option 3: Self-Hosted/Custom Server
+Add these values to your environment:
 
-Use a tool like `node-cron` in a separate worker process or schedule via system cron:
-
-```bash
-*/5 * * * * curl -X POST https://yourdomain.com/api/admin/process-email-queue \
-  -H "Authorization: Bearer YOUR_INTERNAL_API_TOKEN" \
-  -H "Content-Type: application/json"
-```
-
-## Configuration
-
-### Setting Up Internal API Token
-
-Add to your `.env.local`:
 ```env
-INTERNAL_API_TOKEN=your_secure_random_token_here
+CRON_SECRET=your_secure_random_token_here
+SPECIAL_DAY_EMAIL_CRON_SECRET=your_secure_random_token_here
+VERCEL_PROTECTION_BYPASS_SECRET=your_vercel_protection_bypass_secret_here
 ```
 
-Or use Vercel's environment variables if you're on Vercel.
+You can use the same secret for `CRON_SECRET` and `SPECIAL_DAY_EMAIL_CRON_SECRET` if you want one shared token.
 
-The email processor will use either:
-1. `INTERNAL_API_TOKEN` - Your custom secret token
-2. `CRON_SECRET` - Fallback secret for cron jobs
-3. `dev-token` - For local development (not recommended for production)
+## Batch Email Flow
 
-Set your Authorization header to:
-```
-Authorization: Bearer YOUR_TOKEN_VALUE
-```
+The existing admin email queue still works for manual and scheduled messages from the dashboard.
 
-## API Endpoints
-
-### Send Batch Emails
-**POST** `/api/admin/send-batch-email`
-
-Request body:
-```json
-{
-  "subject": "Email Subject",
-  "message": "Your message here...",
-  "userIds": ["user1_id", "user2_id"],
-  "scheduled": false,
-  "scheduledDateTime": null
-}
-```
-
-For scheduled emails:
-```json
-{
-  "subject": "Email Subject",
-  "message": "Your message here...",
-  "userIds": ["user1_id", "user2_id"],
-  "scheduled": true,
-  "scheduledDateTime": "2026-03-10T14:30:00"
-}
-```
-
-Response:
-```json
-{
-  "success": true,
-  "count": 50,
-  "message": "50 emails scheduled for..."
-}
-```
-
-### Process Email Queue
-**POST** `/api/admin/process-email-queue`
-
-Request header:
-```
-Authorization: Bearer YOUR_INTERNAL_API_TOKEN
-```
-
-Response:
-```json
-{
-  "success": true,
-  "processedCount": 10,
-  "successCount": 9,
-  "failureCount": 1,
-  "message": "Processed 10 emails (9 sent, 1 failed)"
-}
-```
-
-## Email Format
-
-Each personalized email includes:
-
-```
-Dear [FirstName],
-
-[Admin's Message]
-
----
-Best regards,
-SpaceOut Team
-SpaceOut Workspace Solutions
-
-Visit our website | Contact us
-```
-
-## Database Collections
-
-### emailQueue Collection
-Stores pending, scheduled, and processed emails.
-
-Fields:
-- `_id`: Unique identifier
-- `userId`: User's MongoDB ID
-- `email`: User's email address
-- `firstName`: User's first name
-- `lastName`: User's last name
-- `subject`: Email subject
-- `message`: Email message body
-- `scheduledDateTime`: When the email should be sent
-- `createdAt`: When the email was queued
-- `sentAt`: When the email was actually sent
-- `status`: 'pending' | 'sent' | 'failed'
-- `attempts`: Number of send attempts
-- `lastError`: Error message if failed
+1. Go to Admin Dashboard → Users → Send Emails.
+2. Enter the subject and message.
+3. Choose whether to send immediately or schedule for later.
+4. Save or send the email.
 
 ## Troubleshooting
 
-### Emails Not Sending
-1. Check that `INTERNAL_API_TOKEN` is set in environment variables
-2. Verify the cron job is running by checking logs
-3. Check MongoDB connection and `emailQueue` collection exists
-4. Verify user IDs in the request are valid MongoDB ObjectIDs
+- If cron-job.org receives `401 Unauthorized`, verify the `secret` query string or `x-cron-secret` header.
+- If Vercel blocks the request before it reaches the app, add the `x-vercel-protection-bypass` header and configure the same bypass secret in Vercel.
+- If emails do not send, confirm SMTP settings in [lib/email.ts](lib/email.ts).
 
-### Scheduled Emails Not Processing
-1. Verify the cron job configuration is correct
-2. Check that `scheduledDateTime` is in the past when processor runs
-3. Check database for pending emails in `emailQueue`
-4. Review application logs for error messages
+## Notes
 
-### Emails Marked as Failed
-1. Check email service SMTP configuration in `/lib/email.ts`
-2. Review error message in `lastError` field in database
-3. Check Namecheap email service status
-4. Verify recipient email addresses are valid
-
-## Testing
-
-### Test Immediate Email Sending
-1. Add a user to the system
-2. Go to Admin Dashboard → Users → Send Emails tab
-3. Fill in subject and message
-4. Click "Send Emails"
-5. Check your email inbox
-
-### Test Scheduled Email Sending
-1. Schedule an email for 5 minutes in the future
-2. Wait for the cron job to run (check your scheduled interval)
-3. Run the processor manually:
-   ```bash
-   curl -X POST http://localhost:3000/api/admin/process-email-queue \
-     -H "Authorization: Bearer dev-token" \
-     -H "Content-Type: application/json"
-   ```
-4. Check the logs for successful processing
-
-## Performance Considerations
-
-- Emails are sent sequentially (one per iteration) to avoid overwhelming the SMTP server
-- The retry logic helps handle temporary SMTP failures
-- For very large user bases (1000+), consider:
-  - Increasing cron interval to run more frequently
-  - Batching emails in the processor
-  - Using a dedicated email queue service
-
-## Security Notes
-
-- The email processor endpoint requires authentication via `INTERNAL_API_TOKEN`
-- Never expose your API token in client-side code
-- Use HTTPS for all API calls
-- Regularly rotate your internal API token
-- Monitor email queue for failed attempts
-
----
-
-For support or questions, check the SpaceOut documentation or contact the development team.
+- Birthday scheduling is date-based, so one daily cron job is enough.
+- The endpoint can be called with `GET` or `POST`, but `GET` is the simplest option for cron-job.org.
