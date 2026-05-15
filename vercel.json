@@ -3,10 +3,6 @@
     {
       "path": "/api/public/special-day-emails",
       "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/public/cron-test",
-      "schedule": "* * * * *"
     }
   ]
 }
