@@ -30,10 +30,15 @@ function parseOccasionKeys(rawValue: string | null) {
 }
 
 function verifyCronSecret(request: NextRequest) {
-  const configuredSecret = process.env.SPECIAL_DAY_EMAIL_CRON_SECRET;
+  const configuredSecret = process.env.CRON_SECRET || process.env.SPECIAL_DAY_EMAIL_CRON_SECRET;
   if (!configuredSecret) return null;
 
-  const providedSecret = request.headers.get('x-cron-secret') || request.nextUrl.searchParams.get('secret');
+  const authorizationHeader = request.headers.get('authorization');
+  const providedSecret =
+    request.headers.get('x-cron-secret') ||
+    request.nextUrl.searchParams.get('secret') ||
+    (authorizationHeader?.startsWith('Bearer ') ? authorizationHeader.slice(7) : null);
+
   if (providedSecret !== configuredSecret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
