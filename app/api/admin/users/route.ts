@@ -5,6 +5,28 @@ import User from '@/lib/models/User';
 import { cookies } from 'next/headers';
 import { hashPassword } from '@/lib/auth';
 
+function deriveMembershipState(user: any) {
+  const now = new Date();
+  const rawStatus = user.membershipStatus || 'inactive';
+  const expiryValue = user.membershipExpiryDate || user.membershipExpiry;
+  const expiryDate = expiryValue ? new Date(expiryValue) : null;
+  const hasFutureExpiry = !!expiryDate && expiryDate > now;
+  const hasMembership = !!(user.hasMembership || rawStatus !== 'inactive' || hasFutureExpiry);
+  const membershipStatus = rawStatus === 'active' || hasFutureExpiry
+    ? 'active'
+    : rawStatus === 'expired'
+      ? 'expired'
+      : 'inactive';
+
+  return {
+    ...user,
+    hasMembership,
+    membershipStatus,
+    membershipStatusRaw: user.membershipStatus || null,
+    membershipNeedsRepair: hasMembership && rawStatus !== 'active' && hasFutureExpiry,
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
@@ -36,10 +58,7 @@ export async function GET(request: NextRequest) {
 
     // Compute hasMembership based on membershipStatus
     // If membershipStatus exists and is not null, user has/had membership
-    users = users.map((user: any) => ({
-      ...user,
-      hasMembership: !!(user.membershipStatus && user.membershipStatus !== 'none'),
-    }));
+    users = users.map((user: any) => deriveMembershipState(user));
 
     return NextResponse.json(users);
   } catch (error: any) {

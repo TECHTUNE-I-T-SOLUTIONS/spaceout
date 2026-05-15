@@ -116,6 +116,8 @@ export async function POST(request: NextRequest) {
 
   await User.findByIdAndUpdate(userId, {
     hasMembership: true,
+    membershipStatus: 'active',
+    membershipType: Number(duration) >= 365 ? 'annual' : 'monthly',
     membershipExpiry: expiryDate,
     membershipActivatedAt: purchaseDate,
     membershipExpiryDate: expiryDate,
@@ -151,7 +153,11 @@ export async function DELETE(request: NextRequest) {
     // If user has no other active subscriptions, clear membership flags
     const otherActive = await UserSubscription.findOne({ userId: subscription.userId, status: 'active' });
     if (!otherActive) {
-      await User.findByIdAndUpdate(subscription.userId, { hasMembership: false, membershipExpiry: null });
+      await User.findByIdAndUpdate(subscription.userId, {
+        hasMembership: false,
+        membershipStatus: 'inactive',
+        membershipExpiry: null,
+      });
     }
 
     return NextResponse.json({ message: 'Subscription deleted' }, { status: 200 });
@@ -226,6 +232,8 @@ export async function PATCH(request: NextRequest) {
     if (subscription.userId) {
       await User.findByIdAndUpdate(subscription.userId, {
         hasMembership: true,
+        membershipStatus: status || 'active',
+        membershipType: Number(duration || subscription.duration) >= 365 ? 'annual' : 'monthly',
         membershipActivatedAt: purchase,
         membershipExpiryDate: expiry,
         membershipExpiry: expiry,

@@ -38,6 +38,8 @@ interface User {
   };
   hasMembership?: boolean;
   membershipStatus?: 'active' | 'inactive' | 'expired';
+  membershipStatusRaw?: 'active' | 'inactive' | 'expired' | null;
+  membershipNeedsRepair?: boolean;
   membershipType?: 'annual' | 'monthly' | 'lifetime';
   membershipActivatedAt?: string;
   membershipExpiryDate?: string;
@@ -54,6 +56,7 @@ export default function UsersPage() {
   const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [repairingMembership, setRepairingMembership] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ show: boolean; userId: string | null }>({ show: false, userId: null });
   const [deleting, setDeleting] = useState(false);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
@@ -189,6 +192,50 @@ export default function UsersPage() {
       });
     } finally {
       setSendingEmail(false);
+    }
+  };
+
+  const handleActivateMembership = async () => {
+    if (!selectedUser?.id && !selectedUser?._id) return;
+
+    try {
+      setRepairingMembership(true);
+      const userId = selectedUser.id || selectedUser._id;
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ membershipStatus: 'active' }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => null);
+        throw new Error(error?.error || 'Unable to update membership status');
+      }
+
+      const result = await response.json();
+      const updatedUser = result?.user || selectedUser;
+
+      setSelectedUser(updatedUser);
+      setUsers((current) =>
+        current.map((user) =>
+          (user.id === updatedUser.id || user._id === updatedUser._id)
+            ? { ...user, ...updatedUser }
+            : user
+        )
+      );
+
+      toast.success('Membership activated', {
+        description: 'The user membership status has been updated to active.',
+      });
+    } catch (error: any) {
+      console.error('Error activating membership:', error);
+      toast.error('Failed to activate membership', {
+        description: error?.message || 'Please try again.',
+      });
+    } finally {
+      setRepairingMembership(false);
     }
   };
 
@@ -553,7 +600,7 @@ export default function UsersPage() {
                           selectedUser.hasMembership
                             ? selectedUser.membershipStatus === 'active'
                               ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100'
-                              : selectedUser.membershipStatus === 'expired'
+                              : selectedUser.membershipStatus === 'expired' || selectedUser.membershipStatus === 'inactive' || selectedUser.membershipStatus === 'Inactive'
                               ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100'
                               : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100'
                             : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100'
@@ -561,6 +608,23 @@ export default function UsersPage() {
                           {selectedUser.hasMembership ? (selectedUser.membershipStatus ? selectedUser.membershipStatus.charAt(0).toUpperCase() + selectedUser.membershipStatus.slice(1) : 'Active') : 'No Membership'}
                         </span>
                       </div>
+                    {selectedUser.hasMembership && (selectedUser.membershipNeedsRepair || selectedUser.membershipStatus !== 'active') && (
+                      <div className="mt-3 flex flex-col gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          This membership record is repairable. Mark it active to sync the user profile and access-card record.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-fit"
+                          onClick={handleActivateMembership}
+                          disabled={repairingMembership}
+                        >
+                          {repairingMembership ? 'Activating...' : 'Mark Membership Active'}
+                        </Button>
+                      </div>
+                    )}
                     </div>
                     
                     {selectedUser.hasMembership && selectedUser.membershipType && (
@@ -1026,6 +1090,7 @@ export default function UsersPage() {
                 <Label htmlFor="relationship">Relationship *</Label>
                 <select
                   id="relationship"
+                  aria-label="Emergency contact relationship"
                   value={createUserForm.emergencyContact.relationship}
                   onChange={(e) =>
                     setCreateUserForm({
