@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Cake, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import Link from 'next/link';
@@ -50,6 +50,7 @@ export function AdminMobileHeader({ userRole }: AdminMobileHeaderProps) {
     { href: '/admin/dashboard/feedback', icon: MessageSquare, label: 'Feedback' },
     { href: '/admin/dashboard/questionnaires', icon: MessageSquare, label: 'Questionnaires' },
     { href: '/admin/dashboard/contacts', icon: AlertTriangle, label: 'Contacts' },
+    { href: '/admin/dashboard/birthdays', icon: Cake, label: 'Birthdays' },
   ];
 
   const superadminMenuItems = [

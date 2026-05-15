@@ -10,6 +10,7 @@ import {
   Users,
   ShoppingCart,
   Calendar,
+  Cake,
   Image,
   Star,
   MessageSquare,
@@ -46,6 +47,7 @@ export function AdminSidebar({ userRole }: AdminSidebarProps) {
     { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { href: '/admin/dashboard/analytics', icon: BarChart3, label: 'Analytics' },
     { href: '/admin/dashboard/users', icon: Users, label: 'Users' },
+    { href: '/admin/dashboard/birthdays', icon: Cake, label: 'Birthdays' },
     { href: '/admin/dashboard/payments', icon: ShoppingCart, label: 'Payments' },
     { href: '/admin/dashboard/membership-cards', icon: Users, label: 'Membership Cards' },
     { href: '/admin/dashboard/checkins', icon: LogIn, label: 'Check-Ins' },
@@ -55,6 +57,7 @@ export function AdminSidebar({ userRole }: AdminSidebarProps) {
     { href: '/admin/dashboard/feedback', icon: MessageSquare, label: 'Feedback' },
     { href: '/admin/dashboard/questionnaires', icon: MessageSquare, label: 'Questionnaires' },
     { href: '/admin/dashboard/contacts', icon: AlertTriangle, label: 'Contacts' },
+    { href: '/admin/dashboard/birthdays', icon: Cake, label: 'Birthdays' },
   ];
 
   // Superadmin-only menu items
