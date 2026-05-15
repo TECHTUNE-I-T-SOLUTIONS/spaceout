@@ -1,5 +1,6 @@
 import dbConnect from '@/lib/db';
 import { sendEmail } from '@/lib/email';
+import BirthdayEmailLog from '@/lib/models/BirthdayEmailLog';
 import User from '@/lib/models/User';
 
 export type BirthdayEmailKind = 'birthday-reminder' | 'birthday-day';
@@ -193,6 +194,61 @@ function getBirthdayCandidates(users: BirthdayCandidate[], referenceDate: Date) 
   return { birthdayToday, birthdayReminder, today, reminderDate };
 }
 
+function buildSendKey(kind: BirthdayEmailKind, userId: string, scheduledFor: Date) {
+  return `${kind}:${userId}:${normalizeDate(scheduledFor).toISOString().slice(0, 10)}`;
+}
+
+async function sendBirthdayEmailOnce(
+  user: BirthdayCandidate & { _id?: unknown },
+  kind: BirthdayEmailKind,
+  referenceDate: Date,
+  scheduledFor: Date
+) {
+  const userId = String(user._id);
+  const scheduledDay = normalizeDate(scheduledFor);
+
+  try {
+    await BirthdayEmailLog.create({
+      userId,
+      email: user.email,
+      kind,
+      scheduledFor: scheduledDay,
+      status: 'pending',
+    });
+  } catch (error: any) {
+    if (error?.code === 11000) {
+      return { sent: false, skipped: true as const };
+    }
+
+    throw error;
+  }
+
+  const emailContent = buildBirthdayEmail(user, kind, referenceDate, scheduledFor);
+
+  const response = await sendEmail({
+    to: user.email,
+    subject: emailContent.subject,
+    html: emailContent.html,
+    text: emailContent.text,
+  });
+
+  if (response.success) {
+    await BirthdayEmailLog.updateOne(
+      { userId, kind, scheduledFor: scheduledDay },
+      { $set: { status: 'sent', sentAt: new Date(), lastError: undefined } }
+    );
+
+    return { sent: true, skipped: false as const };
+  }
+
+  await BirthdayEmailLog.updateOne(
+    { userId, kind, scheduledFor: scheduledDay },
+    { $set: { status: 'failed', lastError: response.error || 'Failed to send birthday email' } }
+  );
+
+  return { sent: false, skipped: false as const, error: response.error };
+}
+
 export async function sendBirthdayEmails({ date = new Date(), dryRun = false }: SendBirthdayEmailsOptions = {}) {
   await dbConnect();
 
@@ -244,37 +300,30 @@ export async function sendBirthdayEmails({ date = new Date(), dryRun = false }: 
   }
 
   let sentCount = 0;
+  let skippedCount = 0;
   const errors: string[] = [];
 
   for (const user of birthdayReminder) {
-    const emailContent = buildBirthdayEmail(user, 'birthday-reminder', today, reminderDate);
-    const response = await sendEmail({
-      to: user.email,
-      subject: emailContent.subject,
-      html: emailContent.html,
-      text: emailContent.text,
-    });
+    const result = await sendBirthdayEmailOnce(user as BirthdayCandidate & { _id?: unknown }, 'birthday-reminder', today, reminderDate);
 
-    if (response.success) {
+    if (result.sent) {
       sentCount += 1;
-    } else {
-      errors.push(`${user.email}: ${response.error}`);
+    } else if (result.skipped) {
+      skippedCount += 1;
+    } else if (result.error) {
+      errors.push(`${user.email}: ${result.error}`);
     }
   }
 
   for (const user of birthdayToday) {
-    const emailContent = buildBirthdayEmail(user, 'birthday-day', today, today);
-    const response = await sendEmail({
-      to: user.email,
-      subject: emailContent.subject,
-      html: emailContent.html,
-      text: emailContent.text,
-    });
+    const result = await sendBirthdayEmailOnce(user as BirthdayCandidate & { _id?: unknown }, 'birthday-day', today, today);
 
-    if (response.success) {
+    if (result.sent) {
       sentCount += 1;
-    } else {
-      errors.push(`${user.email}: ${response.error}`);
+    } else if (result.skipped) {
+      skippedCount += 1;
+    } else if (result.error) {
+      errors.push(`${user.email}: ${result.error}`);
     }
   }
 
@@ -284,6 +333,7 @@ export async function sendBirthdayEmails({ date = new Date(), dryRun = false }: 
     reminderCount: birthdayReminder.length,
     birthdayCount: birthdayToday.length,
     sentCount,
+    skippedCount,
     userCount: users.length,
     previews: previews.slice(0, 5),
     errors: errors.length > 0 ? errors : undefined,
