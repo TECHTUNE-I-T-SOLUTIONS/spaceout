@@ -1,8 +1,2 @@
 {
-  "crons": [
-    {
-      "path": "/api/public/special-day-emails",
-      "schedule": "0 0 * * *"
-    }
-  ]
 }
