@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Event from '@/lib/models/Event';
+import mongoose from 'mongoose';
 
 // GET /api/events/[id] - Get single event
 export async function GET(
@@ -12,9 +13,15 @@ export async function GET(
     
     const { id } = await params;
     
-    // Try to find by ID first, then by slug
-    let event = await Event.findById(id).lean();
+    // Try to find by ID first (if it's a valid ObjectId), then by slug
+    let event = null;
     
+    // Check if id is a valid MongoDB ObjectId
+    if (mongoose.Types.ObjectId.isValid(id) && /^[0-9a-fA-F]{24}$/.test(id)) {
+      event = await Event.findById(id).lean();
+    }
+    
+    // If not found by ID, try to find by slug
     if (!event) {
       event = await Event.findOne({ slug: id }).lean();
     }
