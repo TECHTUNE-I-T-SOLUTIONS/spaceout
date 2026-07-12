@@ -14,7 +14,7 @@ export async function GET(
     const { id } = await params;
     
     // Try to find by ID first (if it's a valid ObjectId), then by slug
-    let event = null;
+    let event: any = null;
     
     // Check if id is a valid MongoDB ObjectId
     if (mongoose.Types.ObjectId.isValid(id) && /^[0-9a-fA-F]{24}$/.test(id)) {
@@ -35,7 +35,7 @@ export async function GET(
     
     // Increment views if published
     if (event.status === 'published') {
-      await Event.findByIdAndUpdate((event as any)._id, { $inc: { views: 1 } });
+      await Event.findByIdAndUpdate(event._id, { $inc: { views: 1 } });
     }
     
     return NextResponse.json(event);
@@ -83,7 +83,11 @@ export async function PUT(
       updatedBy,
     } = body;
     
-    const event = await Event.findById(id);
+    // Find event by ID or slug
+    let event = await Event.findById(id);
+    if (!event && /^[0-9a-fA-F]{24}$/.test(id)) {
+      event = await Event.findOne({ slug: id });
+    }
     
     if (!event) {
       return NextResponse.json(
@@ -94,7 +98,7 @@ export async function PUT(
     
     // Check if new slug already exists (if slug is being changed)
     if (slug && slug !== event.slug) {
-      const existingEvent = await Event.findOne({ slug, _id: { $ne: id } });
+      const existingEvent = await Event.findOne({ slug, _id: { $ne: event._id } });
       if (existingEvent) {
         return NextResponse.json(
           { error: 'An event with this slug already exists' },
@@ -153,7 +157,11 @@ export async function DELETE(
     
     const { id } = await params;
     
-    const event = await Event.findById(id);
+    // Find event by ID or slug
+    let event = await Event.findById(id);
+    if (!event && /^[0-9a-fA-F]{24}$/.test(id)) {
+      event = await Event.findOne({ slug: id });
+    }
     
     if (!event) {
       return NextResponse.json(
@@ -162,7 +170,7 @@ export async function DELETE(
       );
     }
     
-    await Event.findByIdAndDelete(id);
+    await Event.findByIdAndDelete(event._id);
     
     return NextResponse.json(
       { message: 'Event deleted successfully' },
