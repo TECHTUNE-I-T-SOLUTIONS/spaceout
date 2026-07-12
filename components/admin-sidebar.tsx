@@ -57,7 +57,6 @@ export function AdminSidebar({ userRole }: AdminSidebarProps) {
     { href: '/admin/dashboard/feedback', icon: MessageSquare, label: 'Feedback' },
     { href: '/admin/dashboard/questionnaires', icon: MessageSquare, label: 'Questionnaires' },
     { href: '/admin/dashboard/contacts', icon: AlertTriangle, label: 'Contacts' },
-    { href: '/admin/dashboard/birthdays', icon: Cake, label: 'Birthdays' },
   ];
 
   // Superadmin-only menu items
@@ -197,14 +196,16 @@ export function AdminSidebar({ userRole }: AdminSidebarProps) {
   return (
     <>
       {/* Desktop Sidebar */}
-      <motion.div
-        initial={{ x: -250 }}
-        animate={{ x: 0 }}
-        transition={{ duration: 0.3 }}
-        className="h-screen border-r border-border bg-background z-40 flex flex-col"
-      >
-        <SidebarContent isMobile={false} />
-      </motion.div>
+      <div className="h-screen border-r border-border bg-background z-40 flex flex-col">
+        <motion.div
+          initial={{ x: -250 }}
+          animate={{ x: 0 }}
+          transition={{ duration: 0.3 }}
+          className="w-full h-full"
+        >
+          <SidebarContent isMobile={false} />
+        </motion.div>
+      </div>
 
       {/* Mobile Drawer */}
       <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
