@@ -47,8 +47,13 @@ type EventPageProps = {
 
 async function getEvent(slugOrId: string) {
   try {
-    // Use relative URL to work in both development and production
-    const response = await fetch(`/api/events/${slugOrId}`, {
+    // Use environment variable in production, relative URL in development
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    const apiUrl = baseUrl 
+      ? `${baseUrl}/api/events/${slugOrId}`
+      : `/api/events/${slugOrId}`;
+    
+    const response = await fetch(apiUrl, {
       next: { revalidate: 60 },
     });
 
