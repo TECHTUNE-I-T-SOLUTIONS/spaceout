@@ -47,7 +47,8 @@ type EventPageProps = {
 
 async function getEvent(slugOrId: string) {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/events/${slugOrId}`, {
+    // Use relative URL to work in both development and production
+    const response = await fetch(`/api/events/${slugOrId}`, {
       next: { revalidate: 60 },
     });
 
