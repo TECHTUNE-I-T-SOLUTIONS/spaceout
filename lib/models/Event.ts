@@ -196,7 +196,7 @@ const EventSchema = new Schema<IEvent>(
 );
 
 // Create indexes for better query performance
-EventSchema.index({ slug: 1 });
+// Note: slug index is already created by unique: true in schema definition
 EventSchema.index({ status: 1, createdAt: -1 });
 EventSchema.index({ eventType: 1, status: 1 });
 EventSchema.index({ featured: 1, status: 1 });

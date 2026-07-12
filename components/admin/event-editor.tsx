@@ -177,6 +177,36 @@ export default function EventEditor({ adminId, eventId, initialData }: EventEdit
     }
   };
 
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFormData((prev) => ({ ...prev, featuredImage: data.file_url }));
+        toast({
+          title: "Image uploaded",
+          description: "Featured image has been uploaded successfully.",
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Upload failed",
+        description: "Failed to upload image. Please try again.",
+      });
+    }
+  };
+
   const addTag = () => {
     if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
       setFormData((prev) => ({
@@ -497,14 +527,60 @@ export default function EventEditor({ adminId, eventId, initialData }: EventEdit
               </div>
 
               <div>
-                <Label htmlFor="featuredImage">Featured Image URL</Label>
-                <Input
-                  id="featuredImage"
-                  type="url"
-                  value={formData.featuredImage}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, featuredImage: e.target.value }))}
-                  placeholder="https://example.com/image.jpg"
-                />
+                <Label htmlFor="featuredImage">Featured Image</Label>
+                <div className="space-y-3">
+                  <Input
+                    id="featuredImage"
+                    type="url"
+                    value={formData.featuredImage}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, featuredImage: e.target.value }))}
+                    placeholder="https://example.com/image.jpg"
+                  />
+                  
+                  {/* Image Upload Button */}
+                  <div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      id="featured-image-upload"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('featured-image-upload')?.click()}
+                      className="w-full"
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload Image
+                    </Button>
+                  </div>
+
+                  {/* Image Preview */}
+                  {formData.featuredImage && (
+                    <div className="relative border rounded-lg p-2">
+                      <img
+                        src={formData.featuredImage}
+                        alt="Featured image preview"
+                        className="w-full h-48 object-cover rounded"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/placeholder.svg';
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        className="absolute top-4 right-4"
+                        onClick={() => setFormData((prev) => ({ ...prev, featuredImage: '' }))}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

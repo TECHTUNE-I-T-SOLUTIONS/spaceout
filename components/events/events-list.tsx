@@ -77,7 +77,7 @@ export default function EventsList() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-7xl mx-auto">
       {/* Filters */}
       <div className="flex flex-wrap gap-2 justify-center">
         {['all', 'event', 'news', 'announcement'].map((type) => (

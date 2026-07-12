@@ -196,14 +196,9 @@ export function AdminSidebar({ userRole }: AdminSidebarProps) {
   return (
     <>
       {/* Desktop Sidebar */}
-      <motion.div
-        initial={{ x: -250 }}
-        animate={{ x: 0 }}
-        transition={{ duration: 0.3 }}
-        className="h-screen border-r border-border bg-background z-40 flex flex-col"
-      >
+      <div className="h-screen border-r border-border bg-background z-40 flex flex-col">
         <SidebarContent isMobile={false} />
-      </motion.div>
+      </div>
 
       {/* Mobile Drawer */}
       <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
