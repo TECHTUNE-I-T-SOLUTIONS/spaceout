@@ -47,9 +47,11 @@ type EventPageProps = {
 
 async function getEvent(slugOrId: string) {
   try {
-    // Use environment variable in production, relative URL in development
+    // Use environment variable only if it's set and not localhost
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-    const apiUrl = baseUrl 
+    const isProduction = baseUrl && !baseUrl.includes('localhost');
+    
+    const apiUrl = isProduction 
       ? `${baseUrl}/api/events/${slugOrId}`
       : `/api/events/${slugOrId}`;
     
