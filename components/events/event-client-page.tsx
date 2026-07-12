@@ -4,6 +4,9 @@ import { Calendar, MapPin, Eye, Tag, Share2, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import Link from 'next/link';
+import { Header } from '@/components/header';
+import { Footer } from '@/components/footer';
+
 
 interface Event {
   _id: string;
@@ -80,6 +83,7 @@ export default function EventClientPage({ event }: EventClientPageProps) {
       transition={{ duration: 0.5 }}
       className="min-h-screen"
     >
+      <Header />
       <div className="container py-12">
         <div className="max-w-4xl mx-auto">
           {/* Back Button */}
@@ -208,6 +212,7 @@ export default function EventClientPage({ event }: EventClientPageProps) {
           )}
         </div>
       </div>
+      <Footer />
     </motion.div>
   );
 }
