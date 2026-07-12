@@ -1,8 +1,10 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { formatDate } from '@/lib/utils';
 import EventClientPage from '@/components/events/event-client-page';
+import { Header } from '@/components/header';
+import { Footer } from '@/components/footer';
+
 
 function buildJsonLd(event: any) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://spaceout.com';
@@ -103,6 +105,7 @@ export default async function EventPage({ params }: EventPageProps) {
 
   return (
     <>
+    <Header />
       {jsonLd && (
         <script
           id="json-ld"
@@ -111,6 +114,7 @@ export default async function EventPage({ params }: EventPageProps) {
         />
       )}
       <EventClientPage event={event} />
+      <Footer />
     </>
   );
 }

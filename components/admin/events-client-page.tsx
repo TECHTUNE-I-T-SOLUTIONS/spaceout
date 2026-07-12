@@ -192,7 +192,7 @@ export default function EventsClientPage({ adminId }: { adminId: string }) {
           <h1 className="text-3xl font-bold mb-2">Events & News</h1>
           <p className="text-muted-foreground">Create and manage events, news, and announcements</p>
         </div>
-        <Link href="/admin/events/new">
+        <Link href="/admin/dashboard/events/new">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             Create New
@@ -249,7 +249,7 @@ export default function EventsClientPage({ adminId }: { adminId: string }) {
             <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No events found</h3>
             <p className="text-muted-foreground mb-4">Get started by creating your first event or news article.</p>
-            <Link href="/admin/events/new">
+            <Link href="/admin/dashboard/events/new">
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
                 Create Event

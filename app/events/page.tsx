@@ -1,6 +1,9 @@
 import { Suspense } from 'react';
 import EventsList from '@/components/events/events-list';
 import EventsHero from '@/components/events/events-hero';
+import { Header } from '@/components/header';
+import { Footer } from '@/components/footer';
+
 
 export const metadata = {
   title: 'Events & News - SpaceOut',
@@ -12,19 +15,21 @@ export const revalidate = 60;
 export default function EventsPage() {
   return (
     <div className="min-h-screen">
+      <Header />
       <EventsHero />
       <section className="container py-16">
         <Suspense fallback={<EventsListSkeleton />}>
           <EventsList />
         </Suspense>
       </section>
+       <Footer />
     </div>
   );
 }
 
 function EventsListSkeleton() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
       {Array.from({ length: 6 }).map((_, i) => (
         <div key={i} className="animate-pulse">
           <div className="bg-muted/50 h-48 rounded-lg mb-4"></div>
