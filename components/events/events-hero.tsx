@@ -3,8 +3,8 @@ import { Calendar, Newspaper, Megaphone } from 'lucide-react';
 export default function EventsHero() {
   return (
     <div className="bg-gradient-to-b from-primary/10 to-background py-16 md:py-24">
-      <div className="container">
-        <div className="max-w-3xl mx-auto text-center">
+      <div className="container mx-auto px-4">
+        <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-6">
             Events & News
           </h1>

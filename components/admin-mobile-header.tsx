@@ -43,6 +43,7 @@ export function AdminMobileHeader({ userRole }: AdminMobileHeaderProps) {
     { href: '/admin/dashboard/users', icon: Users, label: 'Users' },
     { href: '/admin/dashboard/payments', icon: ShoppingCart, label: 'Payments' },
     { href: '/admin/dashboard/membership-cards', icon: Users, label: 'Membership Cards' },
+    { href: '/admin/dashboard/events', icon: Calendar, label: 'Events' },
     { href: '/admin/dashboard/checkins', icon: LogIn, label: 'Check-Ins' },
     { href: '/admin/dashboard/bookings', icon: Calendar, label: 'Bookings' },
     { href: '/admin/dashboard/gallery', icon: Image, label: 'Gallery' },

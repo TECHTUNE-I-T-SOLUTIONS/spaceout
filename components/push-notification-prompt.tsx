@@ -49,6 +49,39 @@ export function PushNotificationPrompt() {
         throw new Error(`Service worker registration failed: ${errorMessage}`);
       }
 
+      // Wait for service worker to be active
+      console.log('[Push Notification] Waiting for service worker to be active');
+      await navigator.serviceWorker.ready;
+      console.log('[Push Notification] Service worker is ready');
+      
+      // Ensure we have an active registration
+      if (!registration.active) {
+        console.log('[Push Notification] Waiting for service worker to become active');
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('Service worker activation timeout'));
+          }, 10000);
+
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'activated') {
+                  clearTimeout(timeout);
+                  resolve(true);
+                }
+              });
+            }
+          });
+
+          if (registration.installing?.state === 'activated' || registration.active) {
+            clearTimeout(timeout);
+            resolve(true);
+          }
+        });
+        console.log('[Push Notification] Service worker is now active');
+      }
+
       // Request notification permission
       console.log('[Push Notification] Requesting notification permission');
       const permission = await Notification.requestPermission();
@@ -90,7 +123,7 @@ export function PushNotificationPrompt() {
 
         const subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey,
+          applicationServerKey: applicationServerKey as BufferSource,
         });
         console.log('[Push Notification] Push subscription created:', subscription);
 
@@ -137,12 +170,9 @@ export function PushNotificationPrompt() {
       {isVisible && (
         <>
           {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onPointerDown={handleDisable}
+          <div 
             className="fixed inset-0 bg-black/50 z-50"
+            onClick={handleDisable}
           />
 
           {/* Modal */}

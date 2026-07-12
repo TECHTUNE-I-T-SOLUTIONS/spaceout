@@ -1,6 +1,8 @@
 import { Suspense } from 'react';
 import EventsList from '@/components/events/events-list';
 import EventsHero from '@/components/events/events-hero';
+import { Header } from '@/components/header';
+import { Footer } from '@/components/footer';
 
 export const metadata = {
   title: 'Events & News - SpaceOut',
@@ -11,13 +13,17 @@ export const revalidate = 60;
 
 export default function EventsPage() {
   return (
-    <div className="min-h-screen">
-      <EventsHero />
-      <section className="container py-16">
-        <Suspense fallback={<EventsListSkeleton />}>
-          <EventsList />
-        </Suspense>
-      </section>
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <main className="flex-1">
+        <EventsHero />
+        <section className="container mx-auto px-4 py-16">
+          <Suspense fallback={<EventsListSkeleton />}>
+            <EventsList />
+          </Suspense>
+        </section>
+      </main>
+      <Footer />
     </div>
   );
 }

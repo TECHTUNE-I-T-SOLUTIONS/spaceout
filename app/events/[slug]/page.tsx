@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { formatDate } from '@/lib/utils';
 import EventClientPage from '@/components/events/event-client-page';
 
 function buildJsonLd(event: any) {

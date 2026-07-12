@@ -48,12 +48,12 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
         setEventData(data);
       } else {
         toast.error('Failed to load event');
-        router.push('/admin/events');
+        router.push('/admin/dashboard/events');
       }
     } catch (error) {
       console.error('Error fetching event:', error);
       toast.error('Failed to load event');
-      router.push('/admin/events');
+      router.push('/admin/dashboard/events');
     }
   };
 
