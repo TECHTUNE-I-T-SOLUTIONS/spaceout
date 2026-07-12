@@ -47,15 +47,8 @@ type EventPageProps = {
 
 async function getEvent(slugOrId: string) {
   try {
-    // Use environment variable only if it's set and not localhost
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-    const isProduction = baseUrl && !baseUrl.includes('localhost');
-    
-    const apiUrl = isProduction 
-      ? `${baseUrl}/api/events/${slugOrId}`
-      : `/api/events/${slugOrId}`;
-    
-    const response = await fetch(apiUrl, {
+    // Use relative URL - works in both dev and production for Server Components
+    const response = await fetch(`/api/events/${slugOrId}`, {
       next: { revalidate: 60 },
     });
 
