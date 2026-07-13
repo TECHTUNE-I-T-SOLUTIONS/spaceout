@@ -4,19 +4,21 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { X, Upload, Image as ImageIcon, Link as LinkIcon, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface InsertImageModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onInsert: (url: string, alt?: string) => void;
+  onInsert: (url: string, alt?: string, size?: 'small' | 'medium' | 'large' | 'full') => void;
 }
 
 export function InsertImageModal({ isOpen, onClose, onInsert }: InsertImageModalProps) {
   const [mode, setMode] = useState<'url' | 'upload'>('url');
   const [imageUrl, setImageUrl] = useState('');
   const [altText, setAltText] = useState('');
+  const [imageSize, setImageSize] = useState<'small' | 'medium' | 'large' | 'full'>('medium');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -65,8 +67,8 @@ export function InsertImageModal({ isOpen, onClose, onInsert }: InsertImageModal
 
   const handleInsert = () => {
     if (!imageUrl) return;
-    console.log('Inserting image:', imageUrl);
-    onInsert(imageUrl, altText || 'Image');
+    console.log('Inserting image:', imageUrl, 'with size:', imageSize);
+    onInsert(imageUrl, altText || 'Image', imageSize);
     resetAndClose();
   };
 
@@ -142,6 +144,22 @@ export function InsertImageModal({ isOpen, onClose, onInsert }: InsertImageModal
               </>
             )}
 
+            {/* Image Size Selector */}
+            <div>
+              <Label htmlFor="modal-image-size">Image Size</Label>
+              <Select value={imageSize} onValueChange={(value: 'small' | 'medium' | 'large' | 'full') => setImageSize(value)}>
+                <SelectTrigger id="modal-image-size">
+                  <SelectValue placeholder="Select size" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="small">Small (25%)</SelectItem>
+                  <SelectItem value="medium">Medium (50%)</SelectItem>
+                  <SelectItem value="large">Large (75%)</SelectItem>
+                  <SelectItem value="full">Full Width (100%)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Preview - show when we have a URL */}
             {imageUrl && (
               <div className="border rounded-lg p-2 bg-gray-50 dark:bg-gray-800">
@@ -149,7 +167,12 @@ export function InsertImageModal({ isOpen, onClose, onInsert }: InsertImageModal
                 <img
                   src={imageUrl}
                   alt="Preview"
-                  className="w-full h-48 object-cover rounded"
+                  className={`w-full h-48 object-cover rounded ${
+                    imageSize === 'small' ? 'max-w-[25%]' :
+                    imageSize === 'medium' ? 'max-w-[50%]' :
+                    imageSize === 'large' ? 'max-w-[75%]' :
+                    'max-w-full'
+                  }`}
                   onError={(e) => {
                     console.error('Image preview error for:', imageUrl);
                     (e.target as HTMLImageElement).src = '/placeholder.svg';

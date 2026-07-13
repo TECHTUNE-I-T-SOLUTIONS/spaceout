@@ -247,8 +247,15 @@ export default function EventEditor({ adminId, eventId, initialData }: EventEdit
     setShowCtaModal(true);
   };
 
-  const handleImageInsert = (url: string, alt?: string) => {
-    const html = `<img src="${url}" alt="${alt || 'Image'}" class="max-w-full h-auto rounded" style="width: 100%" />`;
+  const handleImageInsert = (url: string, alt?: string, size?: 'small' | 'medium' | 'large' | 'full') => {
+    const sizeClasses = {
+      small: 'max-w-[25%]',
+      medium: 'max-w-[50%]',
+      large: 'max-w-[75%]',
+      full: 'max-w-full'
+    };
+    const sizeClass = size ? sizeClasses[size] : sizeClasses.medium;
+    const html = `<img src="${url}" alt="${alt || 'Image'}" class="${sizeClass} h-auto rounded mx-auto" style="width: 100%" />`;
     insertAtCursor(html);
   };
 
