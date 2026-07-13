@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 import { AnimatedHeading } from '@/components/animated-heading';
 import { ParticleGlassBackground } from '@/components/particle-glass-background';
 import Link from 'next/link';
-import { Zap, Lightbulb, Shield, Users } from 'lucide-react';
+import { Zap, Lightbulb, Shield, Users, Calendar, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 
@@ -41,6 +41,27 @@ const heroImages = [
 
 export function HomeContent() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [featuredEvents, setFeaturedEvents] = useState<any[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+
+  // Fetch featured/published events
+  useEffect(() => {
+    const fetchFeaturedEvents = async () => {
+      try {
+        const response = await fetch('/api/events?featured=true&status=published&limit=3');
+        if (response.ok) {
+          const data = await response.json();
+          setFeaturedEvents(data.events || []);
+        }
+      } catch (error) {
+        console.error('Error fetching featured events:', error);
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+
+    fetchFeaturedEvents();
+  }, []);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -78,6 +99,32 @@ export function HomeContent() {
     ? process.env.NEXT_PUBLIC_APP_URL || window.location.origin
     : process.env.NEXT_PUBLIC_APP_URL;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(appUrl || '')}`;
+
+  const getEventTypeColor = (type: string) => {
+    switch (type) {
+      case 'event':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'news':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'announcement':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    }
+  };
+
+  const getEventTypeIcon = (type: string) => {
+    switch (type) {
+      case 'event':
+        return '📅';
+      case 'news':
+        return '📰';
+      case 'announcement':
+        return '📢';
+      default:
+        return '📄';
+    }
+  };
 
   return (
     <>
@@ -339,6 +386,88 @@ export function HomeContent() {
           </motion.div>
         </div>
       </section>
+
+      {/* Featured Events Section */}
+      {!loadingEvents && featuredEvents.length > 0 && (
+        <section className="py-20 bg-card/50 border-t border-border">
+          <div className="w-full px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+            <motion.div
+              // @ts-ignore
+              className="text-center mb-12"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Latest News & Events</h2>
+              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                Stay updated with our latest announcements, events, and news
+              </p>
+            </motion.div>
+
+            <motion.div
+              // @ts-ignore
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              variants={containerVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+            >
+              {featuredEvents.map((event) => (
+                <motion.div key={event._id} variants={itemVariants}>
+                  <Link href={`/events/${event.slug || event._id}`} className="block h-full">
+                    <Card className="h-full hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 hover:-translate-y-1 cursor-pointer group">
+                      {event.featuredImage && (
+                        <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
+                          <img
+                            src={event.featuredImage}
+                            alt={event.title}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          />
+                        </div>
+                      )}
+                      <div className="p-6">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getEventTypeColor(event.eventType)}`}>
+                            {getEventTypeIcon(event.eventType)}
+                            <span className="ml-1 capitalize">{event.eventType}</span>
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-semibold mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                          {event.title}
+                        </h3>
+                        <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                          {event.excerpt}
+                        </p>
+                        {event.eventDate && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(event.eventDate).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </div>
+                        )}
+                        <div className="flex items-center text-primary text-sm font-medium group-hover:gap-2 transition-all">
+                          Learn More <ArrowRight className="h-4 w-4 ml-1" />
+                        </div>
+                      </div>
+                    </Card>
+                  </Link>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            <div className="text-center mt-8">
+              <Link href="/events">
+                <Button variant="outline" size="lg">
+                  View All Events
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* CTA Section */}
       <section className="py-20 bg-primary/5 border-t border-border">

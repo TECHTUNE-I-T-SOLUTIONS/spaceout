@@ -84,8 +84,8 @@ export default function EventClientPage({ event }: EventClientPageProps) {
       className="min-h-screen"
     >
       <Header />
-      <div className="container py-12">
-        <div className="max-w-auto mx-auto p-8">
+      <div className="container py-4 md:py-8">
+        <div className="max-w-7xl mx-auto p-4 md:p-8">
           {/* Back Button */}
           <Link
             href="/events"
@@ -127,7 +127,7 @@ export default function EventClientPage({ event }: EventClientPageProps) {
                 </span>
               )}
               {event.location && (
-                <span className="flex items-center gap-2">
+                <span className="flex items-center gap-2 break-words">
                   <MapPin className="h-4 w-4" />
                   {event.location}
                 </span>
@@ -182,7 +182,7 @@ export default function EventClientPage({ event }: EventClientPageProps) {
               <img
                 src={event.featuredImage}
                 alt={event.title}
-                className="w-full h-auto max-h-[500px] object-cover"
+                className="w-full h-auto max-h-auto object-cover"
               />
             </div>
           )}

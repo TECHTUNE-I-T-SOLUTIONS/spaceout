@@ -74,20 +74,40 @@ export async function generateMetadata({ params }: EventPageProps): Promise<Meta
     return {};
   }
 
+  const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://spaceoutworkstation.com';
+  const eventUrl = `${siteUrl}/events/${event.slug || event._id}`;
+  const imageUrl = event.featuredImage || `${siteUrl}/og-image.png`;
+
   return {
-    title: `${event.seoTitle || event.title} - SpaceOut`,
+    title: event.seoTitle || `${event.title} - SpaceOut`,
     description: event.seoDescription || event.excerpt || '',
+    keywords: event.tags.join(', '),
+    authors: [{ name: 'SpaceOut' }],
     openGraph: {
       title: event.seoTitle || event.title,
       description: event.seoDescription || event.excerpt || '',
-      images: event.featuredImage ? [event.featuredImage] : [],
-      type: 'article',
+      url: eventUrl,
+      siteName: 'SpaceOut',
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: event.title,
+        },
+      ],
+      type: 'website',
+      locale: 'en_US',
     },
     twitter: {
       card: 'summary_large_image',
       title: event.seoTitle || event.title,
       description: event.seoDescription || event.excerpt || '',
-      images: event.featuredImage ? [event.featuredImage] : [],
+      images: [imageUrl],
+      creator: '@spaceout',
+    },
+    alternates: {
+      canonical: eventUrl,
     },
   };
 }

@@ -43,6 +43,9 @@ export function Header() {
           <Link href="/pricing" className="text-sm font-medium hover:text-primary transition-colors">
             Pricing
           </Link>
+          <Link href="/events" className="text-sm font-medium hover:text-primary transition-colors">
+            Events
+          </Link>
           <Link href="/gallery" className="text-sm font-medium hover:text-primary transition-colors">
             Gallery
           </Link>

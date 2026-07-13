@@ -15,6 +15,7 @@ import {
   Trash2,
   Eye,
   Calendar,
+  MapPin,
   FileText,
   Newspaper,
   Megaphone,
@@ -258,71 +259,89 @@ export default function EventsClientPage({ adminId }: { adminId: string }) {
           </div>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredEvents.map((event) => (
-            <Card key={event._id} className="p-6 hover:shadow-lg transition-shadow">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge className={getEventTypeColor(event.eventType)}>
-                      {getEventTypeIcon(event.eventType)}
-                      <span className="ml-1 capitalize">{event.eventType}</span>
-                    </Badge>
-                    {event.featured && (
-                      <Badge variant="secondary">Featured</Badge>
-                    )}
-                    <Badge variant={event.status === 'published' ? 'default' : 'outline'}>
-                      {event.status}
-                    </Badge>
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">{event.title}</h3>
-                  <p className="text-muted-foreground text-sm mb-3 line-clamp-2">{event.excerpt}</p>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    {event.eventDate && (
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(event.eventDate).toLocaleDateString()}
-                      </span>
-                    )}
-                    {event.location && <span>📍 {event.location}</span>}
+            <Card key={event._id} className="p-4 md:p-6 hover:shadow-lg transition-shadow flex flex-col">
+              <div className="flex-1">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <Badge className={getEventTypeColor(event.eventType)}>
+                    {getEventTypeIcon(event.eventType)}
+                    <span className="ml-1 capitalize">{event.eventType}</span>
+                  </Badge>
+                  {event.featured && (
+                    <Badge variant="secondary">Featured</Badge>
+                  )}
+                  <Badge variant={event.status === 'published' ? 'default' : 'outline'}>
+                    {event.status}
+                  </Badge>
+                </div>
+                <h3 className="text-lg md:text-xl font-semibold mb-2 line-clamp-2">{event.title}</h3>
+                <p className="text-muted-foreground text-sm mb-3 line-clamp-3 break-words">{event.excerpt}</p>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs md:text-sm text-muted-foreground mb-3">
+                  {event.eventDate && (
                     <span className="flex items-center gap-1">
-                      <Eye className="h-3 w-3" />
-                      {event.views} views
+                      <Calendar className="h-3 w-3" />
+                      {new Date(event.eventDate).toLocaleDateString()}
                     </span>
-                    <span>Tags: {event.tags.slice(0, 3).join(', ')}{event.tags.length > 3 ? '...' : ''}</span>
+                  )}
+                  {event.location && (
+                    <span className="flex items-center gap-1 truncate">
+                      <MapPin className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">{event.location}</span>
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1">
+                    <Eye className="h-3 w-3" />
+                    {event.views} views
+                  </span>
+                </div>
+                {event.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {event.tags.slice(0, 3).map((tag) => (
+                      <Badge key={tag} variant="outline" className="text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
+                    {event.tags.length > 3 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{event.tags.length - 3}
+                      </Badge>
+                    )}
                   </div>
-                </div>
-                <div className="flex items-center gap-2 ml-4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleToggleFeatured(event._id, event.featured)}
-                    title={event.featured ? 'Remove from featured' : 'Add to featured'}
-                  >
-                    <Eye className={`h-4 w-4 ${event.featured ? 'fill-current' : ''}`} />
+                )}
+              </div>
+              <div className="flex items-center gap-2 pt-3 border-t">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleToggleFeatured(event._id, event.featured)}
+                  title={event.featured ? 'Remove from featured' : 'Add to featured'}
+                  className="flex-1"
+                >
+                  <Eye className={`h-4 w-4 ${event.featured ? 'fill-current' : ''}`} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleToggleStatus(event._id, event.status)}
+                  title={event.status === 'published' ? 'Unpublish' : 'Publish'}
+                  className="flex-1"
+                >
+                  {event.status === 'published' ? '👁️' : '👁️‍🗨️'}
+                </Button>
+                <Link href={`/admin/dashboard/events/${event._id}/edit`} className="flex-1">
+                  <Button variant="ghost" size="sm" className="w-full">
+                    <Edit className="h-4 w-4" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleToggleStatus(event._id, event.status)}
-                    title={event.status === 'published' ? 'Unpublish' : 'Publish'}
-                  >
-                    {event.status === 'published' ? '👁️' : '👁️‍🗨️'}
-                  </Button>
-                  <Link href={`/admin/dashboard/events/${event._id}/edit`}>
-                    <Button variant="ghost" size="sm">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(event._id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDelete(event._id)}
+                  className="text-destructive hover:text-destructive flex-1"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </Card>
           ))}
