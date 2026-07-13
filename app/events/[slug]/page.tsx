@@ -47,8 +47,9 @@ type EventPageProps = {
 
 async function getEvent(slugOrId: string) {
   try {
-    // Use relative URL - works in both dev and production for Server Components
-    const response = await fetch(`/api/events/${slugOrId}`, {
+    // Construct absolute URL for Server Components
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/events/${slugOrId}`, {
       next: { revalidate: 60 },
     });
 
@@ -98,6 +99,10 @@ export default async function EventPage({ params }: EventPageProps) {
   const jsonLd = result?.jsonLd;
 
   if (!event || event.status !== 'published') {
+    console.error(`Event not found or not published: ${slug}`, { 
+      eventExists: !!event, 
+      status: event?.status 
+    });
     return notFound();
   }
 
