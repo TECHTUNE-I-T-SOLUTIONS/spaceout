@@ -309,7 +309,7 @@ export default function EventsClientPage({ adminId }: { adminId: string }) {
                   >
                     {event.status === 'published' ? '👁️' : '👁️‍🗨️'}
                   </Button>
-                  <Link href={`/admin/events/${event._id}/edit`}>
+                  <Link href={`/admin/dashboard/events/${event._id}/edit`}>
                     <Button variant="ghost" size="sm">
                       <Edit className="h-4 w-4" />
                     </Button>

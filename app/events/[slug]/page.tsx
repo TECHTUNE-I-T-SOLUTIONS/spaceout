@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import EventClientPage from '@/components/events/event-client-page';
 
 function buildJsonLd(event: any) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://spaceout.com';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.spaceoutworkstation.com';
   const url = `${siteUrl}/events/${event.slug || event._id}`;
   
   const baseSchema = {

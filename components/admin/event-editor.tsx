@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -81,8 +81,8 @@ export default function EventEditor({ adminId, eventId, initialData }: EventEdit
     seoDescription: initialData?.seo_description || "",
     slug: (initialData as any)?.slug || "",
     schemaType: "None",
-    eventDate: initialData?.eventDate || "",
-    eventEndDate: initialData?.eventEndDate || "",
+    eventDate: initialData?.eventDate ? new Date(initialData.eventDate).toISOString().slice(0, 16) : "",
+    eventEndDate: initialData?.eventEndDate ? new Date(initialData.eventEndDate).toISOString().slice(0, 16) : "",
     location: initialData?.location || "",
     registrationUrl: initialData?.registrationUrl || "",
     contactEmail: initialData?.contactEmail || "",
@@ -91,6 +91,9 @@ export default function EventEditor({ adminId, eventId, initialData }: EventEdit
   });
 
   const [featuredImagePreview, setFeaturedImagePreview] = useState<string | null>(null);
+  
+  // Initialize contentEditable with initial content
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const [newTag, setNewTag] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -103,6 +106,14 @@ export default function EventEditor({ adminId, eventId, initialData }: EventEdit
   const savedRangeRef = useRef<Range | null>(null);
 
   const contentIsEmpty = !formData.content || formData.content === "<p><br></p>" || formData.content === "";
+
+  // Initialize contentEditable with initial content
+  useEffect(() => {
+    if (initialData?.content && contentEditableRef.current && !isInitialized) {
+      contentEditableRef.current.innerHTML = initialData.content;
+      setIsInitialized(true);
+    }
+  }, [initialData, isInitialized]);
 
   // Save cursor position before opening modal
   const saveSelection = () => {

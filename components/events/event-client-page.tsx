@@ -85,11 +85,11 @@ export default function EventClientPage({ event }: EventClientPageProps) {
     >
       <Header />
       <div className="container py-12">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-auto mx-auto p-8">
           {/* Back Button */}
           <Link
             href="/events"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6 bg-background outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded-md px-3 py-1 hover:bg-muted shadow-md"
           >
             <span>←</span>
             <span>Back to Events</span>
