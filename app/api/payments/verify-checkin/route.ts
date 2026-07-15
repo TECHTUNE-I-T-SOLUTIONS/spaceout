@@ -24,16 +24,18 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    if (!response.data.status || !response.data.data.status) {
+    const paymentData = response.data.data;
+
+    if (!response.data.status || !paymentData.status) {
+      const isAdminInitiated = paymentData.metadata?.adminInitiated;
+      const redirectPath = isAdminInitiated ? '/admin/dashboard/checkins' : '/user/check-in';
       return NextResponse.redirect(
         new URL(
-          `/user/check-in?success=false&message=Payment not verified`,
+          `${redirectPath}?success=false&message=Payment not verified`,
           process.env.NEXT_PUBLIC_APP_URL
         )
       );
     }
-
-    const paymentData = response.data.data;
 
     // Connect to database
     await dbConnect();
@@ -78,9 +80,11 @@ export async function GET(request: NextRequest) {
       // Users will check in daily and records will be created then
 
       // Redirect to success page with subscription info
+      const isAdminInitiated = paymentData.metadata?.adminInitiated;
+      const redirectPath = isAdminInitiated ? '/admin/dashboard/checkins' : '/user/check-in';
       return NextResponse.redirect(
         new URL(
-          `/user/check-in?success=true&subscriptionId=${paymentData.metadata.subscriptionId}&selectedDays=${paymentData.metadata.selectedDays}`,
+          `${redirectPath}?success=true&subscriptionId=${paymentData.metadata.subscriptionId}&selectedDays=${paymentData.metadata.selectedDays}`,
           process.env.NEXT_PUBLIC_APP_URL
         )
       );
@@ -228,26 +232,31 @@ export async function GET(request: NextRequest) {
               subscriptionId: subscriptionId,
             });
 
+            const isAdminInitiated = paymentData.metadata?.adminInitiated;
+            const redirectPath = isAdminInitiated ? '/admin/dashboard/checkins' : '/user/check-in';
             return NextResponse.redirect(
               new URL(
-                `/user/check-in?success=true&subscriptionId=${subscriptionId}&checkInId=${checkIn._id}`,
+                `${redirectPath}?success=true&subscriptionId=${subscriptionId}&checkInId=${checkIn._id}`,
                 process.env.NEXT_PUBLIC_APP_URL
               )
             );
           }
 
+          const isAdminInitiated = paymentData.metadata?.adminInitiated;
+          const redirectPath = isAdminInitiated ? '/admin/dashboard/checkins' : '/user/check-in';
           return NextResponse.redirect(
             new URL(
-              `/user/check-in?success=true&subscriptionId=${subscriptionId}`,
+              `${redirectPath}?success=true&subscriptionId=${subscriptionId}`,
               process.env.NEXT_PUBLIC_APP_URL
             )
           );
         }
       // For single check-ins, create the record now that payment is verified
-      // First check if check-in already exists
+      // First check if check-in already exists with this payment reference
       const existingCheckIn = await CheckIn.findOne({
         userId: paymentData.metadata.userId,
         serviceId: paymentData.metadata.serviceId,
+        paymentStatus: 'pending',
         checkedInAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Within last 24 hours
       });
 
@@ -266,15 +275,18 @@ export async function GET(request: NextRequest) {
         }
 
         // Redirect to success page
+        const isAdminInitiated = paymentData.metadata?.adminInitiated;
+        const redirectPath = isAdminInitiated ? '/admin/dashboard/checkins' : '/user/check-in';
         return NextResponse.redirect(
           new URL(
-            `/user/check-in?success=true&serviceId=${existingCheckIn.serviceId}&checkInId=${existingCheckIn._id}`,
+            `${redirectPath}?success=true&serviceId=${existingCheckIn.serviceId}&checkInId=${existingCheckIn._id}`,
             process.env.NEXT_PUBLIC_APP_URL
           )
         );
       }
 
       // Create new check-in record
+      const checkInAmount = paymentData.metadata.checkInAmount || paymentData.metadata.totalPrice || paymentData.metadata.price || (paymentData.amount / 100);
       const checkIn = await CheckIn.create({
         userId: paymentData.metadata.userId,
         serviceId: paymentData.metadata.serviceId,
@@ -285,27 +297,54 @@ export async function GET(request: NextRequest) {
         durationInHours: paymentData.metadata.durationInHours,
         durationInDays: paymentData.metadata.durationInDays,
         selectedRate: paymentData.metadata.selectedRate,
-        amount: paymentData.metadata.checkInAmount,
-        wifiIncluded: paymentData.metadata.wifiIncluded,
+        amount: checkInAmount,
+        wifiIncluded: paymentData.metadata.wifiIncluded || false,
         status: 'checked_in',
         checkedInAt: new Date(),
         paymentStatus: 'completed',
         paymentVerifiedAt: new Date(),
       });
 
+      // Update payment record with check-in ID
+      await Payment.findByIdAndUpdate(
+        paymentData.metadata.paymentId,
+        { checkInId: checkIn._id },
+        { new: true }
+      );
+
       // Redirect to success page
+      const isAdminInitiated = paymentData.metadata?.adminInitiated;
+      const redirectPath = isAdminInitiated ? '/admin/dashboard/checkins' : '/user/check-in';
       return NextResponse.redirect(
         new URL(
-          `/user/check-in?success=true&serviceId=${checkIn.serviceId}&checkInId=${checkIn._id}`,
+          `${redirectPath}?success=true&serviceId=${checkIn.serviceId}&checkInId=${checkIn._id}`,
           process.env.NEXT_PUBLIC_APP_URL
         )
       );
     }
   } catch (error: any) {
     console.error('Payment verification error:', error);
+    // Try to get reference from URL to determine admin context
+    const reference = request.nextUrl.searchParams.get('reference');
+    let isAdminInitiated = false;
+    
+    if (reference) {
+      try {
+        await dbConnect();
+        const Payment = (await import('@/lib/models/Payment')).default;
+        const payment = await Payment.findOne({ reference });
+        if (payment?.metadata?.adminInitiated) {
+          isAdminInitiated = true;
+        }
+      } catch (err) {
+        console.error('Error checking payment metadata:', err);
+      }
+    }
+    
+    const redirectPath = isAdminInitiated ? '/admin/dashboard/checkins' : '/user/check-in';
     return NextResponse.redirect(
       new URL(
-        `/user/check-in?success=false&message=${encodeURIComponent(error.message)}`,
+        `${redirectPath}?success=false&message=${encodeURIComponent(error.message)}`,
         process.env.NEXT_PUBLIC_APP_URL
       )
     );

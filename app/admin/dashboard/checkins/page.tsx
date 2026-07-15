@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { Loader2, Search, LogOut, Calendar, Clock, History, Plus, Eye } from 'lucide-react';
+import { Loader2, Search, LogOut, Calendar, Clock, History, Plus, Eye, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CheckInRecord {
@@ -89,7 +89,9 @@ export default function CheckInsPage() {
   const [manualAmount, setManualAmount] = useState<string>('');
   const [selectedRate, setSelectedRate] = useState<string>('nonMember');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [checkingOutIds, setCheckingOutIds] = useState<Set<string>>(new Set());
 
   // Modal state
   const [selectedCheckIn, setSelectedCheckIn] = useState<CheckInRecord | null>(null);
@@ -99,6 +101,44 @@ export default function CheckInsPage() {
   useEffect(() => {
     fetchCheckIns();
   }, [filters, pagination.page, activeTab]);
+
+  // Handle success redirect from payment
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const subscriptionId = urlParams.get('subscriptionId');
+    const checkInId = urlParams.get('checkInId');
+
+    if (success === 'true') {
+      if (subscriptionId) {
+        toast.success('Payment successful!', {
+          description: 'The subscription has been activated successfully.',
+        });
+      } else if (checkInId) {
+        toast.success('Payment successful!', {
+          description: 'The check-in has been confirmed.',
+        });
+      } else {
+        toast.success('Payment successful!', {
+          description: 'The transaction was completed successfully.',
+        });
+      }
+
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Refresh check-ins list
+      fetchCheckIns();
+    } else if (success === 'false') {
+      const message = urlParams.get('message') || 'Payment failed';
+      toast.error('Payment Failed', {
+        description: message,
+      });
+      
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     // Load services when component mounts
@@ -301,6 +341,107 @@ export default function CheckInsPage() {
     }
   };
 
+  const handlePaymentCheckIn = async () => {
+    if (!selectedUser || !selectedService || !manualAmount) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+
+    try {
+      setIsProcessingPayment(true);
+
+      // Determine the rate based on user's membership status
+      let finalRate = selectedRate;
+      const isMembershipActive = selectedUser.hasMembership &&
+        selectedUser.membershipStatus === 'active' &&
+        (!selectedUser.membershipExpiryDate || new Date(selectedUser.membershipExpiryDate) > new Date());
+
+      if (isMembershipActive) {
+        finalRate = 'member';
+      } else {
+        finalRate = 'nonMember';
+      }
+
+      const payload = {
+        amount: Math.round(parseFloat(manualAmount) * 100), // Convert to kobo
+        email: selectedUser.email,
+        userId: selectedUser._id,
+        serviceId: selectedService._id,
+        serviceName: selectedService.name,
+        planName: selectedPlan?.planName || 'Manual Check-In',
+        planType: selectedPlan?.planType || 'manual',
+        durationLabel: selectedPlan?.durationLabel || 'Manual Entry',
+        durationInHours: selectedPlan?.durationInHours,
+        durationInDays: selectedPlan?.durationInDays,
+        selectedRate: finalRate,
+        price: parseFloat(manualAmount),
+        wifiIncluded: false,
+        totalPrice: parseFloat(manualAmount),
+        adminInitiated: true, // Flag to indicate this was initiated by admin
+      };
+
+      const response = await fetch('/api/payments/initialize-checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to initialize payment');
+      }
+
+      const data = await response.json();
+
+      // Redirect to Paystack
+      if (data.authorization_url) {
+        window.location.href = data.authorization_url;
+      }
+    } catch (error: any) {
+      console.error('Error initializing payment:', error);
+      toast.error('Payment Error', {
+        description: error.message || 'Failed to process payment',
+      });
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  const handleCheckout = async (checkInId: string) => {
+    if (checkingOutIds.has(checkInId)) return;
+
+    setCheckingOutIds(prev => new Set(prev).add(checkInId));
+
+    try {
+      const response = await fetch('/api/admin/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ checkInId }),
+      });
+
+      if (response.ok) {
+        toast.success('User Checked Out Successfully');
+        // Refresh check-ins list
+        fetchCheckIns();
+      } else {
+        const error = await response.json();
+        toast.error('Failed to Check Out', {
+          description: error.error || 'Please try again.',
+        });
+      }
+    } catch (error) {
+      console.error('Error checking out user:', error);
+      toast.error('Failed to Check Out', {
+        description: 'An error occurred while processing your request.',
+      });
+    } finally {
+      setCheckingOutIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(checkInId);
+        return newSet;
+      });
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -447,11 +588,31 @@ export default function CheckInsPage() {
                           {checkIn.paymentStatus === 'completed' ? '✓ Paid' : 'Pending'}
                         </Badge>
                         <Badge variant="outline">{checkIn.selectedRate}</Badge>
-                        {checkIn.checkedOutAt && (
+                        {checkIn.checkedOutAt ? (
                           <Badge variant="secondary" className="flex items-center gap-1">
                             <LogOut className="w-3 h-3" />
                             Checked Out
                           </Badge>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleCheckout(checkIn._id)}
+                            disabled={checkingOutIds.has(checkIn._id)}
+                            className="h-6 px-2 text-xs"
+                          >
+                            {checkingOutIds.has(checkIn._id) ? (
+                              <>
+                                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                Checking Out...
+                              </>
+                            ) : (
+                              <>
+                                <LogOut className="w-3 h-3 mr-1" />
+                                Check Out
+                              </>
+                            )}
+                          </Button>
                         )}
                         <Button
                           variant="ghost"
@@ -566,6 +727,32 @@ export default function CheckInsPage() {
                           {checkIn.paymentStatus === 'completed' ? '✓ Paid' : 'Pending'}
                         </Badge>
                         <Badge variant="outline">{checkIn.selectedRate}</Badge>
+                        {checkIn.checkedOutAt ? (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            <LogOut className="w-3 h-3" />
+                            Checked Out
+                          </Badge>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleCheckout(checkIn._id)}
+                            disabled={checkingOutIds.has(checkIn._id)}
+                            className="h-6 px-2 text-xs"
+                          >
+                            {checkingOutIds.has(checkIn._id) ? (
+                              <>
+                                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                Checking Out...
+                              </>
+                            ) : (
+                              <>
+                                <LogOut className="w-3 h-3 mr-1" />
+                                Check Out
+                              </>
+                            )}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </Card>
@@ -929,25 +1116,46 @@ export default function CheckInsPage() {
                   </Card>
                 )}
 
-                {/* Submit Button */}
-                <Button
-                  onClick={handleManualCheckIn}
-                  disabled={!selectedUser || !selectedService || !manualAmount || isSubmitting}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Creating Check-In...
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Create Manual Check-In & Record Payment
-                    </>
-                  )}
-                </Button>
+                {/* Submit Buttons */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Button
+                    onClick={handleManualCheckIn}
+                    disabled={!selectedUser || !selectedService || !manualAmount || isSubmitting || isProcessingPayment}
+                    className="w-full"
+                    size="lg"
+                    variant="outline"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Creating Check-In...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Check-In Without Payment
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={handlePaymentCheckIn}
+                    disabled={!selectedUser || !selectedService || !manualAmount || isSubmitting || isProcessingPayment}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {isProcessingPayment ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Processing Payment...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="w-4 h-4 mr-2" />
+                        Check-In With Payment
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </Card>
           </motion.div>

@@ -21,6 +21,7 @@ interface CheckInData {
   totalPrice?: number;
   selectedDays?: number;
   selectedHours?: number;
+  adminInitiated?: boolean;
 }
 
 export async function POST(request: NextRequest) {
@@ -47,9 +48,9 @@ export async function POST(request: NextRequest) {
     // Do NOT activate membership yet — activation should occur after successful payment verification
 
     // Handle single-day vs multi-day subscriptions
-    let checkInRecord;
-    let subscriptionRecord;
-    let checkInRecords = [];
+    let checkInRecord: any = null;
+    let subscriptionRecord: any = null;
+    let checkInRecords: any[] = [];
 
     if (data.selectedDays && data.selectedDays > 1) {
       // Create subscription for multi-day booking
@@ -141,6 +142,7 @@ export async function POST(request: NextRequest) {
           subscriptionId: subscriptionRecord?._id?.toString(),
           checkInIds: checkInRecords.map(c => c._id.toString()),
           checkInAmount: data.totalPrice || data.price,
+          adminInitiated: data.adminInitiated || false,
         },
         callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payments/verify-checkin`,
       },
