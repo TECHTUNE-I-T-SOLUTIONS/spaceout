@@ -100,8 +100,19 @@ export async function POST(request: NextRequest) {
       email,
       password,
       phone,
+      sex,
+      dateOfBirth,
+      houseAddress,
+      passportPhotoUrl,
+      signatureUrl,
+      isStudent,
+      educationalInfo,
+      businessInfo,
+      servicePreferences,
       branchId,
-      emergencyContact,
+      emergencyContactName,
+      emergencyContactPhone,
+      emergencyContactRelationship,
     } = body;
 
     // Validate required fields
@@ -117,10 +128,9 @@ export async function POST(request: NextRequest) {
 
     // Validate emergency contact
     if (
-      !emergencyContact ||
-      !emergencyContact.name ||
-      !emergencyContact.phone ||
-      !emergencyContact.relationship
+      !emergencyContactName ||
+      !emergencyContactPhone ||
+      !emergencyContactRelationship
     ) {
       return NextResponse.json(
         {
@@ -140,7 +150,7 @@ export async function POST(request: NextRequest) {
       'Friend',
       'Other',
     ];
-    if (!validRelationships.includes(emergencyContact.relationship)) {
+    if (!validRelationships.includes(emergencyContactRelationship)) {
       return NextResponse.json(
         {
           error: 'Invalid relationship value',
@@ -162,7 +172,7 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
-    // Create new user
+    // Create new user with all fields
     const newUser = new User({
       firstName,
       lastName,
@@ -170,15 +180,25 @@ export async function POST(request: NextRequest) {
       email: email.toLowerCase().trim(),
       password: hashedPassword,
       phone,
+      sex: sex || undefined,
+      dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+      houseAddress: houseAddress || undefined,
+      passportPhotoUrl: passportPhotoUrl || undefined,
+      signatureUrl: signatureUrl || undefined,
+      isStudent: isStudent === true || isStudent === 'true',
+      educationalInfo: educationalInfo || undefined,
+      businessInfo: businessInfo || undefined,
+      servicePreferences: servicePreferences || undefined,
       branchId,
       emergencyContact: {
-        name: emergencyContact.name,
-        phone: emergencyContact.phone,
-        relationship: emergencyContact.relationship,
+        name: emergencyContactName,
+        phone: emergencyContactPhone,
+        relationship: emergencyContactRelationship,
       },
       role: 'user',
       isActive: true,
       isEmailVerified: false,
+      documentsUploaded: !!(passportPhotoUrl && signatureUrl),
     });
 
     const savedUser = await newUser.save();

@@ -133,7 +133,7 @@ export function HomeContent() {
         <DialogTrigger asChild>
           <Button
             variant="outline"
-            className="fixed bottom-6 right-6 z-50 bg-white/80 text-black shadow-lg hover:bg-white"
+            className="fixed bottom-6 right-6 z-50 bg-white/80 dark:bg-white/80 text-black shadow-lg hover:bg-white"
             aria-label="Share SpaceOut via QR"
             style={{ borderRadius: 999 }}
           >

@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { Plus, Loader2, Trash2, Eye, Mail, Send } from 'lucide-react';
+import { Plus, Loader2, Trash2, Eye, Mail, Send, ChevronRight, ChevronLeft, Check, Upload, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -17,6 +17,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface User {
   _id: string;
@@ -61,19 +69,304 @@ export default function UsersPage() {
   const [deleting, setDeleting] = useState(false);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
+  const [createUserStep, setCreateUserStep] = useState(1);
+  const [branches, setBranches] = useState<{ _id: string; name: string; location: string }[]>([]);
+  const [isLoadingBranches, setIsLoadingBranches] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [createUserError, setCreateUserError] = useState('');
   const [createUserForm, setCreateUserForm] = useState({
+    // Step 1: Basic Information
     firstName: '',
     lastName: '',
     email: '',
     password: '',
+    confirmPassword: '',
     phone: '',
+    sex: '',
+    dateOfBirth: '',
+    houseAddress: '',
+    
+    // Step 2: Documents
+    passportPhoto: null as File | null,
+    signature: null as File | null,
+    passportPhotoPreview: '',
+    signaturePreview: '',
+    
+    // Step 3: Student Status
+    isStudent: '',
+    
+    // Step 4: Educational or Business Info
+    institution: '',
+    faculty: '',
+    courseOfStudy: '',
+    level: '',
+    firmName: '',
+    businessDescription: '',
+    officeAddress: '',
+    officeHotline: '',
+    officeEmail: '',
+    
+    // Step 5: Service Options
+    loyaltyOption: '',
+    bookingPreferences: [] as string[],
+    
+    // Step 6: Duration & Branch
+    usageDuration: '',
     branchId: '',
-    emergencyContact: {
-      name: '',
-      phone: '',
-      relationship: 'Parent',
-    },
+    
+    // Step 7: Emergency Contact
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    emergencyContactRelationship: 'Parent',
   });
+
+  const totalCreateUserSteps = 7;
+
+  const resetCreateUserForm = () => {
+    setCreateUserForm({
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      phone: '',
+      sex: '',
+      dateOfBirth: '',
+      houseAddress: '',
+      passportPhoto: null,
+      signature: null,
+      passportPhotoPreview: '',
+      signaturePreview: '',
+      isStudent: '',
+      institution: '',
+      faculty: '',
+      courseOfStudy: '',
+      level: '',
+      firmName: '',
+      businessDescription: '',
+      officeAddress: '',
+      officeHotline: '',
+      officeEmail: '',
+      loyaltyOption: '',
+      bookingPreferences: [],
+      usageDuration: '',
+      branchId: '',
+      emergencyContactName: '',
+      emergencyContactPhone: '',
+      emergencyContactRelationship: 'Parent',
+    });
+    setCreateUserStep(1);
+    setCreateUserError('');
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'passport' | 'signature') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        setCreateUserError('File size must be less than 10 MB');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const preview = reader.result as string;
+        if (fileType === 'passport') {
+          setCreateUserForm((prev) => ({ ...prev, passportPhoto: file, passportPhotoPreview: preview }));
+        } else {
+          setCreateUserForm((prev) => ({ ...prev, signature: file, signaturePreview: preview }));
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleBookingPreferenceToggle = (preference: string) => {
+    setCreateUserForm((prev) => ({
+      ...prev,
+      bookingPreferences: prev.bookingPreferences.includes(preference)
+        ? prev.bookingPreferences.filter((p) => p !== preference)
+        : [...prev.bookingPreferences, preference],
+    }));
+  };
+
+  const validateCreateUserStep = () => {
+    setCreateUserError('');
+    
+    if (createUserStep === 1) {
+      if (!createUserForm.firstName.trim()) {
+        setCreateUserError('First name is required');
+        return false;
+      }
+      if (!createUserForm.lastName.trim()) {
+        setCreateUserError('Last name is required');
+        return false;
+      }
+      if (!createUserForm.sex) {
+        setCreateUserError('Please select gender');
+        return false;
+      }
+      if (!createUserForm.dateOfBirth) {
+        setCreateUserError('Date of birth is required');
+        return false;
+      }
+      if (!createUserForm.houseAddress.trim()) {
+        setCreateUserError('House address is required');
+        return false;
+      }
+      if (!createUserForm.phone.trim()) {
+        setCreateUserError('Phone number is required');
+        return false;
+      }
+      if (!createUserForm.email.trim()) {
+        setCreateUserError('Email is required');
+        return false;
+      }
+      if (!createUserForm.password) {
+        setCreateUserError('Password is required');
+        return false;
+      }
+      if (createUserForm.password.length < 6) {
+        setCreateUserError('Password must be at least 6 characters');
+        return false;
+      }
+      if (createUserForm.password !== createUserForm.confirmPassword) {
+        setCreateUserError('Passwords do not match');
+        return false;
+      }
+    }
+
+    if (createUserStep === 2) {
+      if (!createUserForm.passportPhoto) {
+        setCreateUserError('Passport photograph is required');
+        return false;
+      }
+      if (!createUserForm.signature) {
+        setCreateUserError('Signature is required');
+        return false;
+      }
+    }
+
+    if (createUserStep === 3) {
+      if (!createUserForm.isStudent) {
+        setCreateUserError('Please indicate if you are a student');
+        return false;
+      }
+    }
+
+    if (createUserStep === 4) {
+      if (createUserForm.isStudent === 'yes') {
+        if (!createUserForm.institution.trim()) {
+          setCreateUserError('Tertiary institution is required');
+          return false;
+        }
+        if (!createUserForm.faculty.trim()) {
+          setCreateUserError('Faculty is required');
+          return false;
+        }
+        if (!createUserForm.courseOfStudy.trim()) {
+          setCreateUserError('Course of study is required');
+          return false;
+        }
+        if (!createUserForm.level.trim()) {
+          setCreateUserError('Level is required');
+          return false;
+        }
+      } else {
+        if (!createUserForm.firmName.trim()) {
+          setCreateUserError('Firm name is required');
+          return false;
+        }
+        if (!createUserForm.businessDescription.trim()) {
+          setCreateUserError('Business description is required');
+          return false;
+        }
+        if (!createUserForm.officeAddress.trim()) {
+          setCreateUserError('Office address is required');
+          return false;
+        }
+        if (!createUserForm.officeHotline.trim()) {
+          setCreateUserError('Office hotline is required');
+          return false;
+        }
+        if (!createUserForm.officeEmail.trim()) {
+          setCreateUserError('Office email is required');
+          return false;
+        }
+      }
+    }
+
+    if (createUserStep === 5) {
+      if (!createUserForm.loyaltyOption) {
+        setCreateUserError('Please select loyalty option');
+        return false;
+      }
+      if (createUserForm.bookingPreferences.length === 0) {
+        setCreateUserError('Please select at least one booking preference');
+        return false;
+      }
+    }
+
+    if (createUserStep === 6) {
+      if (!createUserForm.usageDuration) {
+        setCreateUserError('Please select duration');
+        return false;
+      }
+      if (!createUserForm.branchId) {
+        setCreateUserError('Please select a branch');
+        return false;
+      }
+    }
+
+    if (createUserStep === 7) {
+      if (!createUserForm.emergencyContactName.trim()) {
+        setCreateUserError('Emergency contact name is required');
+        return false;
+      }
+      if (!createUserForm.emergencyContactPhone.trim()) {
+        setCreateUserError('Emergency contact phone is required');
+        return false;
+      }
+      if (!createUserForm.emergencyContactRelationship.trim()) {
+        setCreateUserError('Emergency contact relationship is required');
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handleCreateUserNext = () => {
+    if (validateCreateUserStep()) {
+      setCreateUserStep((prev) => prev + 1);
+    }
+  };
+
+  const handleCreateUserPrevious = () => {
+    setCreateUserStep((prev) => prev - 1);
+    setCreateUserError('');
+  };
+
+  useEffect(() => {
+    fetchBranches();
+  }, []);
+
+  const fetchBranches = async () => {
+    try {
+      const response = await fetch('/api/branches');
+      if (!response.ok) throw new Error('Failed to fetch branches');
+      const data = await response.json();
+      setBranches(data);
+    } catch (err) {
+      console.error('Error fetching branches:', err);
+      setBranches([
+        { _id: '1', name: 'Downtown Branch', location: 'San Francisco, CA' },
+        { _id: '2', name: 'Uptown Branch', location: 'New York, NY' },
+      ]);
+    } finally {
+      setIsLoadingBranches(false);
+    }
+  };
 
   // Batch email states
   const [batchEmailSubject, setBatchEmailSubject] = useState('');
@@ -895,29 +1188,63 @@ export default function UsersPage() {
               e.preventDefault();
               try {
                 setCreatingUser(true);
+                setCreateUserError('');
+                
+                // Prepare the data for submission
+                const submitData: any = {
+                  firstName: createUserForm.firstName,
+                  lastName: createUserForm.lastName,
+                  email: createUserForm.email,
+                  password: createUserForm.password,
+                  phone: createUserForm.phone,
+                  sex: createUserForm.sex,
+                  dateOfBirth: createUserForm.dateOfBirth,
+                  houseAddress: createUserForm.houseAddress,
+                  passportPhotoUrl: createUserForm.passportPhotoPreview,
+                  signatureUrl: createUserForm.signaturePreview,
+                  isStudent: createUserForm.isStudent,
+                  branchId: createUserForm.branchId,
+                  emergencyContactName: createUserForm.emergencyContactName,
+                  emergencyContactPhone: createUserForm.emergencyContactPhone,
+                  emergencyContactRelationship: createUserForm.emergencyContactRelationship,
+                };
+
+                // Add educational info if student
+                if (createUserForm.isStudent === 'yes') {
+                  submitData.educationalInfo = {
+                    institution: createUserForm.institution,
+                    faculty: createUserForm.faculty,
+                    courseOfStudy: createUserForm.courseOfStudy,
+                    level: createUserForm.level,
+                  };
+                } else {
+                  submitData.businessInfo = {
+                    firmName: createUserForm.firmName,
+                    businessDescription: createUserForm.businessDescription,
+                    officeAddress: createUserForm.officeAddress,
+                    officeHotline: createUserForm.officeHotline,
+                    officeEmail: createUserForm.officeEmail,
+                  };
+                }
+
+                // Add service preferences
+                submitData.servicePreferences = {
+                  loyaltyOption: createUserForm.loyaltyOption,
+                  bookingPreferences: createUserForm.bookingPreferences,
+                  usageDuration: createUserForm.usageDuration,
+                };
+
                 const response = await fetch('/api/admin/users', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(createUserForm),
+                  body: JSON.stringify(submitData),
                 });
 
                 if (response.ok) {
                   toast.success('User Created', {
                     description: `${createUserForm.firstName} ${createUserForm.lastName} has been created successfully.`,
                   });
-                  setCreateUserForm({
-                    firstName: '',
-                    lastName: '',
-                    email: '',
-                    password: '',
-                    phone: '',
-                    branchId: '',
-                    emergencyContact: {
-                      name: '',
-                      phone: '',
-                      relationship: 'Parent',
-                    },
-                  });
+                  resetCreateUserForm();
                   setShowCreateUserModal(false);
                   await fetchUsers();
                 } else {
@@ -937,184 +1264,580 @@ export default function UsersPage() {
             }}
             className="space-y-4 pr-4"
           >
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="firstName">First Name *</Label>
-                <Input
-                  id="firstName"
-                  value={createUserForm.firstName}
-                  onChange={(e) =>
-                    setCreateUserForm({
-                      ...createUserForm,
-                      firstName: e.target.value,
-                    })
-                  }
-                  placeholder="John"
-                  className="mt-1"
-                  required
-                />
+            {createUserError && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                <p className="text-sm text-red-900 dark:text-red-100">{createUserError}</p>
               </div>
-              <div>
-                <Label htmlFor="lastName">Last Name *</Label>
-                <Input
-                  id="lastName"
-                  value={createUserForm.lastName}
-                  onChange={(e) =>
-                    setCreateUserForm({
-                      ...createUserForm,
-                      lastName: e.target.value,
-                    })
-                  }
-                  placeholder="Doe"
-                  className="mt-1"
-                  required
-                />
-              </div>
-            </div>
+            )}
 
-            <div>
-              <Label htmlFor="email">Email Address *</Label>
-              <Input
-                id="email"
-                type="email"
-                value={createUserForm.email}
-                onChange={(e) =>
-                  setCreateUserForm({
-                    ...createUserForm,
-                    email: e.target.value,
-                  })
-                }
-                placeholder="john@example.com"
-                className="mt-1"
-                required
-              />
-            </div>
+            {createUserStep === 1 && (
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Personal Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="firstName">First Name *</Label>
+                    <Input
+                      id="firstName"
+                      value={createUserForm.firstName}
+                      onChange={(e) =>
+                        setCreateUserForm({
+                          ...createUserForm,
+                          firstName: e.target.value,
+                        })
+                      }
+                      placeholder="John"
+                      className="mt-1"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName">Last Name *</Label>
+                    <Input
+                      id="lastName"
+                      value={createUserForm.lastName}
+                      onChange={(e) =>
+                        setCreateUserForm({
+                          ...createUserForm,
+                          lastName: e.target.value,
+                        })
+                      }
+                      placeholder="Doe"
+                      className="mt-1"
+                      required
+                    />
+                  </div>
+                </div>
 
-            <div>
-              <Label htmlFor="password">Password *</Label>
-              <Input
-                id="password"
-                type="password"
-                value={createUserForm.password}
-                onChange={(e) =>
-                  setCreateUserForm({
-                    ...createUserForm,
-                    password: e.target.value,
-                  })
-                }
-                placeholder="••••••••"
-                className="mt-1"
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="phone">Phone Number *</Label>
-              <Input
-                id="phone"
-                value={createUserForm.phone}
-                onChange={(e) =>
-                  setCreateUserForm({
-                    ...createUserForm,
-                    phone: e.target.value,
-                  })
-                }
-                placeholder="+234 (0) 809 988 5454"
-                className="mt-1"
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="branchId">Branch ID *</Label>
-              <Input
-                id="branchId"
-                value={createUserForm.branchId}
-                onChange={(e) =>
-                  setCreateUserForm({
-                    ...createUserForm,
-                    branchId: e.target.value,
-                  })
-                }
-                placeholder="Branch ObjectId"
-                className="mt-1"
-                required
-              />
-            </div>
-
-            <div className="border-t pt-4 mt-4">
-              <h4 className="font-semibold text-sm mb-3">Emergency Contact</h4>
-
-              <div className="grid grid-cols-2 gap-4 mb-3">
                 <div>
-                  <Label htmlFor="ecName">Contact Name *</Label>
+                  <Label>Sex *</Label>
+                  <RadioGroup value={createUserForm.sex} onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, sex: value }))}>
+                    <div className="flex items-center space-x-4 mt-2">
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="female" id="female" />
+                        <Label htmlFor="female" className="font-normal cursor-pointer">Female</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="male" id="male" />
+                        <Label htmlFor="male" className="font-normal cursor-pointer">Male</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="prefer-not-to-say" id="prefer" />
+                        <Label htmlFor="prefer" className="font-normal cursor-pointer">Prefer not to say</Label>
+                      </div>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="dateOfBirth">D.O.B *</Label>
+                    <Input
+                      id="dateOfBirth"
+                      type="date"
+                      value={createUserForm.dateOfBirth}
+                      onChange={(e) =>
+                        setCreateUserForm({
+                          ...createUserForm,
+                          dateOfBirth: e.target.value,
+                        })
+                      }
+                      className="mt-1"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="houseAddress">House Address *</Label>
                   <Input
-                    id="ecName"
-                    value={createUserForm.emergencyContact.name}
+                    id="houseAddress"
+                    value={createUserForm.houseAddress}
                     onChange={(e) =>
                       setCreateUserForm({
                         ...createUserForm,
-                        emergencyContact: {
-                          ...createUserForm.emergencyContact,
-                          name: e.target.value,
-                        },
+                        houseAddress: e.target.value,
                       })
                     }
-                    placeholder="Jane Doe"
+                    placeholder="123 Main Street, City"
                     className="mt-1"
                     required
                   />
                 </div>
+
                 <div>
-                  <Label htmlFor="ecPhone">Contact Phone *</Label>
+                  <Label htmlFor="phone">Mobile No. *</Label>
                   <Input
-                    id="ecPhone"
-                    value={createUserForm.emergencyContact.phone}
+                    id="phone"
+                    type="tel"
+                    value={createUserForm.phone}
                     onChange={(e) =>
                       setCreateUserForm({
                         ...createUserForm,
-                        emergencyContact: {
-                          ...createUserForm.emergencyContact,
-                          phone: e.target.value,
-                        },
+                        phone: e.target.value,
                       })
                     }
-                    placeholder="+234 (0) 809 988 5454"
+                    placeholder="+234 800 000 0000"
                     className="mt-1"
                     required
                   />
                 </div>
-              </div>
 
-              <div>
-                <Label htmlFor="relationship">Relationship *</Label>
-                <select
-                  id="relationship"
-                  aria-label="Emergency contact relationship"
-                  value={createUserForm.emergencyContact.relationship}
-                  onChange={(e) =>
-                    setCreateUserForm({
-                      ...createUserForm,
-                      emergencyContact: {
-                        ...createUserForm.emergencyContact,
-                        relationship: e.target.value,
-                      },
-                    })
-                  }
-                  className="mt-1 w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
-                  required
-                >
-                  <option value="Spouse">Spouse</option>
-                  <option value="Parent">Parent</option>
-                  <option value="Child">Child</option>
-                  <option value="Sibling">Sibling</option>
-                  <option value="Friend">Friend</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-            </div>
+                <div>
+                  <Label htmlFor="email">Email Address *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={createUserForm.email}
+                    onChange={(e) =>
+                      setCreateUserForm({
+                        ...createUserForm,
+                        email: e.target.value,
+                      })
+                    }
+                    placeholder="your@email.com"
+                    className="mt-1"
+                    required
+                  />
+                </div>
 
-            <div className="flex gap-2 justify-end pt-4">
+                <div>
+                  <Label htmlFor="password">Password *</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={createUserForm.password}
+                      onChange={(e) =>
+                        setCreateUserForm({
+                          ...createUserForm,
+                          password: e.target.value,
+                        })
+                      }
+                      placeholder="••••••••"
+                      className="mt-1"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={createUserForm.confirmPassword}
+                      onChange={(e) =>
+                        setCreateUserForm({
+                          ...createUserForm,
+                          confirmPassword: e.target.value,
+                        })
+                      }
+                      placeholder="••••••••"
+                      className="mt-1"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-3"
+                    >
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {createUserStep === 2 && (
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                <div className="space-y-6">
+                  <h3 className="text-lg font-semibold">Documents</h3>
+                  <div>
+                  <Label>Passport Photograph *</Label>
+                  <p className="text-sm text-muted-foreground mb-3">Upload 1 supported file: image. Max 10 MB.</p>
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent cursor-pointer transition">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange(e, 'passport')}
+                      className="hidden"
+                      id="passportInput"
+                    />
+                    <label htmlFor="passportInput" className="cursor-pointer block">
+                      {createUserForm.passportPhotoPreview ? (
+                        <img src={createUserForm.passportPhotoPreview} alt="Passport" className="h-32 w-32 object-cover rounded mx-auto" />
+                      ) : (
+                        <div>
+                          <Upload className="mx-auto mb-2" size={32} />
+                          <p>Click to upload passport photograph</p>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Signature *</Label>
+                  <p className="text-sm text-muted-foreground mb-3">Upload 1 supported file: drawing or image. Max 10 MB.</p>
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent cursor-pointer transition">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange(e, 'signature')}
+                      className="hidden"
+                      id="signatureInput"
+                    />
+                    <label htmlFor="signatureInput" className="cursor-pointer block">
+                      {createUserForm.signaturePreview ? (
+                        <img src={createUserForm.signaturePreview} alt="Signature" className="h-32 w-32 object-cover rounded mx-auto" />
+                      ) : (
+                        <div>
+                          <Upload className="mx-auto mb-2" size={32} />
+                          <p>Click to upload signature</p>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {createUserStep === 3 && (
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Student Status</h3>
+                  <div>
+                    <Label>Are you a Student? *</Label>
+                    <RadioGroup value={createUserForm.isStudent} onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, isStudent: value }))}>
+                      <div className="flex items-center space-x-6 mt-4">
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="yes" id="student-yes" />
+                          <Label htmlFor="student-yes" className="font-normal cursor-pointer">Yes</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="no" id="student-no" />
+                          <Label htmlFor="student-no" className="font-normal cursor-pointer">No</Label>
+                        </div>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {createUserStep === 4 && (
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                <div className="space-y-4">
+                  {createUserForm.isStudent === 'yes' ? (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4">Educational Information</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="institution">Tertiary Institution *</Label>
+                        <Input
+                          id="institution"
+                          value={createUserForm.institution}
+                          onChange={(e) =>
+                            setCreateUserForm({
+                              ...createUserForm,
+                              institution: e.target.value,
+                            })
+                          }
+                          placeholder="University of Lagos"
+                          className="mt-1"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="faculty">Faculty *</Label>
+                        <Input
+                          id="faculty"
+                          value={createUserForm.faculty}
+                          onChange={(e) =>
+                            setCreateUserForm({
+                              ...createUserForm,
+                              faculty: e.target.value,
+                            })
+                          }
+                          placeholder="Science"
+                          className="mt-1"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="courseOfStudy">Course of Study *</Label>
+                        <Input
+                          id="courseOfStudy"
+                          value={createUserForm.courseOfStudy}
+                          onChange={(e) =>
+                            setCreateUserForm({
+                              ...createUserForm,
+                              courseOfStudy: e.target.value,
+                            })
+                          }
+                          placeholder="Computer Science"
+                          className="mt-1"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="level">Level *</Label>
+                        <Input
+                          id="level"
+                          value={createUserForm.level}
+                          onChange={(e) =>
+                            setCreateUserForm({
+                              ...createUserForm,
+                              level: e.target.value,
+                            })
+                          }
+                          placeholder="200 Level"
+                          className="mt-1"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Business Information</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="firmName">Firm Name *</Label>
+                        <Input
+                          id="firmName"
+                          value={createUserForm.firmName}
+                          onChange={(e) =>
+                            setCreateUserForm({
+                              ...createUserForm,
+                              firmName: e.target.value,
+                            })
+                          }
+                          placeholder="Your Company Name"
+                          className="mt-1"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="businessDescription">Business Description *</Label>
+                        <textarea
+                          id="businessDescription"
+                          value={createUserForm.businessDescription}
+                          onChange={(e) =>
+                            setCreateUserForm({
+                              ...createUserForm,
+                              businessDescription: e.target.value,
+                            })
+                          }
+                          placeholder="Describe your business"
+                          className="w-full border rounded-md p-2 h-20 mt-1"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="officeAddress">Office Address *</Label>
+                        <Input
+                          id="officeAddress"
+                          value={createUserForm.officeAddress}
+                          onChange={(e) =>
+                            setCreateUserForm({
+                              ...createUserForm,
+                              officeAddress: e.target.value,
+                            })
+                          }
+                          placeholder="123 Business Ave"
+                          className="mt-1"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="officeHotline">Office Hotline *</Label>
+                        <Input
+                          id="officeHotline"
+                          value={createUserForm.officeHotline}
+                          onChange={(e) =>
+                            setCreateUserForm({
+                              ...createUserForm,
+                              officeHotline: e.target.value,
+                            })
+                          }
+                          placeholder="+234 800 000 0000"
+                          className="mt-1"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="officeEmail">Office Email *</Label>
+                        <Input
+                          id="officeEmail"
+                          type="email"
+                          value={createUserForm.officeEmail}
+                          onChange={(e) =>
+                            setCreateUserForm({
+                              ...createUserForm,
+                              officeEmail: e.target.value,
+                            })
+                          }
+                          placeholder="info@company.com"
+                          className="mt-1"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {createUserStep === 5 && (
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                <div className="space-y-6">
+                  <h3 className="text-lg font-semibold">Service Options</h3>
+                  <div>
+                    <Label>Loyalty *</Label>
+                  <RadioGroup value={createUserForm.loyaltyOption} onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, loyaltyOption: value }))}>
+                    <div className="flex items-center space-x-6 mt-3">
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="card" id="loyalty-card" />
+                        <Label htmlFor="loyalty-card" className="font-normal cursor-pointer">Card</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="no-card" id="loyalty-no-card" />
+                        <Label htmlFor="loyalty-no-card" className="font-normal cursor-pointer">No Card</Label>
+                      </div>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div>
+                  <Label>Bookings *</Label>
+                  <div className="space-y-3 mt-3">
+                    {['General Workspace', 'Office Setup', 'Conference Room', 'Special Offer', 'Content Creation'].map((booking) => (
+                      <div key={booking} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={booking}
+                          checked={createUserForm.bookingPreferences.includes(booking)}
+                          onChange={() => handleBookingPreferenceToggle(booking)}
+                          className="w-4 h-4"
+                        />
+                        <Label htmlFor={booking} className="font-normal cursor-pointer">
+                          {booking}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {createUserStep === 6 && (
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                <div className="space-y-6">
+                  <h3 className="text-lg font-semibold">Workspace Duration & Branch</h3>
+                  <div>
+                    <Label htmlFor="usageDuration">Duration *</Label>
+                  <Select value={createUserForm.usageDuration} onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, usageDuration: value }))}>
+                    <SelectTrigger id="usageDuration">
+                      <SelectValue placeholder="Select duration" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hourly">Hourly</SelectItem>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                      <SelectItem value="bi-annual">Bi-Annual</SelectItem>
+                      <SelectItem value="annual">Annual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="branchId">Select Branch *</Label>
+                  <Select value={createUserForm.branchId} onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, branchId: value }))}>
+                    <SelectTrigger id="branchId" disabled={isLoadingBranches}>
+                      <SelectValue placeholder={isLoadingBranches ? 'Loading branches...' : 'Select a branch'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {branches.map((branch) => (
+                        <SelectItem key={branch._id} value={branch._id}>
+                          {branch.name} - {branch.location}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </motion.div>
+            )}
+
+            {createUserStep === 7 && (
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Emergency Contact</h3>
+                  <div>
+                    <Label htmlFor="emergencyContactName">Emergency Contact Name *</Label>
+                  <Input
+                    id="emergencyContactName"
+                    value={createUserForm.emergencyContactName}
+                    onChange={(e) =>
+                      setCreateUserForm({
+                        ...createUserForm,
+                        emergencyContactName: e.target.value,
+                      })
+                    }
+                    placeholder="John Doe"
+                    className="mt-1"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="emergencyContactPhone">Emergency Contact Phone *</Label>
+                  <Input
+                    id="emergencyContactPhone"
+                    value={createUserForm.emergencyContactPhone}
+                    onChange={(e) =>
+                      setCreateUserForm({
+                        ...createUserForm,
+                        emergencyContactPhone: e.target.value,
+                      })
+                    }
+                    placeholder="+234 803 555 0590"
+                    className="mt-1"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="emergencyContactRelationship">Relationship *</Label>
+                  <Select value={createUserForm.emergencyContactRelationship} onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, emergencyContactRelationship: value }))}>
+                    <SelectTrigger id="emergencyContactRelationship">
+                      <SelectValue placeholder="Select relationship" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Parent">Parent</SelectItem>
+                      <SelectItem value="Sibling">Sibling</SelectItem>
+                      <SelectItem value="Spouse">Spouse</SelectItem>
+                      <SelectItem value="Child">Child</SelectItem>
+                      <SelectItem value="Friend">Friend</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </motion.div>
+            )}
+
+            <div className="flex gap-2 justify-between pt-4 border-t">
               <Button
                 type="button"
                 variant="outline"
@@ -1122,23 +1845,47 @@ export default function UsersPage() {
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={creatingUser}
-                className="flex items-center gap-2"
-              >
-                {creatingUser ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Plus size={16} />
-                    Create User
-                  </>
+              <div className="flex gap-2">
+                {createUserStep > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setCreateUserStep((prev) => prev - 1)}
+                    className="flex items-center gap-2"
+                  >
+                    <ChevronLeft size={18} />
+                    Previous
+                  </Button>
                 )}
-              </Button>
+                {createUserStep < totalCreateUserSteps ? (
+                  <Button
+                    type="button"
+                    onClick={() => setCreateUserStep((prev) => prev + 1)}
+                    className="flex items-center gap-2"
+                  >
+                    Next
+                    <ChevronRight size={18} />
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={creatingUser}
+                    className="flex items-center gap-2"
+                  >
+                    {creatingUser ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <Check size={16} />
+                        Create User
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
             </div>
           </form>
         </DialogContent>
