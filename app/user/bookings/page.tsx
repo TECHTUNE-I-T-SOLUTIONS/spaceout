@@ -2,7 +2,6 @@
 
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { Plus, Loader2, Trash2, MapPin, Clock, AlertCircle } from 'lucide-react';
@@ -190,16 +189,6 @@ export default function BookingsPage() {
       setLoading(false);
     }
   };
-
-  // Dynamically import jsPDF only when needed
-  let jsPDF: any = null;
-  async function getJsPDF() {
-    if (!jsPDF) {
-      const mod = await import('jspdf');
-      jsPDF = mod.jsPDF;
-    }
-    return jsPDF;
-  }
 
   const fetchServices = async () => {
     try {

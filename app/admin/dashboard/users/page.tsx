@@ -1274,185 +1274,37 @@ export default function UsersPage() {
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Personal Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="firstName">First Name *</Label>
-                    <Input
-                      id="firstName"
-                      value={createUserForm.firstName}
-                      onChange={(e) =>
-                        setCreateUserForm({
-                          ...createUserForm,
-                          firstName: e.target.value,
-                        })
-                      }
-                      placeholder="John"
-                      className="mt-1"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="lastName">Last Name *</Label>
-                    <Input
-                      id="lastName"
-                      value={createUserForm.lastName}
-                      onChange={(e) =>
-                        setCreateUserForm({
-                          ...createUserForm,
-                          lastName: e.target.value,
-                        })
-                      }
-                      placeholder="Doe"
-                      className="mt-1"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Sex *</Label>
-                  <RadioGroup value={createUserForm.sex} onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, sex: value }))}>
-                    <div className="flex items-center space-x-4 mt-2">
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="female" id="female" />
-                        <Label htmlFor="female" className="font-normal cursor-pointer">Female</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="male" id="male" />
-                        <Label htmlFor="male" className="font-normal cursor-pointer">Male</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="prefer-not-to-say" id="prefer" />
-                        <Label htmlFor="prefer" className="font-normal cursor-pointer">Prefer not to say</Label>
-                      </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="firstName">First Name *</Label>
+                      <Input id="firstName" value={createUserForm.firstName} onChange={(e) => setCreateUserForm({ ...createUserForm, firstName: e.target.value })} placeholder="John" className="mt-1" required />
                     </div>
-                  </RadioGroup>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="lastName">Last Name *</Label>
+                      <Input id="lastName" value={createUserForm.lastName} onChange={(e) => setCreateUserForm({ ...createUserForm, lastName: e.target.value })} placeholder="Doe" className="mt-1" required />
+                    </div>
+                  </div>
                   <div>
-                    <Label htmlFor="dateOfBirth">D.O.B *</Label>
-                    <Input
-                      id="dateOfBirth"
-                      type="date"
-                      value={createUserForm.dateOfBirth}
-                      onChange={(e) =>
-                        setCreateUserForm({
-                          ...createUserForm,
-                          dateOfBirth: e.target.value,
-                        })
-                      }
-                      className="mt-1"
-                      required
-                    />
+                    <Label>Sex *</Label>
+                    <RadioGroup value={createUserForm.sex} onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, sex: value }))}>
+                      <div className="mt-2 flex items-center space-x-4">
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="female" id="female" /><Label htmlFor="female" className="cursor-pointer font-normal">Female</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="male" id="male" /><Label htmlFor="male" className="cursor-pointer font-normal">Male</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="prefer-not-to-say" id="prefer" /><Label htmlFor="prefer" className="cursor-pointer font-normal">Prefer not to say</Label></div>
+                      </div>
+                    </RadioGroup>
                   </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="houseAddress">House Address *</Label>
-                  <Input
-                    id="houseAddress"
-                    value={createUserForm.houseAddress}
-                    onChange={(e) =>
-                      setCreateUserForm({
-                        ...createUserForm,
-                        houseAddress: e.target.value,
-                      })
-                    }
-                    placeholder="123 Main Street, City"
-                    className="mt-1"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="phone">Mobile No. *</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={createUserForm.phone}
-                    onChange={(e) =>
-                      setCreateUserForm({
-                        ...createUserForm,
-                        phone: e.target.value,
-                      })
-                    }
-                    placeholder="+234 800 000 0000"
-                    className="mt-1"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="email">Email Address *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={createUserForm.email}
-                    onChange={(e) =>
-                      setCreateUserForm({
-                        ...createUserForm,
-                        email: e.target.value,
-                      })
-                    }
-                    placeholder="your@email.com"
-                    className="mt-1"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="password">Password *</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={createUserForm.password}
-                      onChange={(e) =>
-                        setCreateUserForm({
-                          ...createUserForm,
-                          password: e.target.value,
-                        })
-                      }
-                      placeholder="••••••••"
-                      className="mt-1"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-3"
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="dateOfBirth">D.O.B *</Label>
+                      <Input id="dateOfBirth" type="date" value={createUserForm.dateOfBirth} onChange={(e) => setCreateUserForm({ ...createUserForm, dateOfBirth: e.target.value })} className="mt-1" required />
+                    </div>
                   </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                  <div className="relative">
-                    <Input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      value={createUserForm.confirmPassword}
-                      onChange={(e) =>
-                        setCreateUserForm({
-                          ...createUserForm,
-                          confirmPassword: e.target.value,
-                        })
-                      }
-                      placeholder="••••••••"
-                      className="mt-1"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-3"
-                    >
-                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
+                  <div><Label htmlFor="houseAddress">House Address *</Label><Input id="houseAddress" value={createUserForm.houseAddress} onChange={(e) => setCreateUserForm({ ...createUserForm, houseAddress: e.target.value })} placeholder="123 Main Street, City" className="mt-1" required /></div>
+                  <div><Label htmlFor="phone">Mobile No. *</Label><Input id="phone" type="tel" value={createUserForm.phone} onChange={(e) => setCreateUserForm({ ...createUserForm, phone: e.target.value })} placeholder="+234 800 000 0000" className="mt-1" required /></div>
+                  <div><Label htmlFor="email">Email Address *</Label><Input id="email" type="email" value={createUserForm.email} onChange={(e) => setCreateUserForm({ ...createUserForm, email: e.target.value })} placeholder="your@email.com" className="mt-1" required /></div>
+                  <div><Label htmlFor="password">Password *</Label><div className="relative"><Input id="password" type={showPassword ? 'text' : 'password'} value={createUserForm.password} onChange={(e) => setCreateUserForm({ ...createUserForm, password: e.target.value })} placeholder="Password" className="mt-1" required /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div></div>
+                  <div><Label htmlFor="confirmPassword">Confirm Password *</Label><div className="relative"><Input id="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} value={createUserForm.confirmPassword} onChange={(e) => setCreateUserForm({ ...createUserForm, confirmPassword: e.target.value })} placeholder="Confirm password" className="mt-1" required /><button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-3">{showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div></div>
                 </div>
               </motion.div>
             )}
@@ -1461,76 +1313,15 @@ export default function UsersPage() {
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
                 <div className="space-y-6">
                   <h3 className="text-lg font-semibold">Documents</h3>
-                  <div>
-                  <Label>Passport Photograph *</Label>
-                  <p className="text-sm text-muted-foreground mb-3">Upload 1 supported file: image. Max 10 MB.</p>
-                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent cursor-pointer transition">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileChange(e, 'passport')}
-                      className="hidden"
-                      id="passportInput"
-                    />
-                    <label htmlFor="passportInput" className="cursor-pointer block">
-                      {createUserForm.passportPhotoPreview ? (
-                        <img src={createUserForm.passportPhotoPreview} alt="Passport" className="h-32 w-32 object-cover rounded mx-auto" />
-                      ) : (
-                        <div>
-                          <Upload className="mx-auto mb-2" size={32} />
-                          <p>Click to upload passport photograph</p>
-                        </div>
-                      )}
-                    </label>
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Signature *</Label>
-                  <p className="text-sm text-muted-foreground mb-3">Upload 1 supported file: drawing or image. Max 10 MB.</p>
-                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent cursor-pointer transition">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileChange(e, 'signature')}
-                      className="hidden"
-                      id="signatureInput"
-                    />
-                    <label htmlFor="signatureInput" className="cursor-pointer block">
-                      {createUserForm.signaturePreview ? (
-                        <img src={createUserForm.signaturePreview} alt="Signature" className="h-32 w-32 object-cover rounded mx-auto" />
-                      ) : (
-                        <div>
-                          <Upload className="mx-auto mb-2" size={32} />
-                          <p>Click to upload signature</p>
-                        </div>
-                      )}
-                    </label>
-                  </div>
+                  <div><Label>Passport Photograph *</Label><p className="mb-3 text-sm text-muted-foreground">Upload 1 supported file: image. Max 10 MB.</p><div className="cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition hover:bg-accent"><input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'passport')} className="hidden" id="passportInput" /><label htmlFor="passportInput" className="block cursor-pointer">{createUserForm.passportPhotoPreview ? <img src={createUserForm.passportPhotoPreview} alt="Passport" className="mx-auto h-32 w-32 rounded object-cover" /> : <div><Upload className="mx-auto mb-2" size={32} /><p>Click to upload passport photograph</p></div>}</label></div></div>
+                  <div><Label>Signature *</Label><p className="mb-3 text-sm text-muted-foreground">Upload 1 supported file: drawing or image. Max 10 MB.</p><div className="cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition hover:bg-accent"><input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'signature')} className="hidden" id="signatureInput" /><label htmlFor="signatureInput" className="block cursor-pointer">{createUserForm.signaturePreview ? <img src={createUserForm.signaturePreview} alt="Signature" className="mx-auto h-32 w-32 rounded object-cover" /> : <div><Upload className="mx-auto mb-2" size={32} /><p>Click to upload signature</p></div>}</label></div></div>
                 </div>
               </motion.div>
             )}
 
             {createUserStep === 3 && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Student Status</h3>
-                  <div>
-                    <Label>Are you a Student? *</Label>
-                    <RadioGroup value={createUserForm.isStudent} onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, isStudent: value }))}>
-                      <div className="flex items-center space-x-6 mt-4">
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="yes" id="student-yes" />
-                          <Label htmlFor="student-yes" className="font-normal cursor-pointer">Yes</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="no" id="student-no" />
-                          <Label htmlFor="student-no" className="font-normal cursor-pointer">No</Label>
-                        </div>
-                      </div>
-                    </RadioGroup>
-                  </div>
-                </div>
+                <div className="space-y-4"><h3 className="text-lg font-semibold">Student Status</h3><div><Label>Are you a Student? *</Label><RadioGroup value={createUserForm.isStudent} onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, isStudent: value }))}><div className="mt-4 flex items-center space-x-6"><div className="flex items-center space-x-2"><RadioGroupItem value="yes" id="student-yes" /><Label htmlFor="student-yes" className="cursor-pointer font-normal">Yes</Label></div><div className="flex items-center space-x-2"><RadioGroupItem value="no" id="student-no" /><Label htmlFor="student-no" className="cursor-pointer font-normal">No</Label></div></div></RadioGroup></div></div>
               </motion.div>
             )}
 
@@ -1538,163 +1329,11 @@ export default function UsersPage() {
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
                 <div className="space-y-4">
                   {createUserForm.isStudent === 'yes' ? (
-                    <div>
-                      <h3 className="text-lg font-semibold mb-4">Educational Information</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="institution">Tertiary Institution *</Label>
-                        <Input
-                          id="institution"
-                          value={createUserForm.institution}
-                          onChange={(e) =>
-                            setCreateUserForm({
-                              ...createUserForm,
-                              institution: e.target.value,
-                            })
-                          }
-                          placeholder="University of Lagos"
-                          className="mt-1"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="faculty">Faculty *</Label>
-                        <Input
-                          id="faculty"
-                          value={createUserForm.faculty}
-                          onChange={(e) =>
-                            setCreateUserForm({
-                              ...createUserForm,
-                              faculty: e.target.value,
-                            })
-                          }
-                          placeholder="Science"
-                          className="mt-1"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="courseOfStudy">Course of Study *</Label>
-                        <Input
-                          id="courseOfStudy"
-                          value={createUserForm.courseOfStudy}
-                          onChange={(e) =>
-                            setCreateUserForm({
-                              ...createUserForm,
-                              courseOfStudy: e.target.value,
-                            })
-                          }
-                          placeholder="Computer Science"
-                          className="mt-1"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="level">Level *</Label>
-                        <Input
-                          id="level"
-                          value={createUserForm.level}
-                          onChange={(e) =>
-                            setCreateUserForm({
-                              ...createUserForm,
-                              level: e.target.value,
-                            })
-                          }
-                          placeholder="200 Level"
-                          className="mt-1"
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4">Business Information</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="firmName">Firm Name *</Label>
-                        <Input
-                          id="firmName"
-                          value={createUserForm.firmName}
-                          onChange={(e) =>
-                            setCreateUserForm({
-                              ...createUserForm,
-                              firmName: e.target.value,
-                            })
-                          }
-                          placeholder="Your Company Name"
-                          className="mt-1"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="businessDescription">Business Description *</Label>
-                        <textarea
-                          id="businessDescription"
-                          value={createUserForm.businessDescription}
-                          onChange={(e) =>
-                            setCreateUserForm({
-                              ...createUserForm,
-                              businessDescription: e.target.value,
-                            })
-                          }
-                          placeholder="Describe your business"
-                          className="w-full border rounded-md p-2 h-20 mt-1"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="officeAddress">Office Address *</Label>
-                        <Input
-                          id="officeAddress"
-                          value={createUserForm.officeAddress}
-                          onChange={(e) =>
-                            setCreateUserForm({
-                              ...createUserForm,
-                              officeAddress: e.target.value,
-                            })
-                          }
-                          placeholder="123 Business Ave"
-                          className="mt-1"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="officeHotline">Office Hotline *</Label>
-                        <Input
-                          id="officeHotline"
-                          value={createUserForm.officeHotline}
-                          onChange={(e) =>
-                            setCreateUserForm({
-                              ...createUserForm,
-                              officeHotline: e.target.value,
-                            })
-                          }
-                          placeholder="+234 800 000 0000"
-                          className="mt-1"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="officeEmail">Office Email *</Label>
-                        <Input
-                          id="officeEmail"
-                          type="email"
-                          value={createUserForm.officeEmail}
-                          onChange={(e) =>
-                            setCreateUserForm({
-                              ...createUserForm,
-                              officeEmail: e.target.value,
-                            })
-                          }
-                          placeholder="info@company.com"
-                          className="mt-1"
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
+                    <div className="space-y-4"><h3 className="mb-4 text-lg font-semibold">Educational Information</h3><div><Label htmlFor="institution">Tertiary Institution *</Label><Input id="institution" value={createUserForm.institution} onChange={(e) => setCreateUserForm({ ...createUserForm, institution: e.target.value })} placeholder="University of Lagos" className="mt-1" required /></div><div><Label htmlFor="faculty">Faculty *</Label><Input id="faculty" value={createUserForm.faculty} onChange={(e) => setCreateUserForm({ ...createUserForm, faculty: e.target.value })} placeholder="Science" className="mt-1" required /></div><div><Label htmlFor="courseOfStudy">Course of Study *</Label><Input id="courseOfStudy" value={createUserForm.courseOfStudy} onChange={(e) => setCreateUserForm({ ...createUserForm, courseOfStudy: e.target.value })} placeholder="Computer Science" className="mt-1" required /></div><div><Label htmlFor="level">Level *</Label><Input id="level" value={createUserForm.level} onChange={(e) => setCreateUserForm({ ...createUserForm, level: e.target.value })} placeholder="200 Level" className="mt-1" required /></div></div>
+                  ) : (
+                    <div className="space-y-4"><h3 className="mb-4 text-lg font-semibold">Business Information</h3><div><Label htmlFor="firmName">Firm Name *</Label><Input id="firmName" value={createUserForm.firmName} onChange={(e) => setCreateUserForm({ ...createUserForm, firmName: e.target.value })} placeholder="Your Company Name" className="mt-1" required /></div><div><Label htmlFor="businessDescription">Business Description *</Label><textarea id="businessDescription" value={createUserForm.businessDescription} onChange={(e) => setCreateUserForm({ ...createUserForm, businessDescription: e.target.value })} placeholder="Describe your business" className="mt-1 h-20 w-full rounded-md border p-2" required /></div><div><Label htmlFor="officeAddress">Office Address *</Label><Input id="officeAddress" value={createUserForm.officeAddress} onChange={(e) => setCreateUserForm({ ...createUserForm, officeAddress: e.target.value })} placeholder="123 Business Ave" className="mt-1" required /></div><div><Label htmlFor="officeHotline">Office Hotline *</Label><Input id="officeHotline" value={createUserForm.officeHotline} onChange={(e) => setCreateUserForm({ ...createUserForm, officeHotline: e.target.value })} placeholder="+234 800 000 0000" className="mt-1" required /></div><div><Label htmlFor="officeEmail">Office Email *</Label><Input id="officeEmail" type="email" value={createUserForm.officeEmail} onChange={(e) => setCreateUserForm({ ...createUserForm, officeEmail: e.target.value })} placeholder="info@company.com" className="mt-1" required /></div></div>
+                  )}
+                </div>
               </motion.div>
             )}
 
@@ -1702,40 +1341,8 @@ export default function UsersPage() {
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
                 <div className="space-y-6">
                   <h3 className="text-lg font-semibold">Service Options</h3>
-                  <div>
-                    <Label>Loyalty *</Label>
-                  <RadioGroup value={createUserForm.loyaltyOption} onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, loyaltyOption: value }))}>
-                    <div className="flex items-center space-x-6 mt-3">
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="card" id="loyalty-card" />
-                        <Label htmlFor="loyalty-card" className="font-normal cursor-pointer">Card</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="no-card" id="loyalty-no-card" />
-                        <Label htmlFor="loyalty-no-card" className="font-normal cursor-pointer">No Card</Label>
-                      </div>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                <div>
-                  <Label>Bookings *</Label>
-                  <div className="space-y-3 mt-3">
-                    {['General Workspace', 'Office Setup', 'Conference Room', 'Special Offer', 'Content Creation'].map((booking) => (
-                      <div key={booking} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id={booking}
-                          checked={createUserForm.bookingPreferences.includes(booking)}
-                          onChange={() => handleBookingPreferenceToggle(booking)}
-                          className="w-4 h-4"
-                        />
-                        <Label htmlFor={booking} className="font-normal cursor-pointer">
-                          {booking}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
+                  <div><Label>Loyalty *</Label><RadioGroup value={createUserForm.loyaltyOption} onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, loyaltyOption: value }))}><div className="mt-3 flex items-center space-x-6"><div className="flex items-center space-x-2"><RadioGroupItem value="card" id="loyalty-card" /><Label htmlFor="loyalty-card" className="cursor-pointer font-normal">Card</Label></div><div className="flex items-center space-x-2"><RadioGroupItem value="no-card" id="loyalty-no-card" /><Label htmlFor="loyalty-no-card" className="cursor-pointer font-normal">No Card</Label></div></div></RadioGroup></div>
+                  <div><Label>Bookings *</Label><div className="mt-3 space-y-3">{['General Workspace', 'Office Setup', 'Conference Room', 'Special Offer', 'Content Creation'].map((booking) => (<div key={booking} className="flex items-center space-x-2"><input type="checkbox" id={booking} checked={createUserForm.bookingPreferences.includes(booking)} onChange={() => handleBookingPreferenceToggle(booking)} className="h-4 w-4" /><Label htmlFor={booking} className="cursor-pointer font-normal">{booking}</Label></div>))}</div></div>
                 </div>
               </motion.div>
             )}
@@ -1744,96 +1351,15 @@ export default function UsersPage() {
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
                 <div className="space-y-6">
                   <h3 className="text-lg font-semibold">Workspace Duration & Branch</h3>
-                  <div>
-                    <Label htmlFor="usageDuration">Duration *</Label>
-                  <Select value={createUserForm.usageDuration} onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, usageDuration: value }))}>
-                    <SelectTrigger id="usageDuration">
-                      <SelectValue placeholder="Select duration" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hourly">Hourly</SelectItem>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="quarterly">Quarterly</SelectItem>
-                      <SelectItem value="bi-annual">Bi-Annual</SelectItem>
-                      <SelectItem value="annual">Annual</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="branchId">Select Branch *</Label>
-                  <Select value={createUserForm.branchId} onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, branchId: value }))}>
-                    <SelectTrigger id="branchId" disabled={isLoadingBranches}>
-                      <SelectValue placeholder={isLoadingBranches ? 'Loading branches...' : 'Select a branch'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {branches.map((branch) => (
-                        <SelectItem key={branch._id} value={branch._id}>
-                          {branch.name} - {branch.location}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div><Label htmlFor="usageDuration">Duration *</Label><Select value={createUserForm.usageDuration} onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, usageDuration: value }))}><SelectTrigger id="usageDuration"><SelectValue placeholder="Select duration" /></SelectTrigger><SelectContent><SelectItem value="hourly">Hourly</SelectItem><SelectItem value="daily">Daily</SelectItem><SelectItem value="weekly">Weekly</SelectItem><SelectItem value="monthly">Monthly</SelectItem><SelectItem value="quarterly">Quarterly</SelectItem><SelectItem value="bi-annual">Bi-Annual</SelectItem><SelectItem value="annual">Annual</SelectItem></SelectContent></Select></div>
+                  <div><Label htmlFor="branchId">Select Branch *</Label><Select value={createUserForm.branchId} onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, branchId: value }))}><SelectTrigger id="branchId" disabled={isLoadingBranches}><SelectValue placeholder={isLoadingBranches ? 'Loading branches...' : 'Select a branch'} /></SelectTrigger><SelectContent>{branches.map((branch) => (<SelectItem key={branch._id} value={branch._id}>{branch.name} - {branch.location}</SelectItem>))}</SelectContent></Select></div>
                 </div>
               </motion.div>
             )}
 
             {createUserStep === 7 && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Emergency Contact</h3>
-                  <div>
-                    <Label htmlFor="emergencyContactName">Emergency Contact Name *</Label>
-                  <Input
-                    id="emergencyContactName"
-                    value={createUserForm.emergencyContactName}
-                    onChange={(e) =>
-                      setCreateUserForm({
-                        ...createUserForm,
-                        emergencyContactName: e.target.value,
-                      })
-                    }
-                    placeholder="John Doe"
-                    className="mt-1"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="emergencyContactPhone">Emergency Contact Phone *</Label>
-                  <Input
-                    id="emergencyContactPhone"
-                    value={createUserForm.emergencyContactPhone}
-                    onChange={(e) =>
-                      setCreateUserForm({
-                        ...createUserForm,
-                        emergencyContactPhone: e.target.value,
-                      })
-                    }
-                    placeholder="+234 803 555 0590"
-                    className="mt-1"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="emergencyContactRelationship">Relationship *</Label>
-                  <Select value={createUserForm.emergencyContactRelationship} onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, emergencyContactRelationship: value }))}>
-                    <SelectTrigger id="emergencyContactRelationship">
-                      <SelectValue placeholder="Select relationship" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Parent">Parent</SelectItem>
-                      <SelectItem value="Sibling">Sibling</SelectItem>
-                      <SelectItem value="Spouse">Spouse</SelectItem>
-                      <SelectItem value="Child">Child</SelectItem>
-                      <SelectItem value="Friend">Friend</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <div className="space-y-4"><h3 className="text-lg font-semibold">Emergency Contact</h3><div><Label htmlFor="emergencyContactName">Emergency Contact Name *</Label><Input id="emergencyContactName" value={createUserForm.emergencyContactName} onChange={(e) => setCreateUserForm({ ...createUserForm, emergencyContactName: e.target.value })} placeholder="John Doe" className="mt-1" required /></div><div><Label htmlFor="emergencyContactPhone">Emergency Contact Phone *</Label><Input id="emergencyContactPhone" value={createUserForm.emergencyContactPhone} onChange={(e) => setCreateUserForm({ ...createUserForm, emergencyContactPhone: e.target.value })} placeholder="+234 803 555 0590" className="mt-1" required /></div><div><Label htmlFor="emergencyContactRelationship">Relationship *</Label><Select value={createUserForm.emergencyContactRelationship} onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, emergencyContactRelationship: value }))}><SelectTrigger id="emergencyContactRelationship"><SelectValue placeholder="Select relationship" /></SelectTrigger><SelectContent><SelectItem value="Parent">Parent</SelectItem><SelectItem value="Sibling">Sibling</SelectItem><SelectItem value="Spouse">Spouse</SelectItem><SelectItem value="Child">Child</SelectItem><SelectItem value="Friend">Friend</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent></Select></div></div>
               </motion.div>
             )}
 

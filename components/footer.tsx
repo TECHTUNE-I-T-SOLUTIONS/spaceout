@@ -11,6 +11,21 @@ export function Footer() {
             <h4 className="font-semibold mb-4">Product</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
+                <Link href="/hub" className="hover:text-foreground transition-colors">
+                  SpaceOut Hub
+                </Link>
+              </li>
+              <li>
+                <Link href="/hub/trainings" className="hover:text-foreground transition-colors">
+                  Trainings
+                </Link>
+              </li>
+              <li>
+                <Link href="/hub/gallery" className="hover:text-foreground transition-colors">
+                  Hub Gallery
+                </Link>
+              </li>
+              <li>
                 <Link href="/services" className="hover:text-foreground transition-colors">
                   Services
                 </Link>
