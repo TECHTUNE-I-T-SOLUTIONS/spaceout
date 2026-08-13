@@ -45,10 +45,10 @@ export function HubHero({ config }: { config: HubConfig }) {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.15 }}
-            className="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl"
+            className="mt-6 max-w-auto text-lg leading-relaxed text-muted-foreground sm:text-xl"
           >
             {config.heroSubtitle ||
-              'Hands-on tech trainings for kids, teens and beginners across design, coding, AI, digital skills and more.'}
+              'Hands-on tech trainings for kids, teens, Interns (SIWES Students), Corp members and beginners across design, coding, AI, digital skills and more.'}
           </motion.p>
 
           <motion.div

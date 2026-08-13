@@ -216,7 +216,7 @@ const DEFAULT_HUB_CONFIG = {
   heroBadge: 'SPACEOUT HUB',
   heroTitle: 'Practical tech trainings for learners who want to build.',
   heroSubtitle:
-    'SpaceOut Hub is the learning arm of SpaceOut. We run hands-on tech trainings for kids, teens and beginners across design, coding, AI, digital skills and more.',
+    'SpaceOut Hub is the learning arm of SpaceOut. We run hands-on tech trainings for kids, teens, Interns (SIWES Students), Corp members and beginners across design, coding, AI, digital skills and more.',
   aboutTitle: 'What is SpaceOut Hub?',
   aboutText:
     'SpaceOut Hub is the learning arm of SpaceOut - a dedicated space for holiday bootcamps and practical tech trainings. Students and beginners learn hands-on from experienced instructors, complete real projects and leave with skills they can actually use.',
