@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, Briefcase, DollarSign, LayoutDashboard, GraduationCap } from 'lucide-react';
+import { Home, Briefcase, DollarSign, UserCheck, GraduationCap } from 'lucide-react';
 
 export function MobileBottomNav() {
   const pathname = usePathname();
@@ -29,7 +29,7 @@ export function MobileBottomNav() {
       isActive: pathname === '/services',
     },
     {
-      name: 'Hub',
+      name: 'Tech',
       href: '/hub',
       icon: GraduationCap,
       isActive: pathname === '/hub' || pathname?.startsWith('/hub'),
@@ -41,10 +41,10 @@ export function MobileBottomNav() {
       isActive: pathname === '/pricing',
     },
     {
-      name: 'Dashboard',
-      href: '/user/dashboard',
-      icon: LayoutDashboard,
-      isActive: pathname?.startsWith('/user/dashboard'),
+      name: 'Checkin',
+      href: '/user/check-in',
+      icon: UserCheck,
+      isActive: pathname === '/user/check-in',
     },
   ];
 

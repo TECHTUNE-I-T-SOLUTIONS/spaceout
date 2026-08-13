@@ -26,10 +26,10 @@ export function HubHero({ config }: { config: HubConfig }) {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-primary"
+            className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-primary"
           >
             <Sparkles className="h-3.5 w-3.5" />
-            {config.heroBadge || 'SPACEOUT HUB'}
+            {config.heroBadge || 'SPACEOUT TECH'}
           </motion.span>
 
           <motion.h1

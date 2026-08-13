@@ -12,7 +12,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
                 <Link href="/hub" className="hover:text-foreground transition-colors">
-                  SpaceOut Hub
+                  SpaceOut Tech
                 </Link>
               </li>
               <li>
@@ -22,7 +22,7 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/hub/gallery" className="hover:text-foreground transition-colors">
-                  Hub Gallery
+                  Tech Gallery
                 </Link>
               </li>
               <li>

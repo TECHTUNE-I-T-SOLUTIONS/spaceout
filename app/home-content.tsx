@@ -43,8 +43,9 @@ export function HomeContent() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [featuredEvents, setFeaturedEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
+  const [techPrograms, setTechPrograms] = useState<any[]>([]);
 
-  // Fetch featured/published events
+  // Fetch featured/published events and tech programs
   useEffect(() => {
     const fetchFeaturedEvents = async () => {
       try {
@@ -60,7 +61,21 @@ export function HomeContent() {
       }
     };
 
+    const fetchTechPrograms = async () => {
+      try {
+        const response = await fetch('/api/public/hub');
+        if (response.ok) {
+          const data = await response.json();
+          const programs = data.programs || [];
+          setTechPrograms(programs.slice(0, 3));
+        }
+      } catch (error) {
+        console.error('Error fetching tech programs:', error);
+      }
+    };
+
     fetchFeaturedEvents();
+    fetchTechPrograms();
   }, []);
 
   const containerVariants = {
@@ -386,6 +401,69 @@ export function HomeContent() {
           </motion.div>
         </div>
       </section>
+
+      {/* Tech (formerly Hub) Section */}
+      {techPrograms.length > 0 && (
+        <section className="py-20 border-t border-border bg-background">
+          <div className="w-full px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+            <motion.div
+              // @ts-ignore
+              className="text-center mb-16"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <span className="text-xs font-semibold uppercase tracking-widest text-primary mb-2 block">
+                SpaceOut Tech
+              </span>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Learn. Build. Grow.</h2>
+              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                Practical tech trainings for learners who want to build. We offer hands-on bootcamps in design, coding, AI, and digital skills. We run hands-on tech trainings for kids, teens, Interns (SIWES Students), Corp members and beginners across design, coding, AI, digital skills and more.
+              </p>
+            </motion.div>
+
+            <motion.div
+              // @ts-ignore
+              className="grid md:grid-cols-3 gap-6 mb-12"
+              variants={containerVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+            >
+              {techPrograms.map((program) => (
+                <motion.div key={program._id || program.title} variants={itemVariants}>
+                  <Card className="flex flex-col p-6 h-full hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 hover:-translate-y-1">
+                    <h3 className="text-xl font-semibold mb-3">{program.title}</h3>
+                    <p className="text-muted-foreground text-sm flex-1">{program.description}</p>
+                    {program.tags && program.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-4">
+                        {program.tags.slice(0, 3).map((tag: string) => (
+                          <span key={tag} className="text-xs px-2 py-1 bg-muted rounded-full text-muted-foreground">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </Card>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/hub/trainings">
+                <Button size="lg" className="w-full sm:w-auto">
+                  View Trainings
+                </Button>
+              </Link>
+              <Link href="/hub">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                  Explore Tech
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Featured Events Section */}
       {!loadingEvents && featuredEvents.length > 0 && (

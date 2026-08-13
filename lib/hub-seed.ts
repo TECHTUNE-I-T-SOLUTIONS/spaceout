@@ -213,13 +213,13 @@ const DEFAULT_TESTIMONIALS = [
 export { DEFAULT_HIGHLIGHTS, DEFAULT_STATS, DEFAULT_PROGRAMS };
 
 const DEFAULT_HUB_CONFIG = {
-  heroBadge: 'SPACEOUT HUB',
+  heroBadge: 'SPACEOUT TECH',
   heroTitle: 'Practical tech trainings for learners who want to build.',
   heroSubtitle:
-    'SpaceOut Hub is the learning arm of SpaceOut. We run hands-on tech trainings for kids, teens, Interns (SIWES Students), Corp members and beginners across design, coding, AI, digital skills and more.',
-  aboutTitle: 'What is SpaceOut Hub?',
+    'SpaceOut Tech is the learning arm of SpaceOut. We run hands-on tech trainings for kids, teens, Interns (SIWES Students), Corp members and beginners across design, coding, AI, digital skills and more.',
+  aboutTitle: 'What is SpaceOut Tech?',
   aboutText:
-    'SpaceOut Hub is the learning arm of SpaceOut - a dedicated space for holiday bootcamps and practical tech trainings. Students and beginners learn hands-on from experienced instructors, complete real projects and leave with skills they can actually use.',
+    'SpaceOut Tech is the learning arm of SpaceOut - a dedicated space for holiday bootcamps and practical tech trainings. Students and beginners learn hands-on from experienced instructors, complete real projects and leave with skills they can actually use.',
   programsTitle: 'Programs & Tracks',
   programsSubtitle: 'Choose a track and start building. New sessions open regularly.',
   scheduleTitle: 'Current & Upcoming Trainings',
@@ -229,7 +229,7 @@ const DEFAULT_HUB_CONFIG = {
   testimonialsTitle: 'What Learners Say',
   testimonialsSubtitle: 'Real people. Real skills. Real results.',
   ctaTitle: 'Ready to start your journey?',
-  ctaSubtitle: 'Reserve your spot in the next SpaceOut Hub training.',
+  ctaSubtitle: 'Reserve your spot in the next SpaceOut Tech training.',
   ctaButtonText: 'Register Now',
   contactEmail: 'info@spaceoutworkstation.com',
   contactPhone: '08099885454/08034882447',
@@ -311,19 +311,6 @@ export async function seedHubDefaults() {
       status: 'ongoing',
       featured: true,
     });
-  } else {
-    await HubSession.findOneAndUpdate(
-      { slug: DEFAULT_SESSION.slug },
-      {
-        $set: {
-          ...DEFAULT_SESSION,
-          status: 'ongoing',
-          featured: true,
-        },
-      },
-      { upsert: true, new: true }
-    );
-    await HubSession.deleteMany({ slug: { $ne: DEFAULT_SESSION.slug }, status: 'ongoing' });
   }
 
   const testimonialCount = await HubTestimonial.countDocuments();
