@@ -13,7 +13,7 @@ export function HubHighlights({ config }: { config: HubConfig }) {
       <div className="mx-auto w-full max-w-7xl px-4 py-16 lg:py-24">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Why SpaceOut Hub?
+            Why SpaceOut Tech?
           </h2>
           <p className="mt-4 text-base text-muted-foreground sm:text-lg">
             Everything you need to actually learn — packed into one focused experience.

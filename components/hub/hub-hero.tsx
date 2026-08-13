@@ -105,7 +105,7 @@ export function HubHero({ config }: { config: HubConfig }) {
             <div className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
               <Image
                 src={heroImage}
-                alt={config.heroTitle || 'SpaceOut Hub'}
+                alt={config.heroTitle || 'SpaceOut Tech'}
                 width={900}
                 height={700}
                 className="aspect-[4/3] w-full object-cover"
@@ -114,7 +114,7 @@ export function HubHero({ config }: { config: HubConfig }) {
               {secondaryImage && (
                 <Image
                   src={secondaryImage}
-                  alt="SpaceOut Hub session"
+                  alt="SpaceOut Tech session"
                   width={400}
                   height={300}
                   className="absolute -bottom-6 -left-6 hidden w-40 rounded-2xl border-4 border-background object-cover shadow-xl sm:block"

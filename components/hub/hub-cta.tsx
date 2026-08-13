@@ -26,7 +26,7 @@ export function HubCta({ config }: { config: HubConfig }) {
             {config.ctaTitle || 'Ready to start your journey?'}
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground sm:text-lg">
-            {config.ctaSubtitle || 'Reserve your spot in the next SpaceOut Hub cohort.'}
+            {config.ctaSubtitle || 'Reserve your spot in the next SpaceOut Tech cohort.'}
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link

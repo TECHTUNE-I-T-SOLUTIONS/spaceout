@@ -185,7 +185,7 @@ const DEFAULT_TESTIMONIALS = [
     name: 'Tolu A.',
     role: 'Student - Web Development Training',
     content:
-      'The SpaceOut Hub training completely changed how I see tech. I went from zero to building my own website in four weeks!',
+      'The SpaceOut Tech training completely changed how I see tech. I went from zero to building my own website in four weeks!',
     rating: 5,
     featured: true,
     isActive: true,

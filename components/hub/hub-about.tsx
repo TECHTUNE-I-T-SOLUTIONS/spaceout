@@ -21,14 +21,14 @@ export function HubAbout({ config }: { config: HubConfig }) {
           className="flex-1"
         >
           <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary">
-            <GraduationCap className="h-4 w-4" /> The learning arm of SpaceOut
+            <GraduationCap className="h-4 w-4" /> The Learning Arm of SpaceOut
           </span>
           <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
-            {config.aboutTitle || 'What is SpaceOut Hub?'}
+            {config.aboutTitle || 'What is SpaceOut Tech?'}
           </h2>
           <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg">
             {config.aboutText ||
-              'SpaceOut Hub is the learning arm of SpaceOut — a dedicated space for summer bootcamps and hands-on tech trainings. Students, beginners and enthusiasts learn from real instructors in a focused environment, complete projects and walk away ready to create.'}
+              'SpaceOut Tech is the learning arm of SpaceOut — a dedicated space for summer bootcamps and hands-on tech trainings. Students, beginners and enthusiasts learn from real instructors in a focused environment, complete projects and walk away ready to create.'}
           </p>
 
           {stats.length > 0 && (
@@ -61,7 +61,7 @@ export function HubAbout({ config }: { config: HubConfig }) {
             <div className="overflow-hidden rounded-3xl border border-border shadow-xl">
               <Image
                 src={image}
-                alt={config.aboutTitle || 'SpaceOut Hub'}
+                alt={config.aboutTitle || 'SpaceOut Tech'}
                 width={900}
                 height={600}
                 className="aspect-[16/11] w-full object-cover"

@@ -99,7 +99,7 @@ export function HubOverviewTab({ adminId }: { adminId: string }) {
             <Input
               value={config.heroBadge || ''}
               onChange={(e) => update('heroBadge', e.target.value)}
-              placeholder="SPACEOUT HUB"
+              placeholder="SPACEOUT TECH"
             />
           </div>
           <div className="grid gap-2">
@@ -208,7 +208,7 @@ export function HubOverviewTab({ adminId }: { adminId: string }) {
       {/* Highlights */}
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle>Why SpaceOut Hub (Highlights)</CardTitle>
+          <CardTitle>Why SpaceOut Tech (Highlights)</CardTitle>
           <Button type="button" variant="outline" size="sm" onClick={addHighlight}>
             <Plus className="h-4 w-4" /> Add Highlight
           </Button>

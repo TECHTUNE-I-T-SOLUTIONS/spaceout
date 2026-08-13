@@ -26,7 +26,7 @@ export interface IHubConfig extends Document {
   aboutTitle: string;
   aboutText: string;
 
-  // Highlights (why spaceout hub)
+  // Highlights (why spaceout tech)
   highlights: IHubHighlight[];
 
   // Stats

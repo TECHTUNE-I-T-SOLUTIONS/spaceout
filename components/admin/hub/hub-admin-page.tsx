@@ -18,7 +18,7 @@ export function HubAdminPage({ adminId }: { adminId: string }) {
         <div>
           <div className="flex items-center gap-2">
             <GraduationCap className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold">SpaceOut Hub</h1>
+            <h1 className="text-2xl font-bold">SpaceOut Tech</h1>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             Manage the tech trainings page, schedules, courses, gallery and testimonials.

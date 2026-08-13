@@ -60,10 +60,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return {
     metadataBase: new URL(siteUrl),
-    title: `${session.title} • SpaceOut Hub`,
+    title: `${session.title} • SpaceOut Tech`,
     description: session.description || undefined,
     openGraph: {
-      title: `${session.title} — SpaceOut Hub`,
+      title: `${session.title} — SpaceOut Tech`,
       description: session.description || undefined,
       url,
       images: [{ url: image, alt: session.title }],
@@ -230,7 +230,7 @@ export default async function HubTrainingPage({ params }: Props) {
 
           {programs?.length ? (
             <div className="mt-16">
-              <h2 className="text-2xl font-bold tracking-tight">Other programs at SpaceOut Hub</h2>
+              <h2 className="text-2xl font-bold tracking-tight">Other programs at SpaceOut Tech</h2>
               <HubPrograms config={config} programs={programs} />
             </div>
           ) : null}

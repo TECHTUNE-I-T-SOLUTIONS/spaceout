@@ -53,7 +53,7 @@ export default function HubGalleryPage() {
         <section className="w-full border-b border-border bg-card">
           <div className="mx-auto w-full max-w-full px-4 py-14 text-center sm:py-20 md:px-6 lg:px-10 xl:px-16">
             <span className="text-xs font-semibold uppercase tracking-widest text-primary">
-              SpaceOut Hub
+              SpaceOut Tech
             </span>
             <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
               {config.galleryTitle || 'From Our Trainings'}
@@ -77,9 +77,8 @@ export default function HubGalleryPage() {
                     <button
                       key={cat.value}
                       onClick={() => setCategory(cat.value)}
-                      className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-                        category === cat.value ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'
-                      }`}
+                      className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${category === cat.value ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'
+                        }`}
                     >
                       {cat.label}
                     </button>

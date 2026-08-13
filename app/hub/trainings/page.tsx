@@ -32,14 +32,14 @@ export default function HubTrainingsPage() {
         <section className="w-full border-b border-border bg-card">
           <div className="mx-auto w-full max-w-7xl px-4 py-14 text-center sm:py-20">
             <span className="text-xs font-semibold uppercase tracking-widest text-primary">
-              SpaceOut Hub
+              SpaceOut Tech
             </span>
             <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
               Current Training
             </h1>
             <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
               {config.heroSubtitle ||
-                'SpaceOut Hub is the learning arm of SpaceOut offering practical tech trainings in programming, design, social media marketing, AI, computer literacy, photography and more.'}
+                'SpaceOut Tech is the learning arm of SpaceOut offering practical tech trainings in programming, design, social media marketing, AI, computer literacy, photography and more.'}
             </p>
           </div>
         </section>
