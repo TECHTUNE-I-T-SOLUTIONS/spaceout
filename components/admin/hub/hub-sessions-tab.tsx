@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import type { HubSession } from '@/components/hub/hub-types';
 import { formatFee } from '@/components/hub/hub-types';
 import { FileUpload } from '@/components/file-upload';
+import { DeleteConfirmModal } from '@/components/modals/delete-confirm-modal';
 
 const STATUSES = ['draft', 'upcoming', 'ongoing', 'completed'] as const;
 
@@ -57,6 +58,9 @@ export function HubSessionsTab({ adminId }: { adminId: string }) {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const toDateInput = (d?: string) => (d ? new Date(d).toISOString().slice(0, 10) : '');
 
@@ -82,6 +86,29 @@ export function HubSessionsTab({ adminId }: { adminId: string }) {
   const openNew = () => {
     setEditingId(null);
     setForm(EMPTY_FORM);
+    setOpen(true);
+  };
+
+  const openEdit = (session: HubSession) => {
+    setEditingId(session._id);
+    setForm({
+      title: session.title || '',
+      description: session.description || '',
+      status: session.status || 'upcoming',
+      startDate: toDateInput(session.startDate),
+      endDate: toDateInput(session.endDate),
+      time: session.time || '',
+      duration: session.duration || '',
+      fee: session.fee || 0,
+      currency: session.currency || 'NGN',
+      location: session.location || '',
+      capacity: session.capacity || 0,
+      enrolled: session.enrolled || 0,
+      coverImage: session.coverImage || '',
+      registrationUrl: session.registrationUrl || '',
+      featured: !!session.featured,
+      isActive: session.isActive !== false,
+    });
     setOpen(true);
   };
 
@@ -115,19 +142,29 @@ export function HubSessionsTab({ adminId }: { adminId: string }) {
     }
   };
 
-  const remove = async (id: string) => {
-    if (!confirm('Delete this session?')) return;
+  const openDelete = (id: string) => {
+    setDeleteId(id);
+    setDeleteOpen(true);
+  };
+
+  const remove = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/hub/sessions/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/hub/sessions/${deleteId}`, { method: 'DELETE' });
       const json = await res.json();
       if (json.success) {
         toast.success('Session deleted');
+        setDeleteOpen(false);
+        setDeleteId(null);
         load();
       } else {
         toast.error(json.message || 'Failed to delete');
       }
     } catch (e) {
       toast.error('Failed to delete session');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -187,17 +224,17 @@ export function HubSessionsTab({ adminId }: { adminId: string }) {
                   </div>
                 </div>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => openEdit(s)}>
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => remove(s._id)}
-                    className="text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(s)}>
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => openDelete(s._id)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                 </div>
               </div>
             </Card>
@@ -366,6 +403,20 @@ export function HubSessionsTab({ adminId }: { adminId: string }) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <DeleteConfirmModal
+        open={deleteOpen}
+        onOpenChange={(nextOpen) => {
+          setDeleteOpen(nextOpen);
+          if (!nextOpen) setDeleteId(null);
+        }}
+        title="Delete session?"
+        description="This will remove the training schedule from the hub."
+        itemName={sessions.find((s) => s._id === deleteId)?.title}
+        isLoading={deleting}
+        onConfirm={remove}
+        isDangerous
+      />
     </div>
   );
 }
