@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'SpaceOut - Premium Workspace Solutions',
     description: 'Cool spaces for professionals',
-    url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    url: 'http://localhost:3000',
     type: 'website',
   },
 }

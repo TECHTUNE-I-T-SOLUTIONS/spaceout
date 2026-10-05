@@ -14,29 +14,29 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 
 const heroImages = [
-  '/assets/IMG_8850.jpg',
-  '/assets/IMG_8851.jpg',
-  '/assets/IMG_8852.jpg',
-  '/assets/IMG_8853.jpg',
-  '/assets/IMG_8854.jpg',
-  '/assets/IMG_8855.jpg',
-  '/assets/IMG_8856.jpg',
-  '/assets/IMG_8857.jpg',
-  '/assets/IMG_8858.jpg',
-  '/assets/IMG_8859.jpg',
-  '/assets/IMG_8862.jpg',
-  '/assets/IMG_8863.jpg',
-  '/assets/IMG_8864.jpg',
-  '/assets/IMG_8865.jpg',
-  '/assets/IMG_8866.jpg',
-  '/assets/IMG_8867.jpg',
-  '/assets/IMG_8868.jpg',
-  '/assets/IMG_8869.jpg',
-  '/assets/IMG_8870.jpg',
-  '/assets/IMG_8871.jpg',
-  '/assets/IMG_8872.jpg',
-  '/assets/inside (2).jpeg',
-  '/assets/inside (4).jpeg',
+  '/assets/IMG_8850.webp',
+  '/assets/IMG_8851.webp',
+  '/assets/IMG_8852.webp',
+  '/assets/IMG_8853.webp',
+  '/assets/IMG_8854.webp',
+  '/assets/IMG_8855.webp',
+  '/assets/IMG_8856.webp',
+  '/assets/IMG_8857.webp',
+  '/assets/IMG_8858.webp',
+  '/assets/IMG_8859.webp',
+  '/assets/IMG_8862.webp',
+  '/assets/IMG_8863.webp',
+  '/assets/IMG_8864.webp',
+  '/assets/IMG_8865.webp',
+  '/assets/IMG_8866.webp',
+  '/assets/IMG_8867.webp',
+  '/assets/IMG_8868.webp',
+  '/assets/IMG_8869.webp',
+  '/assets/IMG_8870.webp',
+  '/assets/IMG_8871.webp',
+  '/assets/IMG_8872.webp',
+  '/assets/inside (2).webp',
+  '/assets/inside (4).webp',
 ];
 
 export function HomeContent() {
@@ -101,7 +101,7 @@ export function HomeContent() {
   // Rotate background images every 6 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentImageIndex((prev) => (prev + 1) % heroImages.length);
+      setCurrentImageIndex((prev: number) => (prev + 1) % heroImages.length);
     }, 6000);
 
     return () => clearInterval(interval);
@@ -230,10 +230,10 @@ export function HomeContent() {
               priority
               className="object-cover"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 85vw"
-              onError={(e) => {
+              onError={(e: any) => {
                 // Fallback if image fails to load
                 const imgElement = e.target as HTMLImageElement;
-                imgElement.src = '/assets/IMG_8850.jpg';
+                imgElement.src = '/assets/IMG_8850.webp';
               }}
             />
           </motion.div>
@@ -430,7 +430,7 @@ export function HomeContent() {
               whileInView="visible"
               viewport={{ once: true }}
             >
-              {techPrograms.map((program) => (
+              {techPrograms.map((program: any) => (
                 <motion.div key={program._id || program.title} variants={itemVariants}>
                   <Card className="flex flex-col p-6 h-full hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 hover:-translate-y-1">
                     <h3 className="text-xl font-semibold mb-3">{program.title}</h3>
@@ -490,7 +490,7 @@ export function HomeContent() {
               whileInView="visible"
               viewport={{ once: true }}
             >
-              {featuredEvents.map((event) => (
+              {featuredEvents.map((event: any) => (
                 <motion.div key={event._id} variants={itemVariants}>
                   <Link href={`/events/${event.slug || event._id}`} className="block h-full">
                     <Card className="h-full hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 hover:-translate-y-1 cursor-pointer group">

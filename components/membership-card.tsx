@@ -52,7 +52,6 @@ export function MembershipCard({
           maxWidth: '42rem',
         }}
         className="relative h-80 md:h-120 rounded-2xl"
-        as="div"
       >
         {/* Front of Card */}
         {!isFlipped && (
@@ -62,7 +61,6 @@ export function MembershipCard({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
             className="absolute inset-0 rounded-2xl shadow-2xl border-2 border-amber-500/30 relative overflow-hidden"
-            as="div"
             style={{
               backgroundImage: 'url(/card-front.png)',
               backgroundSize: 'cover',
@@ -153,7 +151,6 @@ export function MembershipCard({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
             className="absolute inset-0 rounded-2xl shadow-2xl border-2 border-white/40 relative overflow-hidden"
-            as="div"
             style={{
               backgroundImage: 'url(/card-back.png)',
               backgroundSize: 'cover',

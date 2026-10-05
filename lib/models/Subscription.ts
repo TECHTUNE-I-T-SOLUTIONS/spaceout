@@ -11,6 +11,7 @@ export interface ISubscription extends Document {
   planType: string;
   durationLabel: string;
   durationInDays: number;
+  durationInHours?: number;
   selectedRate: string;
   amountPerDay: number;
   totalAmount: number;

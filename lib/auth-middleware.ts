@@ -6,7 +6,7 @@ import Admin from './models/Admin';
 import { authOptions } from '@/auth';
 
 export async function requireAuth() {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions) as any;
   if (!session?.user) {
     redirect('/auth/login');
   }
@@ -16,11 +16,11 @@ export async function requireAuth() {
 export async function requireRole(allowedRoles: string[]) {
   const session = await requireAuth();
   const userRole = (session.user as any)?.role;
-  
+
   if (!allowedRoles.includes(userRole)) {
     redirect('/unauthorized');
   }
-  
+
   return session;
 }
 
@@ -74,8 +74,8 @@ export async function requireUser() {
 }
 
 export async function withBranchAccess(requiredRole?: string[]) {
-  const session = await getServerSession(authOptions);
-  
+  const session = await getServerSession(authOptions) as any;
+
   if (!session?.user) {
     return null;
   }

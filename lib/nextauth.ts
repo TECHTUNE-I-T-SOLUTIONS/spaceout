@@ -4,7 +4,7 @@ import dbConnect from './db';
 import User from './models/User';
 import { verifyPassword } from './auth';
 
-const config: NextAuthConfig = {
+const config: any = {
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -59,7 +59,7 @@ const config: NextAuthConfig = {
     error: '/auth/error',
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
@@ -68,7 +68,7 @@ const config: NextAuthConfig = {
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;

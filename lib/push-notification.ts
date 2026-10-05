@@ -38,7 +38,7 @@ export async function sendPushNotification(
       data: payload.data || {},
     };
 
-    await webpush.sendNotification(subscription, JSON.stringify(notificationPayload));
+    await webpush.sendNotification(subscription as any, JSON.stringify(notificationPayload));
     return { success: true };
   } catch (error: any) {
     console.error('Push notification error:', error);
