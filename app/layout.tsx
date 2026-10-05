@@ -6,7 +6,7 @@ import { CookieConsentBanner } from '@/components/cookie-consent-banner'
 import { PushNotificationPrompt } from '@/components/push-notification-prompt'
 import ChatWidget from '@/components/chat-widget'
 import { ClientOnlyWrapper } from '@/components/client-only-wrapper'
-import { SpaceParticles } from '@/components/space-particles'
+// import { SpaceParticles } from '@/components/space-particles'
 import { MobileBottomNav } from '@/components/mobile-bottom-nav'
 import MaintenanceBanner from '@/components/maintenance-banner'
 import './globals.css'
@@ -52,7 +52,9 @@ export default function RootLayout({
       <body suppressHydrationWarning className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
         <Providers>
           <ClientOnlyWrapper>
-            <SpaceParticles />
+
+            {/* <SpaceParticles /> */}
+
             <MobileBottomNav />
           </ClientOnlyWrapper>
           <div className="relative z-20 with-maintenance">
