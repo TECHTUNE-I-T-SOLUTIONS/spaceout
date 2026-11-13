@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Admin from "@/lib/models/Admin";
 import bcrypt from "bcryptjs";
-import { sendAdminWelcomeEmail, sendNewUserSignupNotification } from "@/lib/email";
+import { sendAdminWelcomeEmail, sendAdminSignupNotification } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   try {
@@ -55,16 +55,29 @@ export async function POST(req: NextRequest) {
     const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL}/admin/auth/login`;
     await sendAdminWelcomeEmail(email, firstName, loginUrl);
     
-    // Send admin notification about new admin signup
+    // Send admin notification about new admin signup to all other active admins
     try {
-      await sendNewUserSignupNotification('spaceout.workstation@gmail.com', {
-        name: fullName,
-        email: email,
-        phone: 'N/A',
-        createdAt: new Date().toLocaleString(),
-      });
+      const allAdmins = await Admin.find({
+        isActive: true,
+        email: { $ne: email },
+      }).select('email').lean();
+      if (allAdmins.length > 0) {
+        const adminEmails = [...new Set(allAdmins.map((a) => a.email))];
+        for (const admin of adminEmails) {
+          try {
+            await sendAdminSignupNotification(admin, {
+              name: fullName,
+              email: email,
+              phone: 'N/A',
+              createdAt: new Date().toLocaleString(),
+            });
+          } catch (err) {
+            console.error(`Failed to send admin signup email to ${admin}:`, err);
+          }
+        }
+      }
     } catch (err) {
-      console.error('Failed to send admin notification:', err);
+      console.error('Failed to send admin signup notifications:', err);
     }
 
     const response = NextResponse.json(

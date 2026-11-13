@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { Plus, Loader2, Trash2, Eye, Mail, Send, ChevronRight, ChevronLeft, Check, Upload, EyeOff } from 'lucide-react';
+import { Plus, Loader2, Trash2, Eye, Mail, Send, ChevronRight, ChevronLeft, Check, Upload, EyeOff, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -53,6 +53,7 @@ interface User {
   membershipExpiryDate?: string;
   membershipExpiry?: string;
   branchId?: string;
+  cardNumber?: string;
 }
 
 export default function UsersPage() {
@@ -663,9 +664,9 @@ export default function UsersPage() {
                     <td className="p-4">{new Date(user.createdAt).toLocaleDateString()}</td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           title="View Details"
                           onClick={() => {
                             setSelectedUser(user);
@@ -674,9 +675,9 @@ export default function UsersPage() {
                         >
                           <Eye size={16} />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           title="Send Email"
                           onClick={() => {
                             setSelectedUser(user);
@@ -685,9 +686,19 @@ export default function UsersPage() {
                         >
                           <Mail size={16} />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="Download Card"
+                          onClick={() => {
+                            window.open(`/admin/membership-cards/download?userId=${user.id || user._id}`, '_blank');
+                          }}
+                        >
+                          <Download className="w-4 h-4 text-amber-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           title="Delete"
                           onClick={() => handleDeleteUser(user.id || user._id)}
                         >
@@ -901,6 +912,13 @@ export default function UsersPage() {
                           {selectedUser.hasMembership ? (selectedUser.membershipStatus ? selectedUser.membershipStatus.charAt(0).toUpperCase() + selectedUser.membershipStatus.slice(1) : 'Active') : 'No Membership'}
                         </span>
                       </div>
+                    </div>
+                    {selectedUser.cardNumber && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground uppercase tracking-wide">Card Number</Label>
+                        <p className="text-sm font-mono font-semibold text-slate-700 mt-1">{selectedUser.cardNumber}</p>
+                      </div>
+                    )}
                     {selectedUser.hasMembership && (selectedUser.membershipNeedsRepair || selectedUser.membershipStatus !== 'active') && (
                       <div className="mt-3 flex flex-col gap-2">
                         <p className="text-xs text-muted-foreground">
@@ -918,8 +936,6 @@ export default function UsersPage() {
                         </Button>
                       </div>
                     )}
-                    </div>
-                    
                     {selectedUser.hasMembership && selectedUser.membershipType && (
                       <div>
                         <Label className="text-xs text-muted-foreground uppercase tracking-wide">Membership Type</Label>
@@ -983,6 +999,16 @@ export default function UsersPage() {
 
               {/* Action Buttons */}
               <div className="flex gap-2 pt-6 border-t">
+                <Button
+                  onClick={() => {
+                    window.open(`/admin/membership-cards/download?userId=${selectedUser?.id || selectedUser?._id}`, '_blank');
+                  }}
+                  className="flex items-center gap-2 flex-1"
+                  variant="default"
+                >
+                  <Download size={16} />
+                  Download Card
+                </Button>
                 <Button
                   onClick={() => {
                     setShowDetailsModal(false);

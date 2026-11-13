@@ -121,6 +121,8 @@ export async function POST(request: NextRequest) {
     membershipExpiry: expiryDate,
     membershipActivatedAt: purchaseDate,
     membershipExpiryDate: expiryDate,
+    cardNumber: `SP-OUT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+    cardIssuedAt: new Date(),
   });
 
   return NextResponse.json({ message: 'Membership card created', subscription }, { status: 201 });

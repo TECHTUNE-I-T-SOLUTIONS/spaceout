@@ -1,4 +1,3 @@
-import { SessionProvider } from '@/components/session-provider';
 import { SidebarProvider } from '@/lib/sidebar-context';
 import { UserLayoutWrapper } from '@/components/user-layout-wrapper';
 import { requireUser } from '@/lib/auth-middleware';
@@ -13,10 +12,8 @@ export default async function UserLayout({
   await requireUser();
 
   return (
-    <SessionProvider>
-      <SidebarProvider>
-        <UserLayoutWrapper>{children}</UserLayoutWrapper>
-      </SidebarProvider>
-    </SessionProvider>
+    <SidebarProvider>
+      <UserLayoutWrapper>{children}</UserLayoutWrapper>
+    </SidebarProvider>
   );
 }

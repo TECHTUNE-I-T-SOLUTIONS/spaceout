@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import User from '@/lib/models/User';
+import Admin from '@/lib/models/Admin';
 import PushSubscription from '@/lib/models/PushSubscription';
 import { hashPassword, isValidEmail } from '@/lib/auth';
-import { sendWelcomeEmail, sendAdminWelcomeEmail, sendNewUserSignupNotification } from '@/lib/email';
+import { sendWelcomeEmail, sendAdminWelcomeEmail, sendAdminSignupNotification } from '@/lib/email';
 import {
   sendWelcomePushNotification,
   sendAdminNotificationOnSignup,
@@ -172,17 +173,26 @@ export async function POST(request: NextRequest) {
     const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/login`;
     await sendWelcomeEmail(user.email, user.name, loginUrl);
     
-    // Send admin notification about new user signup
+    // Send admin notification about new user signup to all active admins/super-admins
     try {
-      await sendNewUserSignupNotification('spaceout.workstation@gmail.com', {
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        isStudent: user.isStudent,
-        createdAt: new Date(user.createdAt).toLocaleString(),
-      });
+      const admins = await Admin.find({ isActive: true }).select('email firstName').lean();
+      if (admins.length > 0) {
+        const adminEmails = [...new Set(admins.map((a) => a.email))];
+        for (const admin of adminEmails) {
+          try {
+            await sendAdminSignupNotification(admin, {
+              name: user.name,
+              email: user.email,
+              phone: user.phone,
+              createdAt: new Date(user.createdAt).toLocaleString(),
+            });
+          } catch (err) {
+            console.error(`Failed to send signup email to admin ${admin}:`, err);
+          }
+        }
+      }
     } catch (err) {
-      console.error('Failed to send admin notification:', err);
+      console.error('Failed to send admin signup notifications:', err);
     }
     
     const userSubscriptions = await PushSubscription.find({

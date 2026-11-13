@@ -26,6 +26,13 @@ interface DashboardStats {
   avgRating: number;
 }
 
+const STAT_ITEMS: { icon: typeof Users; label: string; color: string }[] = [
+  { icon: Users, label: 'Active Users', color: 'text-gray-500' },
+  { icon: DollarSign, label: 'Revenue', color: 'text-green-500' },
+  { icon: Calendar, label: 'Pending', color: 'text-amber-500' },
+  { icon: Star, label: 'Avg Rating', color: 'text-purple-500' },
+];
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [admin, setAdmin] = useState<AdminSession | null>(null);
@@ -36,7 +43,6 @@ export default function AdminDashboard() {
     avgRating: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     fetchAdminData();
@@ -45,216 +51,112 @@ export default function AdminDashboard() {
   const fetchAdminData = async () => {
     try {
       setLoading(true);
-      
-      // Fetch admin session
       const adminResponse = await fetch('/api/auth/admin/me');
       if (!adminResponse.ok) {
-        // Admin not authenticated, redirect to login
         router.push('/admin/auth/login');
         return;
       }
-      
       const adminData = await adminResponse.json();
       setAdmin(adminData);
-      setAuthChecked(true);
 
-      // Fetch dashboard stats
       const statsResponse = await fetch('/api/admin/stats');
       if (statsResponse.ok) {
-        const statsData = await statsResponse.json();
-        setStats(statsData);
+        setStats(await statsResponse.json());
       } else {
-        // Use mock data if API fails
-        setStats({
-          activeUsers: 150,
-          totalRevenue: 2500000,
-          pendingBookings: 23,
-          avgRating: 4.7,
-        });
+        setStats({ activeUsers: 150, totalRevenue: 2500000, pendingBookings: 23, avgRating: 4.7 });
       }
     } catch (error) {
       console.error('Error fetching admin data:', error);
-      toast.error('Failed to Load Dashboard', {
-        description: 'Unable to fetch dashboard data.',
-      });
-      // Redirect to login on error
+      toast.error('Failed to Load Dashboard', { description: 'Unable to fetch dashboard data.' });
       router.push('/admin/auth/login');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRefresh = () => {
-    fetchAdminData();
-  };
+  const formatPrice = (value: number) =>
+    new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
 
-  const userRole = admin?.role || 'admin';
+  const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.06 } } };
+  const itemVariants = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } };
 
-  const formatPrice = (value: number) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 },
-  };
-
-  // Show loading skeleton while authenticating
   if (loading) {
     return (
-      <motion.div
-        className="max-w-6xl mx-auto"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <div className="mb-8">
-          <div className="h-8 w-48 bg-muted animate-pulse rounded mb-2" />
-          <div className="h-4 w-96 bg-muted animate-pulse rounded" />
+      <div className="px-4 py-4 max-w-[1400px] mx-auto">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <div className="h-7 w-40 bg-muted animate-pulse rounded mb-1.5" />
+            <div className="h-3.5 w-72 bg-muted animate-pulse rounded" />
+          </div>
+          <div className="h-8 w-20 bg-muted animate-pulse rounded" />
         </div>
-
-        <motion.div
-          className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          {Array.from({ length: 4 }).map((_, idx) => (
-            <motion.div key={idx} variants={itemVariants}>
-              <Card className="p-6">
-                <div className="h-4 w-20 bg-muted animate-pulse rounded mb-2" />
-                <div className="h-8 w-32 bg-muted animate-pulse rounded" />
-              </Card>
-            </motion.div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="p-3"><div className="h-3 w-16 bg-muted animate-pulse rounded mb-1.5" /><div className="h-6 w-24 bg-muted animate-pulse rounded" /></Card>
           ))}
-        </motion.div>
-
-        <motion.div variants={itemVariants} className="mb-8">
-          <Card className="p-6">
-            <div className="h-6 w-40 bg-muted animate-pulse rounded" />
-          </Card>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <motion.div
-      className="max-w-6xl mx-auto"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      <motion.div variants={itemVariants} className="mb-8 flex items-center justify-between">
+    <motion.div className="px-4 py-4 max-w-[1400px] mx-auto" variants={containerVariants} initial="hidden" animate="visible">
+      {/* Header */}
+      <motion.div variants={itemVariants} className="mb-3 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
-          <p className="text-muted-foreground">
-            {loading ? 'Loading...' : `Welcome, ${admin?.firstName || 'Admin'}. Manage your workspace data.`}
+          <h1 className="text-xl font-bold">Admin Dashboard</h1>
+          <p className="text-xs text-muted-foreground">
+            Welcome, {admin?.firstName || 'Admin'}. Manage your workspace data.
           </p>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={handleRefresh}
-          className="flex items-center gap-2"
-        >
-          <Loader2 className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+        <Button variant="ghost" size="sm" onClick={fetchAdminData} className="flex items-center gap-1.5">
+          <Loader2 className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </motion.div>
 
-      {/* Key Metrics */}
-      <motion.div
-        className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        {[
-          {
-            icon: Users,
-            label: 'Active Users',
-            value: stats.activeUsers.toLocaleString(),
-            color: 'text-gray-500',
-          },
-          {
-            icon: DollarSign,
-            label: 'Total Revenue',
-            value: formatPrice(stats.totalRevenue),
-            color: 'text-green-500',
-          },
-          {
-            icon: Calendar,
-            label: 'Pending Bookings',
-            value: stats.pendingBookings.toString(),
-            color: 'text-amber-500',
-          },
-          {
-            icon: Star,
-            label: 'Avg. Rating',
-            value: stats.avgRating.toFixed(1),
-            color: 'text-purple-500',
-          },
-        ].map((metric, idx) => (
-          <motion.div key={idx} variants={itemVariants}>
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">{metric.label}</p>
-                  <p className="text-2xl font-bold">{metric.value}</p>
+      {/* Stats — compact single row */}
+      <motion.div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3" variants={containerVariants}>
+        {STAT_ITEMS.map((m, i) => {
+          const value = i === 0 ? stats.activeUsers.toLocaleString() : i === 1 ? formatPrice(stats.totalRevenue) : i === 2 ? stats.pendingBookings.toString() : stats.avgRating.toFixed(1);
+          return (
+            <motion.div key={m.label} variants={itemVariants}>
+              <Card className="p-3 hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-muted/50 flex-shrink-0`}>
+                    <m.icon className={`w-4 h-4 ${m.color}`} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">{m.label}</p>
+                    <p className="text-lg font-bold leading-tight truncate">{value}</p>
+                  </div>
                 </div>
-                <metric.icon className={`w-6 h-6 ${metric.color}`} />
-              </div>
-            </Card>
-          </motion.div>
-        ))}
+              </Card>
+            </motion.div>
+          );
+        })}
       </motion.div>
 
-      {/* Quick Actions */}
-      <motion.div variants={itemVariants} className="mb-8">
-        <Card className="p-6">
-          <h3 className="text-lg font-bold mb-4">Quick Actions</h3>
-          <div className="grid md:grid-cols-4 gap-3">
-            <Link href="/admin/dashboard/users">
-              <Button variant="outline" className="w-full">View All Users</Button>
-            </Link>
-            <Link href="/admin/dashboard/bookings">
-              <Button variant="outline" className="w-full">Manage Bookings</Button>
-            </Link>
-            <Link href="/admin/dashboard/payments">
-              <Button variant="outline" className="w-full">Review Payments</Button>
-            </Link>
-            <Link href="/admin/dashboard/analytics">
-              <Button variant="outline" className="w-full">View Reports</Button>
-            </Link>
+      {/* Quick Actions + Welcome side by side */}
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-2.5">
+        <Card className="p-3 lg:col-span-2">
+          <h3 className="text-sm font-bold mb-2.5">Quick Actions</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <Link href="/admin/dashboard/users"><Button variant="outline" size="sm" className="w-full text-xs h-8">View All Users</Button></Link>
+            <Link href="/admin/dashboard/bookings"><Button variant="outline" size="sm" className="w-full text-xs h-8">Manage Bookings</Button></Link>
+            <Link href="/admin/dashboard/payments"><Button variant="outline" size="sm" className="w-full text-xs h-8">Review Payments</Button></Link>
+            <Link href="/admin/dashboard/analytics"><Button variant="outline" size="sm" className="w-full text-xs h-8">View Reports</Button></Link>
           </div>
         </Card>
-      </motion.div>
 
-      {/* Welcome Message */}
-      <motion.div variants={itemVariants}>
-        <Card className="p-8 bg-gradient-to-br from-primary/5 to-primary/0">
-          <h2 className="text-2xl font-bold mb-4">Getting Started</h2>
-          <p className="text-muted-foreground mb-4">
-            {userRole === 'superadmin'
-              ? 'As a SuperAdmin, you have full system access. Manage branches, services, pricing, admin accounts, and view system-wide analytics.'
-              : 'As an Admin, you can manage users, bookings, payments, reviews, and feedback for your assigned branch.'}
+        <Card className="p-3">
+          <p className="text-xs font-semibold mb-1">
+            {admin?.role === 'superadmin' ? 'SuperAdmin' : 'Admin'}
           </p>
-          <p className="text-muted-foreground">
-            Navigate using the sidebar menu to access all management tools and analytics. Use the refresh button above to update dashboard data.
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            {admin?.role === 'superadmin'
+              ? 'Full system access: branches, services, pricing, admin accounts & analytics.'
+              : 'Manage users, bookings, payments, reviews & feedback for your branch.'}
           </p>
         </Card>
       </motion.div>

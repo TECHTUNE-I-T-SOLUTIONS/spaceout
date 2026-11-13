@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, Loader2, RefreshCw } from 'lucide-react';
+import { Search, Loader2, RefreshCw, Download, ArrowDownToLine } from 'lucide-react';
 import { toast } from 'sonner';
 import { DeleteConfirmModal } from '@/components/modals/delete-confirm-modal';
 import EditMembershipModal from '@/components/modals/edit-membership-modal';
@@ -42,6 +42,8 @@ export default function MembershipCardsPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [cardToEdit, setCardToEdit] = useState<any | null>(null);
   const [loadingCreate, setLoadingCreate] = useState(false);
+  const [migrationStatus, setMigrationStatus] = useState<{ needsMigration: boolean; usersWithoutCardNumber: number } | null>(null);
+  const [migrating, setMigrating] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [serviceSearch, setServiceSearch] = useState('');
   const [search, setSearch] = useState('');
@@ -59,6 +61,7 @@ export default function MembershipCardsPage() {
     fetchCards();
     fetchServices();
     fetchUsers();
+    checkMigrationStatus();
   }, []);
 
   const fetchCards = async () => {
@@ -88,6 +91,28 @@ export default function MembershipCardsPage() {
       const data = await res.json();
       setServices(Array.isArray(data) ? data : data.data || []);
     }
+  };
+
+  const checkMigrationStatus = async () => {
+    try {
+      const res = await fetch('/api/admin/membership-cards/migrate', { method: 'GET' });
+      if (res.ok) setMigrationStatus(await res.json());
+    } catch { /* ignore */ }
+  };
+
+  const runMigration = async () => {
+    setMigrating(true);
+    try {
+      const res = await fetch('/api/admin/membership-cards/migrate', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message, { description: `${data.totalAssigned} users got card numbers assigned.` });
+        setMigrationStatus({ needsMigration: false, usersWithoutCardNumber: 0 });
+      } else {
+        toast.error(data.message || 'Migration failed');
+      }
+    } catch { toast.error('Migration failed'); }
+    finally { setMigrating(false); }
   };
 
   const selectedService = useMemo(
@@ -204,7 +229,7 @@ export default function MembershipCardsPage() {
 
       if (!res.ok) throw new Error();
       toast.success('Membership created and marked as paid');
-      setForm({ userId: '', serviceId: '', planId: '' });
+      setForm({ userId: '', serviceId: '', planId: '', startDate: '' });
       fetchCards();
     } catch {
       toast.error('Failed to create membership');
@@ -224,6 +249,12 @@ export default function MembershipCardsPage() {
           <RefreshCw className={`w-4 h-4 ${loadingCards ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
+        {migrationStatus?.needsMigration && (
+          <Button variant="outline" onClick={runMigration} disabled={migrating} className="gap-2">
+            {migrating ? <ArrowDownToLine className="w-3.5 h-3.5 animate-spin" /> : null}
+            Assign Card Numbers ({migrationStatus.usersWithoutCardNumber})
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="all" className="space-y-6">
@@ -295,7 +326,18 @@ export default function MembershipCardsPage() {
                       <div className="text-sm text-muted-foreground">{card.userId?.email}</div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" onClick={() => { setCardToEdit(card); setEditOpen(true); }} className="">Edit</Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          window.open(`/admin/membership-cards/download?userId=${card.userId?._id || card.userId}`, '_blank');
+                        }}
+                        className="text-amber-600"
+                      >
+                        <Download className="w-3 h-3 mr-1" />
+                        Card
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => { setCardToEdit(card); setEditOpen(true); }}>Edit</Button>
                       <Button size="sm" variant="outline" onClick={() => { setCardToDelete(card); setDeleteConfirmOpen(true); }} className="text-red-600">Delete</Button>
                       <Badge>{card.status || 'active'}</Badge>
                     </div>

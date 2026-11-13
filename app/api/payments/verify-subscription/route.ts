@@ -9,6 +9,12 @@ import { sendPaymentPushNotification } from '@/lib/push-notification';
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 
+function generateCardNumber(): string {
+  const prefix = 'SP-OUT';
+  const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `${prefix}-${randomPart}`;
+}
+
 // GET endpoint for Paystack verification
 export async function GET(request: NextRequest) {
   try {
@@ -156,6 +162,20 @@ export async function GET(request: NextRequest) {
         subscriptionId = sub._id.toString();
       } catch (err) {
         console.error('Failed to create Subscription record:', err);
+      }
+
+      // Generate card number for all users on subscription (only if not already assigned)
+      try {
+        const user = await User.findById(payment.userId);
+        if (user && !user.cardNumber) {
+          const newCardNumber = generateCardNumber();
+          await User.findByIdAndUpdate(payment.userId, {
+            cardNumber: newCardNumber,
+            cardIssuedAt: new Date(),
+          });
+        }
+      } catch (err) {
+        console.error('Failed to assign card number:', err);
       }
 
       // Create UserSubscription record for membership UI

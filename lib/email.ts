@@ -263,7 +263,72 @@ export async function sendAdminWelcomeEmail(
   });
 }
 
-export async function sendNewUserSignupNotification(
+export async function sendAdminCheckInNotification(
+  adminEmail: string,
+  checkInDetails: {
+    userName: string;
+    userEmail: string;
+    serviceName: string;
+    planName: string;
+    amount: number;
+    checkedInAt: string;
+    cardNumber?: string;
+  }
+) {
+  const displayAmount = `₦${checkInDetails.amount.toLocaleString()}`;
+  const cardDisplay = checkInDetails.cardNumber
+    ? checkInDetails.cardNumber.replace(/(.{4})/g, '$1-').replace(/-$/, '')
+    : 'N/A';
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #ffffff; margin: 0; padding: 0;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+          <div style="background-color: #f8f9fa; padding: 20px 0; text-align: center; border-bottom: 4px solid #10b981;">
+            <h1 style="color: #1f2937; margin: 0; font-size: 24px;">SpaceOut - Check-In Alert</h1>
+          </div>
+          <div style="padding: 40px 20px;">
+            <h2 style="color: #1f2937; font-size: 20px; margin-bottom: 20px;">✅ Successful Check-In</h2>
+            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
+              A user has successfully checked in. Here are the details:
+            </p>
+            <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 20px; border-radius: 5px; margin: 25px 0;">
+              <h3 style="color: #166534; margin-top: 0; font-size: 16px;">Check-In Information</h3>
+              <p style="color: #15803d; margin: 10px 0;"><strong>User:</strong> ${checkInDetails.userName} ${checkInDetails.userEmail ? `<(${checkInDetails.userEmail})` : ''}</p>
+              <p style="color: #15803d; margin: 10px 0;"><strong>Service:</strong> ${checkInDetails.serviceName}</p>
+              <p style="color: #15803d; margin: 10px 0;"><strong>Plan:</strong> ${checkInDetails.planName}</p>
+              <p style="color: #15803d; margin: 10px 0;"><strong>Amount Paid:</strong> <strong>${displayAmount}</strong></p>
+              <p style="color: #15803d; margin: 10px 0;"><strong>Checked In At:</strong> ${checkInDetails.checkedInAt}</p>
+              <p style="color: #15803d; margin: 10px 0;"><strong>Card Number:</strong> ${cardDisplay}</p>
+            </div>
+            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
+              You can view this user's check-in history and manage their account from the SpaceOut admin dashboard.
+            </p>
+          </div>
+          <div style="border-top: 1px solid #e5e7eb; margin-top: 30px; padding-top: 20px; text-align: center;">
+            <p style="color: #6b7280; font-size: 12px; margin: 5px 0;">
+              © ${new Date().getFullYear()} SpaceOut. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  return sendEmail({
+    to: adminEmail,
+    subject: `Check-In Alert - ${checkInDetails.userName} - ${displayAmount}`,
+    html,
+    text: `Successful check-in: ${checkInDetails.userName} (${checkInDetails.userEmail}) checked into ${checkInDetails.serviceName} (${checkInDetails.planName}) for ${displayAmount} at ${checkInDetails.checkedInAt}`,
+  });
+}
+
+export async function sendAdminSignupNotification(
   adminEmail: string,
   userDetails: {
     name: string;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
@@ -11,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Download, Filter, RefreshCw } from 'lucide-react';
+import { Loader2, Download, RefreshCw, ArrowRight, CreditCard, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Payment {
@@ -31,21 +32,12 @@ interface Payment {
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    type: 'all',
-    status: 'all',
-  });
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0,
-    pages: 0,
-  });
+  const [filters, setFilters] = useState({ type: 'all', status: 'all' });
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 });
   const [reverifyingIds, setReverifyingIds] = useState<Set<string>>(new Set());
+  const router = useRouter();
 
-  useEffect(() => {
-    fetchPayments();
-  }, [filters, pagination.page]);
+  useEffect(() => { fetchPayments(); }, [filters, pagination.page]);
 
   const fetchPayments = async () => {
     try {
@@ -56,7 +48,6 @@ export default function PaymentsPage() {
         ...(filters.type !== 'all' && { type: filters.type }),
         ...(filters.status !== 'all' && { status: filters.status }),
       });
-
       const response = await fetch(`/api/payments/history?${params}`);
       if (response.ok) {
         const data = await response.json();
@@ -71,95 +62,109 @@ export default function PaymentsPage() {
     }
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 },
-  };
+  const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.06 } } };
+  const itemVariants = { hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed':
-        return 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-200 border-green-200 dark:border-green-800';
-      case 'pending':
-        return 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-200 border-amber-200 dark:border-amber-800';
-      case 'failed':
-      case 'cancelled':
-        return 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-200 border-red-200 dark:border-red-800';
-      default:
-        return 'bg-gray-50 dark:bg-gray-950 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-800';
+      case 'completed': return 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-200 border-green-200 dark:border-green-800';
+      case 'pending': return 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-200 border-amber-200 dark:border-amber-800';
+      case 'failed': case 'cancelled': return 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-200 border-red-200 dark:border-red-800';
+      default: return 'bg-gray-50 dark:bg-gray-950 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-800';
     }
   };
 
   const getTypeLabel = (type: string) => {
     switch (type) {
-      case 'checkin':
-        return 'Check-In';
-      case 'membership':
-        return 'Membership';
-      case 'prepaid':
-        return 'Prepaid';
-      case 'service':
-        return 'Service';
-      default:
-        return type;
+      case 'checkin': return 'Check-In';
+      case 'membership': return 'Membership';
+      case 'prepaid': return 'Prepaid';
+      case 'service': return 'Service';
+      default: return type;
     }
   };
 
   const handleReverify = async (payment: Payment) => {
     if (reverifyingIds.has(payment._id)) return;
     setReverifyingIds(prev => new Set(prev).add(payment._id));
-
     try {
       const reference = payment.paystackReference || payment.reference;
       const response = await fetch(`/api/payments/verify?reference=${encodeURIComponent(reference)}`);
-      if (!response.ok) throw new Error('Failed to reverify payment');
-      toast.success('Payment reverified');
+      if (response.status === 202) {
+        toast.info('Payment is still processing — please try again shortly.');
+      } else if (response.ok) {
+        toast.success('Payment verified successfully!');
+      } else {
+        toast.error('Payment verification failed.');
+      }
       fetchPayments();
     } catch (error) {
       toast.error('Failed to reverify payment');
     } finally {
-      setReverifyingIds(prev => {
-        const next = new Set(prev);
-        next.delete(payment._id);
-        return next;
-      });
+      setReverifyingIds(prev => { const next = new Set(prev); next.delete(payment._id); return next; });
     }
   };
 
+  const completedAmount = payments.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0);
+  const pendingAmount = payments.filter(p => p.status === 'pending').reduce((s, p) => s + p.amount, 0);
+  const failedAmount = payments.filter(p => p.status === 'failed' || p.status === 'cancelled').reduce((s, p) => s + p.amount, 0);
+
   return (
-    <motion.div
-      className="max-w-6xl mx-auto"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      <motion.div variants={itemVariants} className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Payment History</h1>
-        <p className="text-muted-foreground">
-          Track all your payments and transactions
-        </p>
+    <motion.div className="px-3 py-3 max-w-[1400px] mx-auto" variants={containerVariants} initial="hidden" animate="visible">
+      {/* Header */}
+      <motion.div variants={itemVariants} className="mb-3">
+        <h1 className="text-lg font-bold mb-0.5">Payment History</h1>
+        <p className="text-xs text-muted-foreground">Track and manage all your transactions</p>
+      </motion.div>
+
+      {/* Stats Row */}
+      <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
+        <Card className="p-3 flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <CreditCard className="w-4 h-4 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] text-muted-foreground">Total</p>
+            <p className="text-base font-bold">₦{pagination.total.toLocaleString()}</p>
+          </div>
+        </Card>
+        <Card className="p-3 flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-950 flex items-center justify-center flex-shrink-0">
+            <CheckCircle2 className="w-4 h-4 text-green-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] text-muted-foreground">Completed</p>
+            <p className="text-base font-bold">₦{completedAmount.toLocaleString()}</p>
+          </div>
+        </Card>
+        <Card className="p-3 flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950 flex items-center justify-center flex-shrink-0">
+            <Clock className="w-4 h-4 text-amber-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] text-muted-foreground">Pending</p>
+            <p className="text-base font-bold">₦{pendingAmount.toLocaleString()}</p>
+          </div>
+        </Card>
+        <Card className="p-3 flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-950 flex items-center justify-center flex-shrink-0">
+            <XCircle className="w-4 h-4 text-red-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] text-muted-foreground">Failed</p>
+            <p className="text-base font-bold">₦{failedAmount.toLocaleString()}</p>
+          </div>
+        </Card>
       </motion.div>
 
       {/* Filters */}
-      <motion.div variants={itemVariants} className="mb-6">
-        <Card className="p-4">
-          <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="flex-1">
-              <label className="text-sm font-medium mb-2 block">Type</label>
-              <Select value={filters.type} onValueChange={(value) => {
-                setFilters({...filters, type: value});
-                setPagination({...pagination, page: 1});
-              }}>
-                <SelectTrigger>
-                  <SelectValue />
+      <motion.div variants={itemVariants} className="mb-3">
+        <Card className="p-2.5">
+          <div className="flex flex-col sm:flex-row gap-2 items-end">
+            <div className="flex-1 w-full">
+              <Select value={filters.type} onValueChange={(value) => { setFilters({ ...filters, type: value }); setPagination({ ...pagination, page: 1 }); }}>
+                <SelectTrigger className="h-8">
+                  <SelectValue placeholder="All Types" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
@@ -169,15 +174,10 @@ export default function PaymentsPage() {
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="flex-1">
-              <label className="text-sm font-medium mb-2 block">Status</label>
-              <Select value={filters.status} onValueChange={(value) => {
-                setFilters({...filters, status: value});
-                setPagination({...pagination, page: 1});
-              }}>
-                <SelectTrigger>
-                  <SelectValue />
+            <div className="flex-1 w-full">
+              <Select value={filters.status} onValueChange={(value) => { setFilters({ ...filters, status: value }); setPagination({ ...pagination, page: 1 }); }}>
+                <SelectTrigger className="h-8">
+                  <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
@@ -187,9 +187,8 @@ export default function PaymentsPage() {
                 </SelectContent>
               </Select>
             </div>
-
-            <Button variant="outline" size="icon">
-              <Download className="w-4 h-4" />
+            <Button variant="outline" size="sm" className="h-8">
+              <Download className="w-3.5 h-3.5 mr-1" /> Export
             </Button>
           </div>
         </Card>
@@ -198,75 +197,60 @@ export default function PaymentsPage() {
       {/* Payments List */}
       <motion.div variants={itemVariants}>
         {loading ? (
-          <Card className="p-8 flex items-center justify-center gap-2">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <span className="text-muted-foreground">Loading payments...</span>
+          <Card className="p-6 flex items-center justify-center gap-2">
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            <span className="text-xs text-muted-foreground">Loading payments...</span>
           </Card>
         ) : payments.length === 0 ? (
           <Card className="p-8 text-center">
-            <p className="text-muted-foreground mb-4">No payments found</p>
+            <CreditCard className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm font-medium mb-1">No payments found</p>
+            <p className="text-xs text-muted-foreground">Try adjusting your filters</p>
           </Card>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {payments.map((payment) => (
-              <motion.div
-                key={payment._id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-              >
-                <Card className="p-4 hover:shadow-md transition-shadow">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-1">
-                          <p className="font-semibold text-base">
-                            {payment.serviceName}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {getTypeLabel(payment.type)} {payment.planName && `• ${payment.planName}`}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(payment.createdAt).toLocaleDateString()} at{' '}
-                            {new Date(payment.createdAt).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1 font-mono">
-                            Paystack ref: {payment.paystackReference || payment.reference}
-                          </p>
-                        </div>
+              <motion.div key={payment._id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.15 }}>
+                <Card className="p-2.5 hover:shadow-sm transition-shadow">
+                  <div className="flex items-center justify-between gap-3">
+                    {/* Left: Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="font-semibold text-sm truncate">{payment.serviceName}</p>
+                        <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border flex-shrink-0 ${getStatusColor(payment.status)}`}>
+                          {payment.status.toUpperCase()}
+                        </span>
                       </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        {getTypeLabel(payment.type)} {payment.planName && `• ${payment.planName}`} • {new Date(payment.createdAt).toLocaleDateString('en-NG')}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground font-mono truncate">{payment.paystackReference || payment.reference}</p>
                     </div>
 
-                    <div className="flex items-end justify-between md:items-center gap-4 md:flex-col md:text-right">
-                      <div>
-                        <p className="text-2xl font-bold">
-                          ₦{payment.amount.toLocaleString()}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Ref: {payment.reference.substring(0, 8)}...
-                        </p>
+                    {/* Right: Amount + Action */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="text-right">
+                        <p className="text-sm font-bold">₦{payment.amount.toLocaleString()}</p>
+                        <p className="text-[9px] text-muted-foreground">{payment.reference.substring(0, 10)}...</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(
-                            payment.status
-                          )}`}
+                      {payment.status === 'pending' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleReverify(payment)}
+                          disabled={reverifyingIds.has(payment._id)}
+                          className="h-7 px-2 text-[11px]"
                         >
-                          {payment.status.toUpperCase()}
-                        </div>
-                        {payment.status === 'pending' && (
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            onClick={() => handleReverify(payment)}
-                            disabled={reverifyingIds.has(payment._id)}
-                          >
-                            <RefreshCw className={`w-4 h-4 ${reverifyingIds.has(payment._id) ? 'animate-spin' : ''}`} />
-                          </Button>
-                        )}
-                      </div>
+                          {reverifyingIds.has(payment._id) ? (
+                            <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Verifying</>
+                          ) : (
+                            <><RefreshCw className="w-3 h-3 mr-1" />Reverify</>
+                          )}
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => router.push(`/user/payments/${payment._id}`)}>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
                   </div>
                 </Card>
@@ -278,81 +262,23 @@ export default function PaymentsPage() {
 
       {/* Pagination */}
       {pagination.pages > 1 && (
-        <motion.div
-          variants={itemVariants}
-          className="flex justify-center gap-2 mt-8"
-        >
-          <Button
-            variant="outline"
-            disabled={pagination.page === 1}
-            onClick={() =>
-              setPagination({...pagination, page: pagination.page - 1})
-            }
-          >
+        <motion.div variants={itemVariants} className="flex justify-center items-center gap-2 mt-4">
+          <Button variant="outline" size="sm" disabled={pagination.page === 1} onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })} className="h-7 text-xs">
             Previous
           </Button>
-
-          <div className="flex items-center gap-2">
-            {Array.from({ length: pagination.pages }, (_, i) => i + 1).map(
-              (page) => (
-                <Button
-                  key={page}
-                  variant={pagination.page === page ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() =>
-                    setPagination({...pagination, page})
-                  }
-                >
-                  {page}
-                </Button>
-              )
-            )}
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.min(pagination.pages, 5) }, (_, i) => i + 1).map((page) => (
+              <Button key={page} variant={pagination.page === page ? 'default' : 'outline'} size="sm" onClick={() => setPagination({ ...pagination, page })} className="h-7 w-7 p-0 text-xs">
+                {page}
+              </Button>
+            ))}
+            {pagination.pages > 5 && <span className="text-xs text-muted-foreground px-1">...</span>}
           </div>
-
-          <Button
-            variant="outline"
-            disabled={pagination.page === pagination.pages}
-            onClick={() =>
-              setPagination({...pagination, page: pagination.page + 1})
-            }
-          >
+          <Button variant="outline" size="sm" disabled={pagination.page === pagination.pages} onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })} className="h-7 text-xs">
             Next
           </Button>
         </motion.div>
       )}
-
-      {/* Summary Card */}
-      <motion.div variants={itemVariants} className="mt-8">
-        <Card className="p-6 bg-muted">
-          <h3 className="font-bold mb-3">Summary</h3>
-          <div className="grid md:grid-cols-3 gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Payments</p>
-              <p className="text-2xl font-bold">{pagination.total}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Completed</p>
-              <p className="text-2xl font-bold text-green-600">
-                ₦
-                {payments
-                  .filter((p) => p.status === 'completed')
-                  .reduce((sum, p) => sum + p.amount, 0)
-                  .toLocaleString()}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Pending</p>
-              <p className="text-2xl font-bold text-amber-600">
-                ₦
-                {payments
-                  .filter((p) => p.status === 'pending')
-                  .reduce((sum, p) => sum + p.amount, 0)
-                  .toLocaleString()}
-              </p>
-            </div>
-          </div>
-        </Card>
-      </motion.div>
     </motion.div>
   );
 }

@@ -2,6 +2,47 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import axios from 'axios';
 import crypto from 'crypto';
+import Admin from '@/lib/models/Admin';
+import User from '@/lib/models/User';
+import { sendAdminCheckInNotification } from '@/lib/email';
+
+async function notifyAdminsOnCheckIn(
+  userId: string,
+  checkIn: {
+    serviceName: string;
+    planName: string;
+    amount: number;
+    checkedInAt: Date;
+  }
+) {
+  try {
+    const user = (await User.findById(userId).select('name email cardNumber').lean()) as unknown as {
+      name?: string;
+      email?: string;
+      cardNumber?: string;
+    } | null;
+    const admins = (await Admin.find({ isActive: true }).select('email').lean()) as unknown as { email: string }[];
+    const adminEmails = [...new Set(admins.map((a) => a.email))];
+    const checkedInAtStr = new Date(checkIn.checkedInAt).toLocaleString();
+    for (const admin of adminEmails) {
+      try {
+        await sendAdminCheckInNotification(admin, {
+          userName: user?.name || 'Unknown',
+          userEmail: user?.email || '',
+          serviceName: checkIn.serviceName,
+          planName: checkIn.planName,
+          amount: checkIn.amount,
+          checkedInAt: checkedInAtStr,
+          cardNumber: user?.cardNumber,
+        });
+      } catch (err) {
+        console.error(`Failed to send check-in email to admin ${admin}:`, err);
+      }
+    }
+  } catch (err) {
+    console.error('Error in notifyAdminsOnCheckIn:', err);
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -232,6 +273,8 @@ export async function GET(request: NextRequest) {
               subscriptionId: subscriptionId,
             });
 
+            await notifyAdminsOnCheckIn(meta.userId, checkIn);
+
             const isAdminInitiated = paymentData.metadata?.adminInitiated;
             const redirectPath = isAdminInitiated ? '/admin/dashboard/checkins' : '/user/check-in';
             return NextResponse.redirect(
@@ -274,6 +317,8 @@ export async function GET(request: NextRequest) {
           );
         }
 
+        await notifyAdminsOnCheckIn(existingCheckIn.userId.toString(), existingCheckIn);
+
         // Redirect to success page
         const isAdminInitiated = paymentData.metadata?.adminInitiated;
         const redirectPath = isAdminInitiated ? '/admin/dashboard/checkins' : '/user/check-in';
@@ -311,6 +356,8 @@ export async function GET(request: NextRequest) {
         { checkInId: checkIn._id },
         { new: true }
       );
+
+      await notifyAdminsOnCheckIn(paymentData.metadata.userId, checkIn);
 
       // Redirect to success page
       const isAdminInitiated = paymentData.metadata?.adminInitiated;

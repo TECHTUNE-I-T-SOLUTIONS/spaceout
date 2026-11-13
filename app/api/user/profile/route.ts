@@ -42,6 +42,8 @@ export async function GET(request: NextRequest) {
       passportUrl: user.passportUrl,
       passportPhotoUrl: user.passportPhotoUrl,
       signatureUrl: user.signatureUrl,
+      cardNumber: user.cardNumber,
+      cardIssuedAt: user.cardIssuedAt,
       isStudent: user.isStudent,
       educationalInfo: user.educationalInfo,
       businessInfo: user.businessInfo,
@@ -69,6 +71,57 @@ export async function PUT(request: NextRequest) {
     await dbConnect();
     const body = await request.json();
 
+    // Handle card number regeneration request
+    if (body.regenerateCardNumber) {
+      const existingUser = await User.findById(session.user.id).lean();
+      // Card number is permanent — only generate one if user doesn't have it yet
+      if (existingUser?.cardNumber) {
+        return NextResponse.json({
+          message: 'Card number is permanent and cannot be changed',
+          profile: {
+            id: existingUser._id.toString(),
+            name: existingUser.name,
+            email: existingUser.email,
+            phone: existingUser.phone,
+            passportPhotoUrl: existingUser.passportPhotoUrl,
+            passportUrl: existingUser.passportUrl,
+            profileImage: existingUser.profileImage,
+            signatureUrl: existingUser.signatureUrl,
+            cardNumber: existingUser.cardNumber,
+            cardIssuedAt: existingUser.cardIssuedAt,
+          },
+        });
+      }
+
+      const newCardNumber = `SP-OUT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const updatedUser = await User.findByIdAndUpdate(
+        session.user.id,
+        {
+          $set: {
+            cardNumber: newCardNumber,
+            cardIssuedAt: new Date(),
+          },
+        },
+        { new: true, runValidators: true }
+      ).lean();
+
+      return NextResponse.json({
+        message: 'Card number regenerated successfully',
+        profile: {
+          id: updatedUser._id.toString(),
+          name: updatedUser.name,
+          email: updatedUser.email,
+          phone: updatedUser.phone,
+          passportPhotoUrl: updatedUser.passportPhotoUrl,
+          passportUrl: updatedUser.passportUrl,
+          profileImage: updatedUser.profileImage,
+          signatureUrl: updatedUser.signatureUrl,
+          cardNumber: updatedUser.cardNumber,
+          cardIssuedAt: updatedUser.cardIssuedAt,
+        },
+      });
+    }
+
     // Enforce all model fields in the collection
     const allFields = {
       firstName: body.firstName ?? '',
@@ -81,6 +134,8 @@ export async function PUT(request: NextRequest) {
       passportUrl: body.passportUrl ?? '',
       passportPhotoUrl: body.passportPhotoUrl ?? '',
       signatureUrl: body.signatureUrl ?? '',
+      cardNumber: body.cardNumber ?? '',
+      cardIssuedAt: body.cardIssuedAt ?? null,
       isStudent: body.isStudent ?? false,
       educationalInfo: body.educationalInfo ?? {},
       businessInfo: body.businessInfo ?? {},
@@ -126,6 +181,8 @@ export async function PUT(request: NextRequest) {
       passportUrl: updatedUser.passportUrl,
       passportPhotoUrl: updatedUser.passportPhotoUrl,
       signatureUrl: updatedUser.signatureUrl,
+      cardNumber: updatedUser.cardNumber,
+      cardIssuedAt: updatedUser.cardIssuedAt,
       isStudent: updatedUser.isStudent,
       educationalInfo: updatedUser.educationalInfo,
       businessInfo: updatedUser.businessInfo,

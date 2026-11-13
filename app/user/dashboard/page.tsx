@@ -4,12 +4,12 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { CreditCard, Calendar, CheckCircle, Clock, Wifi, WifiOff, Loader2, TrendingUp, TrendingDown, AlertCircle, Shield } from 'lucide-react';
+import { CreditCard, Shield, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { MembershipModal } from '@/components/membership-modal';
 import { Badge } from '@/components/ui/badge';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { MembershipModal } from '@/components/membership-modal';
 import { toast } from 'sonner';
 
 interface CheckIn {
@@ -53,6 +53,16 @@ interface UserProfile {
   signatureUrl?: string;
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0 },
+};
+
 export default function UserDashboard() {
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -65,10 +75,8 @@ export default function UserDashboard() {
   const [loadingPayments, setLoadingPayments] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
-  // Fetch user profile only after session is confirmed
   useEffect(() => {
     if (!session?.user?.id) return;
-
     const fetchUserProfile = async () => {
       try {
         setLoadingProfile(true);
@@ -76,169 +84,97 @@ export default function UserDashboard() {
         if (response.ok) {
           const data = await response.json();
           setUserProfile(data);
-          
-          // Check if documents exist but flag is false, and update if needed
-          if (
-            !data.documentsUploaded &&
-            data.passportPhotoUrl &&
-            data.signatureUrl
-          ) {
-            console.log('[Dashboard] Documents exist but flag is false, updating...');
+          if (!data.documentsUploaded && data.passportPhotoUrl && data.signatureUrl) {
             try {
               await fetch('/api/user/profile', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ documentsUploaded: true }),
               });
-              // Update local state
               setUserProfile({ ...data, documentsUploaded: true });
-              console.log('[Dashboard] Documents flag updated to true');
-            } catch (error) {
-              console.error('[Dashboard] Error updating documents flag:', error);
-            }
+            } catch { /* ignore */ }
           }
         }
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-      } finally {
-        setLoadingProfile(false);
-      }
+      } catch { /* ignore */ }
+      finally { setLoadingProfile(false); }
     };
-
     fetchUserProfile();
   }, [session?.user?.id]);
 
-  // Fetch subscriptions
   useEffect(() => {
     if (!session?.user?.id) return;
-
     const fetchSubscriptions = async () => {
       try {
-        const response = await fetch('/api/user/subscriptions');
-        if (response.ok) {
-          const data = await response.json();
-          setSubscriptions(data.subscriptions || []);
-        }
-      } catch (error) {
-        console.error('Error fetching subscriptions:', error);
-      }
+        const res = await fetch('/api/user/subscriptions');
+        if (res.ok) setSubscriptions((await res.json()).subscriptions || []);
+      } catch { /* ignore */ }
     };
-
     fetchSubscriptions();
   }, [session?.user?.id]);
 
   useEffect(() => {
     if (!session?.user?.id) return;
-
     const fetchCheckIns = async () => {
       try {
         setLoadingCheckIns(true);
-        const response = await fetch('/api/checkin/history?limit=5');
-        if (response.ok) {
-          const data = await response.json();
-          setCheckIns(data.checkIns || []);
-        }
-      } catch (error) {
-        console.error('Error fetching check-ins:', error);
-      } finally {
-        setLoadingCheckIns(false);
-      }
+        const res = await fetch('/api/checkin/history?limit=5');
+        if (res.ok) setCheckIns((await res.json()).checkIns || []);
+      } catch { /* ignore */ }
+      finally { setLoadingCheckIns(false); }
     };
-
     fetchCheckIns();
   }, [session?.user?.id]);
 
-  // Fetch payments
   useEffect(() => {
     if (!session?.user?.id) return;
-
     const fetchPayments = async () => {
       try {
         setLoadingPayments(true);
-        const response = await fetch('/api/payments/history?limit=5');
-        if (response.ok) {
-          const data = await response.json();
-          setPayments(data.payments || []);
-        }
-      } catch (error) {
-        console.error('Error fetching payments:', error);
-      } finally {
-        setLoadingPayments(false);
-      }
+        const res = await fetch('/api/payments/history?limit=5');
+        if (res.ok) setPayments((await res.json()).payments || []);
+      } catch { /* ignore */ }
+      finally { setLoadingPayments(false); }
     };
-
     fetchPayments();
   }, [session?.user?.id]);
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 },
-  };
-
-  // Show loading skeleton while session is loading
   if (status === 'loading' || !session) {
     return (
       <motion.div
-        className="max-w-6xl mx-auto"
+        className="px-3 py-3 max-w-[1400px] mx-auto"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
-        <div className="mb-8">
-          <div className="h-8 w-48 bg-muted animate-pulse rounded mb-2" />
-          <div className="h-4 w-64 bg-muted animate-pulse rounded" />
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <div className="h-6 w-32 bg-muted animate-pulse rounded mb-1" />
+            <div className="h-3 w-48 bg-muted animate-pulse rounded" />
+          </div>
+          <div className="h-7 w-16 bg-muted animate-pulse rounded" />
         </div>
-
-        <motion.div
-          className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
           {Array.from({ length: 4 }).map((_, idx) => (
-            <motion.div key={idx} variants={itemVariants}>
-              <Card className="p-6">
-                <div className="h-4 w-20 bg-muted animate-pulse rounded mb-2" />
-                <div className="h-8 w-32 bg-muted animate-pulse rounded" />
-              </Card>
-            </motion.div>
+            <Card key={idx} className="p-3">
+              <div className="h-3 w-16 bg-muted animate-pulse rounded mb-1.5" />
+              <div className="h-6 w-24 bg-muted animate-pulse rounded" />
+            </Card>
           ))}
-        </motion.div>
-
-        <motion.div variants={itemVariants} className="mb-8">
-          <Card className="p-6">
-            <div className="h-6 w-40 bg-muted animate-pulse rounded" />
-          </Card>
-        </motion.div>
+        </div>
       </motion.div>
     );
   }
 
   return (
-    <motion.div
-    // @ts-ignore
-      className="max-w-6xl mx-auto"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      <motion.div variants={itemVariants} className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back to SpaceOut</p>
+    <motion.div className="px-3 py-3 max-w-[1400px] mx-auto" variants={containerVariants} initial="hidden" animate="visible">
+      <motion.div variants={itemVariants} className="mb-3">
+        <h1 className="text-lg font-bold">Dashboard</h1>
+        <p className="text-xs text-muted-foreground">Welcome back to SpaceOut</p>
       </motion.div>
 
-      {/* Stats Grid */}
+      {/* Stats — compact single row */}
       <motion.div
-      // @ts-ignore
-        className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+        className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -246,39 +182,41 @@ export default function UserDashboard() {
         {[
           {
             icon: CreditCard,
-            label: 'Membership Status',
+            label: 'Membership',
             value: userProfile?.membershipStatus === 'active' ? 'Active' : 'Inactive',
             color: userProfile?.membershipStatus === 'active' ? 'text-green-500' : 'text-amber-500',
             badge: userProfile?.membershipStatus === 'active' ? 'Active' : 'inactive',
           },
           {
             icon: Shield,
-            label: 'Verification Status',
+            label: 'Verification',
             value: userProfile?.passportUrl && userProfile?.signatureUrl ? 'Verified' : 'Pending',
             color: userProfile?.passportUrl && userProfile?.signatureUrl ? 'text-green-500' : 'text-amber-500',
           },
           {
             icon: Clock,
-            label: 'Active Memberships',
-            value: subscriptions.filter(s => s.status === 'active').length,
+            label: 'Active',
+            value: subscriptions.filter(s => s.status === 'active').length.toString(),
             color: 'text-blue-500',
           },
           {
             icon: CheckCircle,
-            label: 'Total Subscriptions',
-            value: subscriptions.length,
+            label: 'Total',
+            value: subscriptions.length.toString(),
             color: 'text-purple-500',
           },
-        ].map((stat, idx) => (
-          <motion.div key={idx} variants={itemVariants}>
-            <Card className="p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                  {stat.badge && <Badge className="mt-2 bg-green-500 text-white">{stat.badge}</Badge>}
+        ].map((stat) => (
+          <motion.div key={stat.label} variants={itemVariants}>
+            <Card className="p-3 hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-muted/50 flex-shrink-0`}>
+                  <stat.icon className={`w-4 h-4 ${stat.color}`} />
                 </div>
-                <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                <div className="min-w-0">
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">{stat.label}</p>
+                  <p className="text-lg font-bold leading-tight truncate">{stat.value}</p>
+                  {stat.badge && <Badge className="mt-1 bg-green-500 text-white text-[10px]">{stat.badge}</Badge>}
+                </div>
               </div>
             </Card>
           </motion.div>
@@ -286,45 +224,30 @@ export default function UserDashboard() {
       </motion.div>
 
       {/* Quick Actions */}
-      <motion.div variants={itemVariants} className="mb-8">
-        <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
-        <div className="grid md:grid-cols-3 gap-4">
+      <motion.div variants={itemVariants} className="mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <Link href="/user/check-in">
-            <Button className="w-full justify-start" variant="outline" size="lg">
-              Check In Now
-            </Button>
+            <Button variant="outline" size="sm" className="w-full text-xs h-8">Check In Now</Button>
           </Link>
           <Link href="/user/bookings">
-            <Button className="w-full justify-start" variant="outline" size="lg">
-              Make a Booking
-            </Button>
+            <Button variant="outline" size="sm" className="w-full text-xs h-8">Make a Booking</Button>
           </Link>
           <Link href="/user/payments">
-            <Button className="w-full justify-start" variant="outline" size="lg">
-              View Payments
-            </Button>
+            <Button variant="outline" size="sm" className="w-full text-xs h-8">View Payments</Button>
           </Link>
         </div>
       </motion.div>
 
       {/* Document Verification Alert */}
       {!loadingProfile && (!userProfile?.passportUrl || !userProfile?.signatureUrl) && (
-        <motion.div variants={itemVariants} className="mb-8">
-          <Card className="p-4 border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+        <motion.div variants={itemVariants} className="mb-3">
+          <Card className="p-3 border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-1">Verification Required</h3>
-                <p className="text-sm text-amber-800 dark:text-amber-200 mb-3">
-                  Please upload your passport and signature documents to proceed with check-ins.
-                </p>
-                <Button
-                  size="sm"
-                  variant="default"
-                  onClick={() => router.push('/user/profile')}
-                >
-                  Upload Documents
-                </Button>
+                <h3 className="font-semibold text-amber-900 dark:text-amber-100 text-sm">Verification Required</h3>
+                <p className="text-xs text-amber-800 dark:text-amber-200 mb-2">Upload passport and signature to proceed with check-ins.</p>
+                <Button size="sm" variant="default" onClick={() => router.push('/user/profile')}>Upload Documents</Button>
               </div>
             </div>
           </Card>
@@ -333,27 +256,25 @@ export default function UserDashboard() {
 
       {/* Active Subscriptions */}
       {subscriptions.filter(s => s.status === 'active').length > 0 && (
-        <motion.div variants={itemVariants} className="mb-8">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-            <Badge className="bg-green-500 text-white">Active</Badge>
+        <motion.div variants={itemVariants} className="mb-3">
+          <h2 className="text-sm font-bold mb-2 flex items-center gap-1.5">
+            <Badge className="bg-green-500 text-white text-[10px]">Active</Badge>
             Your Active Memberships
           </h2>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {subscriptions.filter(s => s.status === 'active').map((sub) => (
               <motion.div key={sub._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <Card className="p-4 border-l-4 border-l-green-500">
+                <Card className="p-3 border-l-4 border-l-green-500">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-semibold">{sub.serviceName}</p>
-                        {sub.isAccessCard && <Badge variant="outline" className="text-xs">Access Card</Badge>}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <p className="font-semibold text-sm truncate">{sub.serviceName}</p>
+                        {sub.isAccessCard && <Badge variant="outline" className="text-[10px]">Access Card</Badge>}
                       </div>
-                      <p className="text-sm text-muted-foreground">{sub.planName}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Expires: {new Date(sub.expiryDate).toLocaleDateString()}
-                      </p>
+                      <p className="text-xs text-muted-foreground truncate">{sub.planName}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Expires: {new Date(sub.expiryDate).toLocaleDateString()}</p>
                     </div>
-                    <Badge className="bg-green-500 text-white">Active</Badge>
+                    <Badge className="bg-green-500 text-white text-[10px]">Active</Badge>
                   </div>
                 </Card>
               </motion.div>
@@ -363,109 +284,85 @@ export default function UserDashboard() {
       )}
 
       {/* Recent Check-Ins */}
-      <motion.div variants={itemVariants} className="mb-8">
-        <h2 className="text-xl font-bold mb-4">Recent Check-Ins</h2>
+      <motion.div variants={itemVariants} className="mb-3">
+        <h2 className="text-sm font-bold mb-2">Recent Check-Ins</h2>
         {loadingCheckIns ? (
-          <Card className="p-6 flex items-center justify-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span className="text-muted-foreground">Loading check-ins...</span>
+          <Card className="p-4 flex items-center justify-center gap-2">
+            <span className="text-xs text-muted-foreground">Loading check-ins...</span>
           </Card>
         ) : checkIns.length === 0 ? (
-          <Card className="p-6 text-center">
-            <p className="text-muted-foreground mb-4">No check-ins yet</p>
-            <Link href="/user/check-in">
-              <Button size="sm">Check In Now</Button>
-            </Link>
+          <Card className="p-4 text-center">
+            <p className="text-xs text-muted-foreground mb-3">No check-ins yet</p>
+            <Link href="/user/check-in"><Button size="sm">Check In Now</Button></Link>
           </Card>
         ) : (
           <div className="space-y-2">
             {checkIns.map((checkIn) => (
               <motion.div key={checkIn._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <Card className="p-4 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <p className="font-semibold">{checkIn.serviceName}</p>
-                      <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <Card className="p-3 hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm">{checkIn.serviceName}</p>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1.5 truncate">
                         {checkIn.planName} • {checkIn.durationLabel}
                         {checkIn.wifiIncluded ? (
-                          <Wifi className="w-3 h-3 text-green-600" />
+                          <span className="text-green-600">WiFi</span>
                         ) : (
-                          <WifiOff className="w-3 h-3 text-amber-600" />
+                          <span className="text-amber-600">No WiFi</span>
                         )}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold">₦{checkIn.amount.toLocaleString()}</p>
-                      <p className={`text-xs ${
-                        checkIn.status === 'checked_in'
-                          ? 'text-green-600'
-                          : checkIn.status === 'pending'
-                          ? 'text-amber-600'
-                          : 'text-muted-foreground'
-                      }`}>
-                        {checkIn.status}
-                      </p>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-bold text-sm">₦{checkIn.amount.toLocaleString()}</p>
+                      <p className={`text-[10px] ${
+                        checkIn.status === 'checked_in' ? 'text-green-600' : checkIn.status === 'pending' ? 'text-amber-600' : 'text-muted-foreground'
+                      }`}>{checkIn.status}</p>
                     </div>
                   </div>
                 </Card>
               </motion.div>
             ))}
             <Link href="/user/check-in" className="block">
-              <Button variant="outline" className="w-full">
-                View All Check-Ins
-              </Button>
+              <Button variant="outline" className="w-full text-xs h-8">View All Check-Ins</Button>
             </Link>
           </div>
         )}
       </motion.div>
 
       {/* Payment History */}
-      <motion.div variants={itemVariants} className="mb-8">
-        <h2 className="text-xl font-bold mb-4">Payment History</h2>
+      <motion.div variants={itemVariants} className="mb-3">
+        <h2 className="text-sm font-bold mb-2">Payment History</h2>
         {loadingPayments ? (
-          <Card className="p-6 flex items-center justify-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span className="text-muted-foreground">Loading payments...</span>
+          <Card className="p-4 flex items-center justify-center gap-2">
+            <span className="text-xs text-muted-foreground">Loading payments...</span>
           </Card>
         ) : payments.length === 0 ? (
-          <Card className="p-6 text-center">
-            <p className="text-muted-foreground mb-4">No payments yet</p>
-            <Link href="/user/check-in">
-              <Button size="sm">Make a Payment</Button>
-            </Link>
+          <Card className="p-4 text-center">
+            <p className="text-xs text-muted-foreground mb-3">No payments yet</p>
+            <Link href="/user/check-in"><Button size="sm">Make a Payment</Button></Link>
           </Card>
         ) : (
           <div className="space-y-2">
             {payments.map((payment) => (
               <motion.div key={payment._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <Card className="p-4 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <p className="font-semibold">{payment.serviceName}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {payment.planName || payment.type} • {new Date(payment.createdAt).toLocaleDateString()}
-                      </p>
+                <Card className="p-3 hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm">{payment.serviceName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{payment.planName || payment.type} • {new Date(payment.createdAt).toLocaleDateString()}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold">₦{payment.amount.toLocaleString()}</p>
-                      <p className={`text-xs font-semibold ${
-                        payment.status === 'completed'
-                          ? 'text-green-600'
-                          : payment.status === 'pending'
-                          ? 'text-amber-600'
-                          : 'text-red-600'
-                      }`}>
-                        {payment.status.toUpperCase()}
-                      </p>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-bold text-sm">₦{payment.amount.toLocaleString()}</p>
+                      <p className={`text-[10px] font-semibold ${
+                        payment.status === 'completed' ? 'text-green-600' : payment.status === 'pending' ? 'text-amber-600' : 'text-red-600'
+                      }`}>{payment.status.toUpperCase()}</p>
                     </div>
                   </div>
                 </Card>
               </motion.div>
             ))}
             <Link href="/user/payments" className="block">
-              <Button variant="outline" className="w-full">
-                View All Payments
-              </Button>
+              <Button variant="outline" className="w-full text-xs h-8">View All Payments</Button>
             </Link>
           </div>
         )}
@@ -473,17 +370,10 @@ export default function UserDashboard() {
 
       {/* Membership CTA */}
       <motion.div variants={itemVariants}>
-        <Card className="p-8 bg-primary text-primary-foreground border-primary">
-          <h3 className="text-xl font-bold mb-2">Become an Astronaut</h3>
-          <p className="mb-6 opacity-90">
-            Unlock exclusive benefits with SpaceOut! Upgrade your subscription, purchase a SpaceOut Card for exclusive access fees, or become an Astronaut member for premium perks and priority booking.
-          </p>
-          <Button 
-            variant="secondary"
-            onClick={() => setShowMembershipModal(true)}
-          >
-            Explore Options
-          </Button>
+        <Card className="p-5 bg-primary text-primary-foreground border-primary">
+          <h3 className="text-base font-bold mb-1">Become an Astronaut</h3>
+          <p className="mb-3 opacity-90 text-xs leading-relaxed">Upgrade your subscription, purchase a SpaceOut Card, or become an Astronaut member for premium perks.</p>
+          <Button variant="secondary" onClick={() => setShowMembershipModal(true)}>Explore Options</Button>
         </Card>
       </motion.div>
 

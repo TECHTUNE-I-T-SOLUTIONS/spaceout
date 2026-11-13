@@ -49,6 +49,8 @@ export interface IUser extends Document {
   passportUrl?: string;
   passportPhotoUrl?: string;
   signatureUrl?: string;
+  cardNumber?: string;
+  cardIssuedAt?: Date;
   isStudent?: boolean;
   educationalInfo?: IEducationalInfo;
   businessInfo?: IBusinessInfo;
@@ -151,6 +153,14 @@ const UserSchema = new Schema<IUser>(
     },
     signatureUrl: {
       type: String,
+    },
+    cardNumber: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    cardIssuedAt: {
+      type: Date,
     },
     isStudent: {
       type: Boolean,
