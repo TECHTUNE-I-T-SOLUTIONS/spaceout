@@ -14,6 +14,8 @@ import {
   Image,
   Star,
   MessageSquare,
+  Shield,
+  Activity,
   AlertTriangle,
   Building2,
   Settings,
@@ -60,6 +62,7 @@ export function AdminSidebar({ userRole }: AdminSidebarProps) {
     { href: '/admin/dashboard/feedback', icon: MessageSquare, label: 'Feedback' },
     { href: '/admin/dashboard/questionnaires', icon: MessageSquare, label: 'Questionnaires' },
     { href: '/admin/dashboard/contacts', icon: AlertTriangle, label: 'Contacts' },
+    { href: '/admin/dashboard/activities', icon: Activity, label: 'Activities' },
   ];
 
   // Superadmin-only menu items
@@ -69,6 +72,7 @@ export function AdminSidebar({ userRole }: AdminSidebarProps) {
     { href: '/admin/dashboard/pricing', icon: ShoppingCart, label: 'Pricing' },
     { href: '/admin/dashboard/admins', icon: Users, label: 'Manage Admins' },
     { href: '/admin/dashboard/error-logs', icon: AlertTriangle, label: 'Error Logs' },
+    { href: '/admin/dashboard/admin-logs', icon: Shield, label: 'Admin Logs' },
   ];
 
   const isSuperAdmin = userRole === 'superadmin';

@@ -3,6 +3,7 @@ import dbConnect from '@/lib/db';
 import Admin from '@/lib/models/Admin';
 import User from '@/lib/models/User';
 import { cookies } from 'next/headers';
+import { logActivity } from '@/lib/activity-logger';
 import { hashPassword } from '@/lib/auth';
 
 function deriveMembershipState(user: any) {
@@ -59,6 +60,10 @@ export async function GET(request: NextRequest) {
     // Compute hasMembership based on membershipStatus
     // If membershipStatus exists and is not null, user has/had membership
     users = users.map((user: any) => deriveMembershipState(user));
+
+    try {
+      await logActivity(admin._id.toString(), 'View Users', `Admin viewed all users list (${users.length} users)`, 'user_management', { userCount: users.length });
+    } catch { /* non-blocking */ }
 
     return NextResponse.json(users);
   } catch (error: any) {
@@ -204,6 +209,14 @@ export async function POST(request: NextRequest) {
     const savedUser = await newUser.save();
 
     console.log(`[Admin] User created: ${email} by admin ${adminId}`);
+
+    try {
+      await logActivity(admin._id.toString(), 'Create User', `Admin created user ${email} (${firstName} ${lastName})`, 'user_management', {
+        targetUser: email,
+        targetUserName: `${firstName} ${lastName}`,
+        targetUserId: savedUser._id.toString(),
+      });
+    } catch { /* non-blocking */ }
 
     return NextResponse.json(
       {

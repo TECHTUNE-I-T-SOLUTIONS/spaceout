@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Admin from '@/lib/models/Admin';
 import { cookies } from 'next/headers';
+import { logActivity } from '@/lib/activity-logger';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -60,6 +61,10 @@ export async function PUT(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    try {
+      await logActivity(adminId, 'Update Profile', `Admin updated their profile`, 'auth');
+    } catch { /* non-blocking */ }
 
     return NextResponse.json({
       id: admin._id.toString(),

@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { sendEmail } from '@/lib/email';
 import dbConnect from '@/lib/db';
 import User from '@/lib/models/User';
+import { logActivity } from '@/lib/activity-logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -120,6 +121,14 @@ export async function POST(request: NextRequest) {
         errors.push(`Error sending to ${user.email}`);
       }
     }
+
+    try {
+      await logActivity(adminId, 'Send Batch Email', `Admin sent batch email to ${users.length} users: ${subject}`, 'email', {
+        recipientCount: users.length,
+        sentCount,
+        subject,
+      });
+    } catch { /* non-blocking */ }
 
     return NextResponse.json({
       success: true,

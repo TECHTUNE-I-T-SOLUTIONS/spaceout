@@ -4,6 +4,7 @@ import Admin from '@/lib/models/Admin';
 import User from '@/lib/models/User';
 import UserSubscription from '@/lib/models/UserSubscription';
 import { cookies } from 'next/headers';
+import { logActivity } from '@/lib/activity-logger';
 
 function deriveMembershipState(user: any) {
   const now = new Date();
@@ -69,7 +70,18 @@ export async function GET(
     }
 
     // Compute hasMembership based on membershipStatus
+    const userAny = user as any;
+    const userNameForLog = userAny.name;
+    const userEmailForLog = userAny.email;
+    const userIdForLog = userAny._id;
     user = deriveMembershipState(user);
+
+    try {
+      await logActivity(admin._id.toString(), 'View User', `Admin viewed user details: ${userEmailForLog || userNameForLog}`, 'user_management', {
+        targetUserId: userIdForLog.toString(),
+        targetUserEmail: userEmailForLog || undefined,
+      });
+    } catch { /* non-blocking */ }
 
     return NextResponse.json(user);
   } catch (error: any) {
@@ -148,6 +160,18 @@ export async function PATCH(
       .lean()
       .exec();
 
+    const targetUserEmail = user.email;
+    const targetUserName = user.name;
+    const targetUserId = user._id;
+
+    try {
+      await logActivity(admin._id.toString(), 'Update User Membership', `Admin updated membership status for ${targetUserEmail || targetUserName} to ${desiredStatus}`, 'user_management', {
+        targetUserId: targetUserId.toString(),
+        targetUserEmail: targetUserEmail || undefined,
+        newStatus: desiredStatus,
+      });
+    } catch { /* non-blocking */ }
+
     return NextResponse.json(
       {
         message: 'Membership status updated',
@@ -202,6 +226,17 @@ export async function DELETE(
         { status: 404 }
       );
     }
+
+    const deletedUserEmail = result.email;
+    const deletedUserName = result.name;
+    const deletedUserId = result._id;
+
+    try {
+      await logActivity(admin._id.toString(), 'Delete User', `Admin deleted user: ${deletedUserEmail || deletedUserName}`, 'user_management', {
+        targetUserId: deletedUserId.toString(),
+        targetUserEmail: deletedUserEmail || undefined,
+      });
+    } catch { /* non-blocking */ }
 
     return NextResponse.json(
       { success: true, message: 'User deleted successfully' },

@@ -3,6 +3,7 @@ import dbConnect from '@/lib/db';
 import User from '@/lib/models/User';
 import { hashPassword } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { logActivity } from '@/lib/activity-logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -118,6 +119,13 @@ export async function POST(request: NextRequest) {
     const savedUser = await newUser.save();
 
     console.log(`[Admin] User created: ${email} by admin ${adminId}`);
+
+    try {
+      await logActivity(adminUser._id.toString(), 'Create User', `Admin created user ${email}`, 'user_management', {
+        targetUser: email,
+        targetUserId: savedUser._id.toString(),
+      });
+    } catch { /* non-blocking */ }
 
     return NextResponse.json(
       {

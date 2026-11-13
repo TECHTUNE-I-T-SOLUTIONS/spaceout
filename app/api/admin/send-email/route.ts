@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import dbConnect from '@/lib/db';
 import { sendEmail } from '@/lib/email';
+import { logActivity } from '@/lib/activity-logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -123,6 +124,10 @@ export async function POST(request: NextRequest) {
       subject,
       html: htmlContent,
     });
+
+    try {
+      await logActivity(adminId, 'Send Email', `Admin sent email to ${to}: ${subject}`, 'email');
+    } catch { /* non-blocking */ }
 
     return NextResponse.json(
       { success: true, message: `Email successfully sent to ${to}` },

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
+import { cookies } from 'next/headers';
+import { logActivity } from '@/lib/activity-logger';
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -35,6 +37,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (amount !== undefined) payment.amount = amount;
     payment.verifiedAt = new Date();
     await payment.save();
+
+    try {
+      await logActivity(adminId, 'Update Payment Status', `Admin updated payment ${id} status to ${status}`, 'payment', {
+        paymentId: id,
+        newStatus: status,
+        amount: payment.amount,
+      });
+    } catch { /* non-blocking */ }
 
     return NextResponse.json({ success: true, payment: payment.toObject() });
   } catch (error: any) {
