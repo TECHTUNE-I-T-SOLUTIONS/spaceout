@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { CreateBranchModal } from '@/components/modals/create-branch-modal';
+import { DeleteConfirmModal } from '@/components/modals/delete-confirm-modal';
 import { Edit2, Trash2, MapPin, Phone, Mail, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -24,6 +25,9 @@ export default function BranchesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchBranches();
@@ -45,11 +49,16 @@ export default function BranchesPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this branch?')) return;
+  const handleDelete = async (id: string, name: string) => {
+    setDeleteTarget({ id, name });
+    setDeleteModalOpen(true);
+  };
 
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/branches/${id}`, {
+      const response = await fetch(`/api/branches/${deleteTarget.id}`, {
         method: 'DELETE',
       });
 
@@ -61,6 +70,10 @@ export default function BranchesPage() {
       }
     } catch (error) {
       toast.error('Error deleting branch');
+    } finally {
+      setIsDeleting(false);
+      setDeleteModalOpen(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -143,7 +156,7 @@ export default function BranchesPage() {
                       variant="destructive"
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleDelete(branch._id)}
+                      onClick={() => handleDelete(branch._id, branch.name)}
                     >
                       <Trash2 className="w-4 h-4 mr-1" />
                       Delete
@@ -160,6 +173,16 @@ export default function BranchesPage() {
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         onSuccess={fetchBranches}
+      />
+
+      <DeleteConfirmModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        title="Delete Branch"
+        description="Are you sure you want to delete this branch? This action cannot be undone."
+        itemName={deleteTarget?.name}
+        isLoading={isDeleting}
+        onConfirm={confirmDelete}
       />
     </motion.div>
   );
