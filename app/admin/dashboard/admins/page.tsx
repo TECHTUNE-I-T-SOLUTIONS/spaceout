@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { CreateAdminModal } from '@/components/modals/create-admin-modal';
+import { DeleteConfirmModal } from '@/components/modals/delete-confirm-modal';
 import { Edit2, Trash2, Mail, Phone, Shield, User } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -26,6 +27,9 @@ export default function AdminsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchAdmins();
@@ -47,11 +51,16 @@ export default function AdminsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this admin account?')) return;
+  const handleDelete = async (id: string, name: string) => {
+    setDeleteTarget({ id, name });
+    setDeleteModalOpen(true);
+  };
 
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/admins/${id}`, {
+      const response = await fetch(`/api/admins/${deleteTarget.id}`, {
         method: 'DELETE',
       });
 
@@ -63,6 +72,10 @@ export default function AdminsPage() {
       }
     } catch (error) {
       toast.error('Error deleting admin account');
+    } finally {
+      setIsDeleting(false);
+      setDeleteModalOpen(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -164,7 +177,7 @@ export default function AdminsPage() {
                       variant="destructive"
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleDelete(admin._id)}
+                      onClick={() => handleDelete(admin._id, admin.name)}
                     >
                       <Trash2 className="w-4 h-4 mr-1" />
                       Delete
@@ -181,6 +194,16 @@ export default function AdminsPage() {
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         onSuccess={fetchAdmins}
+      />
+
+      <DeleteConfirmModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        title="Delete Admin Account"
+        description="Are you sure you want to delete this admin account? This action cannot be undone."
+        itemName={deleteTarget?.name}
+        isLoading={isDeleting}
+        onConfirm={confirmDelete}
       />
     </motion.div>
   );
